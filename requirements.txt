@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+passlib[bcrypt]
+pydantic-settings
+asyncpg
+python-multipart
+email-validator
+bcrypt==4.0.1

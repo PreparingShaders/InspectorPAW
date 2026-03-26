@@ -1,0 +1,38 @@
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Virtual environment
+.venv/
+venv/
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+log/
+
+# Uploaded files (if any)
+uploads/
+
+# Environment variables
+.env
+.env.*
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS generated files
+.DS_Store
+Thumbs.db
