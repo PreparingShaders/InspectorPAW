@@ -2,6 +2,14 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import date, datetime
 
+# --- Token Schemas ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
 # --- UserMetrics Schemas ---
 
 class UserMetricsBase(BaseModel):
@@ -31,7 +39,6 @@ class UserBase(BaseModel):
     goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0) # Валидация диапазона
 
 class UserCreate(UserBase):
-    # Добавляем валидацию длины пароля
     password: str = Field(..., min_length=8, max_length=72)
 
 class UserUpdate(UserBase):
