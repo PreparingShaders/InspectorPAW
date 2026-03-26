@@ -1,16 +1,12 @@
-# This is a sample Python script.
+from fastapi import FastAPI
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+app = FastAPI(title="InspectorPAW API")
 
+@app.get("/")
+def read_root():
+    return {"message": "InspectorPAW is online!", "status": "Gym ready"}
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+@app.get("/check_progress")
+def get_progress():
+    # Сюда мы потом прикрутим логику из SQLAlchemy
+    return {"latest_workout": "Leg Press", "weight": 205, "reps": 12}
