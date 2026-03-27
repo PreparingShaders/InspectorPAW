@@ -38,8 +38,14 @@ class FoodItem(FoodItemBase):
 
 # --- MealFoodItem Schemas ---
 class MealFoodItemBase(BaseModel):
-    food_item_id: int
+    # Используется для создания и подтверждения
+    name: str
     quantity_grams: float
+    # Поля КБЖУ опциональны, т.к. при создании они могут быть неизвестны
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    fat: Optional[float] = None
+    carbohydrates: Optional[float] = None
 
 class MealFoodItemCreate(MealFoodItemBase):
     pass
@@ -52,18 +58,33 @@ class MealFoodItem(MealFoodItemBase):
     class Config:
         from_attributes = True
 
+# --- Analysis Schemas ---
+class AnalysisConfirmation(BaseModel):
+    # Схема для подтверждения финального списка продуктов
+    items: List[MealFoodItemCreate]
+
 # --- Meal Schemas ---
 class MealBase(BaseModel):
     meal_type: Optional[str] = None # 'breakfast', 'lunch', 'dinner', 'snack'
-    photo_url: Optional[str] = None
+    description: Optional[str] = None
 
 class MealCreate(MealBase):
-    food_items: List[MealFoodItemCreate] = []
+    # При создании приема пищи список продуктов пуст
+    pass
 
 class Meal(MealBase):
     id: int
     user_id: int
     timestamp: datetime
+    status: str
+    photo_url: Optional[str] = None
+    
+    # Денормализованные поля
+    total_calories: float
+    total_protein: float
+    total_fat: float
+    total_carbohydrates: float
+
     food_items: List[MealFoodItem] = []
 
     class Config:
@@ -99,7 +120,6 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=72)
 
 class UserUpdate(UserBase):
-    # Для обновления профиля пароль не обязателен
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(None, min_length=8, max_length=72)
 
@@ -107,7 +127,7 @@ class User(UserBase):
     id: int
     is_active: bool
     metrics: List[UserMetrics] = []
-    meals: List[Meal] = [] # Добавляем приемы пищи к данным пользователя
+    meals: List[Meal] = []
 
     class Config:
         from_attributes = True

@@ -48,9 +48,19 @@ class Meal(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     meal_type = Column(String, nullable=True) # 'breakfast', 'lunch', 'dinner', 'snack'
     photo_url = Column(String, nullable=True)
+    
+    # Новые поля для интерактивного анализа и денормализации
+    description = Column(String, nullable=True)
+    status = Column(String, default='created', nullable=False) # created, pending_confirmation, confirmed
+    
+    # Денормализованные итоговые КБЖУ для быстрой статистики
+    total_calories = Column(Float, default=0.0)
+    total_protein = Column(Float, default=0.0)
+    total_fat = Column(Float, default=0.0)
+    total_carbohydrates = Column(Float, default=0.0)
 
     user = relationship("User", back_populates="meals")
-    food_items = relationship("MealFoodItem", back_populates="meal")
+    food_items = relationship("MealFoodItem", back_populates="meal", cascade="all, delete-orphan")
 
 class FoodItem(Base):
     __tablename__ = "food_items"
