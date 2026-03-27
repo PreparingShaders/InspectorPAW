@@ -23,9 +23,8 @@ class User(Base):
     # Связь с метриками пользователя
     metrics = relationship("UserMetrics", back_populates="user")
 
-    # Здесь в будущем можно будет добавить связь с приемами пищи, тренировками и т.д.
-    # meals = relationship("Meal", back_populates="owner")
-    # workouts = relationship("Workout", back_populates="owner")
+    # Связь с приемами пищи
+    meals = relationship("Meal", back_populates="user")
 
 class UserMetrics(Base):
     __tablename__ = "user_metrics"
@@ -40,3 +39,38 @@ class UserMetrics(Base):
 
     # Связь с пользователем
     user = relationship("User", back_populates="metrics")
+
+class Meal(Base):
+    __tablename__ = "meals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    meal_type = Column(String, nullable=True) # 'breakfast', 'lunch', 'dinner', 'snack'
+    photo_url = Column(String, nullable=True)
+
+    user = relationship("User", back_populates="meals")
+    food_items = relationship("MealFoodItem", back_populates="meal")
+
+class FoodItem(Base):
+    __tablename__ = "food_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    calories = Column(Float, nullable=False)
+    protein = Column(Float, nullable=False)
+    fat = Column(Float, nullable=False)
+    carbohydrates = Column(Float, nullable=False)
+
+    meals = relationship("MealFoodItem", back_populates="food_item")
+
+class MealFoodItem(Base):
+    __tablename__ = "meal_food_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    meal_id = Column(Integer, ForeignKey("meals.id"), nullable=False)
+    food_item_id = Column(Integer, ForeignKey("food_items.id"), nullable=False)
+    quantity_grams = Column(Float, nullable=False)
+
+    meal = relationship("Meal", back_populates="food_items")
+    food_item = relationship("FoodItem", back_populates="meals")
