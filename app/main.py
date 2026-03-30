@@ -1,11 +1,9 @@
 from datetime import timedelta, date
 from typing import List, Optional
-import os
-import uuid
+import re
 
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas, auth
@@ -17,11 +15,6 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="InspectorPAW API")
 
-# Настройка статических файлов
-UPLOAD_DIRECTORY = "static/uploads"
-os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 # --- Зависимости ---
 def get_db():
     db = SessionLocal()
@@ -29,15 +22,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-def get_current_meal(meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)) -> models.Meal:
-    """Зависимость для получения приема пищи и проверки прав доступа."""
-    db_meal = crud.get_meal_by_id(db, meal_id)
-    if not db_meal:
-        raise HTTPException(status_code=404, detail="Meal not found")
-    if db_meal.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this meal")
-    return db_meal
 
 # --- Аутентификация и Пользователи ---
 @app.post("/users/", response_model=schemas.User)
@@ -60,74 +44,86 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
-# --- Статистика ---
+# --- Процесс работы с едой ---
+
+@app.post("/analyze-meal/", response_model=schemas.AnalysisResponse)
+async def analyze_meal(
+    description: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    current_user: models.User = Depends(auth.get_current_user) # Защищаем эндпоинт
+):
+    """
+    Шаг 1: Принимает фото и/или описание, возвращает текст ответа ИИ и предложенные КБЖУ.
+    """
+    if not file and not description:
+        raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
+
+    # --- ИМИТАЦИЯ ВЫЗОВА ИИ И ПОЛУЧЕНИЯ ТЕКСТОВОГО ОТВЕТА ---
+    # В будущем здесь будет реальный вызов вашей AI-модели
+    ai_response_text = "Проанализировав изображение и описание, я думаю, это куриная грудка (около 150г) с рисом. "
+    ai_response_text += "Примерные КБЖУ: Калории: 350, Белки: 40, Жиры: 8, Углеводы: 30."
+    
+    # --- ПАРСИНГ ТЕКСТОВОГО ОТВЕТА ИИ ---
+    # Используем регулярные выражения для извлечения чисел
+    calories = float(re.search(r"Калории: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
+    protein = float(re.search(r"Белки: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
+    fat = float(re.search(r"Жиры: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
+    carbs = float(re.search(r"Углеводы: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
+
+    suggested_totals = schemas.MealTotals(
+        total_calories=calories,
+        total_protein=protein,
+        total_fat=fat,
+        total_carbohydrates=carbs
+    )
+
+    return schemas.AnalysisResponse(
+        suggested_totals=suggested_totals,
+        ai_response_text=ai_response_text
+    )
+
+@app.post("/meals/", response_model=schemas.Meal)
+def confirm_and_create_meal(
+    meal_data: schemas.MealCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Шаг 2: Принимает финальные (отредактированные) КБЖУ и создает запись о приеме пищи.
+    """
+    return crud.create_meal(db=db, meal=meal_data, user_id=current_user.id)
+
+# --- История и Статистика ---
+
+@app.get("/meals/", response_model=List[schemas.Meal])
+def read_user_meals(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Получает историю приемов пищи пользователя."""
+    return crud.get_meals_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
+
 @app.get("/users/me/stats", response_model=schemas.StatsSummary)
-def get_user_stats(start_date: date, end_date: date, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def get_user_stats(
+    start_date: date, 
+    end_date: date, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Получает статистику по КБЖУ за указанный период."""
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="Start date cannot be after end date")
     stats = crud.get_user_stats_by_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date)
     return schemas.StatsSummary(
-        total_calories=stats.total_calories or 0, total_protein=stats.total_protein or 0,
-        total_fat=stats.total_fat or 0, total_carbohydrates=stats.total_carbohydrates or 0,
-        start_date=start_date, end_date=end_date
+        total_calories=stats.total_calories or 0,
+        total_protein=stats.total_protein or 0,
+        total_fat=stats.total_fat or 0,
+        total_carbohydrates=stats.total_carbohydrates or 0,
+        start_date=start_date,
+        end_date=end_date
     )
-
-# --- Процесс работы с едой ---
-@app.post("/meals/", response_model=schemas.Meal)
-def create_meal_container(meal: schemas.MealCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Шаг 1: Создает пустой 'контейнер' для приема пищи."""
-    return crud.create_user_meal(db=db, meal=meal, user_id=current_user.id)
-
-@app.post("/meals/{meal_id}/upload", response_model=schemas.Meal)
-async def upload_meal_data(
-    meal: models.Meal = Depends(get_current_meal),
-    description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db)
-):
-    """Шаг 2: Загружает фото и/или описание к приему пищи."""
-    photo_url = meal.photo_url
-    if file:
-        file_extension = os.path.splitext(file.filename)[1]
-        file_name = f"{uuid.uuid4()}{file_extension}"
-        file_path = os.path.join(UPLOAD_DIRECTORY, file_name)
-        with open(file_path, "wb") as buffer:
-            buffer.write(await file.read())
-        photo_url = f"/static/uploads/{file_name}"
-    
-    return crud.update_meal_photo_and_description(db, meal.id, photo_url, description)
-
-@app.post("/meals/{meal_id}/analyze", response_model=List[schemas.MealFoodItemCreate])
-async def analyze_meal(meal: models.Meal = Depends(get_current_meal)):
-    """Шаг 3: 'Анализирует' данные и возвращает ПРЕДВАРИТЕЛЬНЫЙ список продуктов."""
-    if not meal.photo_url and not meal.description:
-        raise HTTPException(status_code=400, detail="Meal has no photo or description to analyze")
-
-    # --- ИМИТАЦИЯ РАБОТЫ ИИ ---
-    # В будущем здесь будет вызов вашей модели, которая примет meal.photo_url и meal.description
-    recognized_items = [
-        {"name": "Яичница", "calories": 155, "protein": 13, "fat": 11, "carbohydrates": 1.1, "quantity_grams": 100},
-        {"name": "Авокадо", "calories": 160, "protein": 2, "fat": 15, "carbohydrates": 9, "quantity_grams": 50},
-    ]
-    if "хлеб" in (meal.description or "").lower():
-         recognized_items.append(
-             {"name": "Хлеб цельнозерновой", "calories": 247, "protein": 13, "fat": 3.4, "carbohydrates": 41, "quantity_grams": 30}
-         )
-    return recognized_items
-
-@app.post("/meals/{meal_id}/confirm", response_model=schemas.Meal)
-async def confirm_analysis(
-    confirmation: schemas.AnalysisConfirmation,
-    meal: models.Meal = Depends(get_current_meal),
-    db: Session = Depends(get_db)
-):
-    """Шаг 4: Принимает финальный список от пользователя и сохраняет его в БД."""
-    return crud.confirm_meal_analysis(db, meal_id=meal.id, confirmed_items=confirmation.items)
-
-@app.get("/meals/", response_model=List[schemas.Meal])
-def read_user_meals(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Получает список всех приемов пищи пользователя."""
-    return crud.get_meals_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
 
 @app.get("/")
 def read_root():

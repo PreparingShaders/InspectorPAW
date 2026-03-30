@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, cast, Date
+from sqlalchemy import func
 from passlib.context import CryptContext
-from typing import List
 from datetime import date
 from . import models, schemas
 
@@ -36,7 +35,7 @@ def create_user(db: Session, user: schemas.UserCreate):
 # --- Stats CRUD ---
 
 def get_user_stats_by_period(db: Session, user_id: int, start_date: date, end_date: date):
-    """Считает суммарные КБЖУ, используя быстрые денормализованные поля и надежное сравнение дат."""
+    """Считает суммарные КБЖУ по сохраненным приемам пищи."""
     query = db.query(
         func.sum(models.Meal.total_calories).label("total_calories"),
         func.sum(models.Meal.total_protein).label("total_protein"),
@@ -44,7 +43,6 @@ def get_user_stats_by_period(db: Session, user_id: int, start_date: date, end_da
         func.sum(models.Meal.total_carbohydrates).label("total_carbohydrates")
     ).filter(
         models.Meal.user_id == user_id,
-        models.Meal.status == 'confirmed',
         func.date(models.Meal.timestamp) >= start_date,
         func.date(models.Meal.timestamp) <= end_date
     )
@@ -52,88 +50,23 @@ def get_user_stats_by_period(db: Session, user_id: int, start_date: date, end_da
     result = query.first()
     return result
 
-# --- FoodItem CRUD ---
-
-def get_or_create_food_item(db: Session, item: schemas.MealFoodItemCreate) -> models.FoodItem:
-    """Находит продукт по названию или создает новый. Работает в рамках одной транзакции."""
-    db_food_item = db.query(models.FoodItem).filter(func.lower(models.FoodItem.name) == func.lower(item.name)).first()
-    if db_food_item:
-        return db_food_item
-    
-    if all([item.calories is not None, item.protein is not None, item.fat is not None, item.carbohydrates is not None]):
-        new_food_item = models.FoodItem(
-            name=item.name,
-            calories=item.calories,
-            protein=item.protein,
-            fat=item.fat,
-            carbohydrates=item.carbohydrates
-        )
-        db.add(new_food_item)
-        db.flush() # Используем flush вместо commit, чтобы остаться в транзакции
-        return new_food_item
-    return None
-
 # --- Meal CRUD ---
 
-def get_meal_by_id(db: Session, meal_id: int):
-    return db.query(models.Meal).filter(models.Meal.id == meal_id).first()
-
-def create_user_meal(db: Session, meal: schemas.MealCreate, user_id: int):
-    """Создает пустой 'контейнер' для приема пищи."""
-    db_meal = models.Meal(**meal.dict(), user_id=user_id, status='created')
+def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.Meal:
+    """Создает запись о приеме пищи с итоговыми КБЖУ."""
+    db_meal = models.Meal(
+        user_id=user_id,
+        meal_type=meal.meal_type,
+        total_calories=meal.total_calories,
+        total_protein=meal.total_protein,
+        total_fat=meal.total_fat,
+        total_carbohydrates=meal.total_carbohydrates
+    )
     db.add(db_meal)
     db.commit()
     db.refresh(db_meal)
     return db_meal
 
-def update_meal_photo_and_description(db: Session, meal_id: int, photo_url: str, description: str):
-    """Обновляет фото, описание и статус приема пищи."""
-    db_meal = get_meal_by_id(db, meal_id)
-    if db_meal:
-        db_meal.photo_url = photo_url
-        db_meal.description = description
-        db_meal.status = 'pending_analysis'
-        db.commit()
-        db.refresh(db_meal)
-    return db_meal
-
-def confirm_meal_analysis(db: Session, meal_id: int, confirmed_items: List[schemas.MealFoodItemCreate]):
-    """Главная функция: подтверждает анализ, сохраняет продукты и считает итоги."""
-    db_meal = get_meal_by_id(db, meal_id)
-    if not db_meal:
-        return None
-
-    db.query(models.MealFoodItem).filter(models.MealFoodItem.meal_id == meal_id).delete(synchronize_session=False)
-
-    total_calories, total_protein, total_fat, total_carbohydrates = 0, 0, 0, 0
-
-    for item in confirmed_items:
-        db_food_item = get_or_create_food_item(db, item)
-        if not db_food_item:
-            continue
-
-        db_meal_item = models.MealFoodItem(
-            meal_id=meal_id,
-            food_item_id=db_food_item.id,
-            quantity_grams=item.quantity_grams
-        )
-        db.add(db_meal_item)
-
-        ratio = item.quantity_grams / 100.0
-        total_calories += db_food_item.calories * ratio
-        total_protein += db_food_item.protein * ratio
-        total_fat += db_food_item.fat * ratio
-        total_carbohydrates += db_food_item.carbohydrates * ratio
-
-    db_meal.total_calories = total_calories
-    db_meal.total_protein = total_protein
-    db_meal.total_fat = total_fat
-    db_meal.total_carbohydrates = total_carbohydrates
-    db_meal.status = 'confirmed'
-    
-    db.commit()
-    db.refresh(db_meal)
-    return db_meal
-
 def get_meals_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    """Получает историю приемов пищи пользователя."""
     return db.query(models.Meal).filter(models.Meal.user_id == user_id).offset(skip).limit(limit).all()

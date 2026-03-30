@@ -19,69 +19,30 @@ class StatsSummary(BaseModel):
     start_date: date
     end_date: date
 
-# --- FoodItem Schemas ---
-class FoodItemBase(BaseModel):
-    name: str
-    calories: float
-    protein: float
-    fat: float
-    carbohydrates: float
-
-class FoodItemCreate(FoodItemBase):
-    pass
-
-class FoodItem(FoodItemBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-# --- MealFoodItem Schemas ---
-
-# Схема для СОЗДАНИЯ и ПОДТВЕРЖДЕНИЯ
-class MealFoodItemCreate(BaseModel):
-    name: str
-    quantity_grams: float
-    calories: Optional[float] = None
-    protein: Optional[float] = None
-    fat: Optional[float] = None
-    carbohydrates: Optional[float] = None
-
-# Схема для ОТОБРАЖЕНИЯ (ответа от API)
-class MealFoodItem(BaseModel):
-    id: int
-    meal_id: int
-    quantity_grams: float
-    food_item: FoodItem # Включаем полную информацию о продукте (включая name)
-
-    class Config:
-        from_attributes = True
+# --- Meal Totals Schema (для передачи КБЖУ) ---
+class MealTotals(BaseModel):
+    total_calories: float = 0
+    total_protein: float = 0
+    total_fat: float = 0
+    total_carbohydrates: float = 0
 
 # --- Analysis Schemas ---
-class AnalysisConfirmation(BaseModel):
-    items: List[MealFoodItemCreate]
+class AnalysisResponse(BaseModel):
+    suggested_totals: MealTotals
+    ai_response_text: str
 
 # --- Meal Schemas ---
 class MealBase(BaseModel):
     meal_type: Optional[str] = None
-    description: Optional[str] = None
 
-class MealCreate(MealBase):
+class MealCreate(MealBase, MealTotals):
+    # Для создания Meal теперь требуются и тип, и КБЖУ
     pass
 
-class Meal(MealBase):
+class Meal(MealBase, MealTotals):
     id: int
     user_id: int
     timestamp: datetime
-    status: str
-    photo_url: Optional[str] = None
-    
-    total_calories: float
-    total_protein: float
-    total_fat: float
-    total_carbohydrates: float
-
-    food_items: List[MealFoodItem] = []
 
     class Config:
         from_attributes = True
@@ -109,8 +70,8 @@ class UserBase(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     height_cm: Optional[int] = None
-    goal: Optional[str] = None
-    goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0)
+    goal: Optional[str] = None # 'fat_loss', 'maintenance', 'mass_gain'
+    goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0) # Валидация диапазона
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=72)
