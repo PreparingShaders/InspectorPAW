@@ -6,16 +6,14 @@ from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, F
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from . import crud, models, schemas, auth
+from . import crud, models, schemas, auth, utils
 from .database import SessionLocal, engine
 from .config import settings
 
-# Создаем все таблицы в базе данных
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="InspectorPAW API")
 
-# --- Зависимости ---
 def get_db():
     db = SessionLocal()
     try:
@@ -23,7 +21,6 @@ def get_db():
     finally:
         db.close()
 
-# --- Аутентификация и Пользователи ---
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
@@ -50,55 +47,35 @@ def update_current_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Обновляет профиль текущего пользователя."""
     return crud.update_user(db, user=current_user, user_update=user_update)
 
-# --- Метрики пользователя ---
 @app.post("/users/me/metrics", response_model=schemas.UserMetrics)
 def create_metric_for_current_user(
     metric: schemas.UserMetricsCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Создает новую запись метрик (вес, сон и т.д.) для текущего пользователя."""
     return crud.create_user_metric(db, metric=metric, user_id=current_user.id)
-
-# --- Процесс работы с едой ---
 
 @app.post("/analyze-meal/", response_model=schemas.AnalysisResponse)
 async def analyze_meal(
     description: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
-    current_user: models.User = Depends(auth.get_current_user) # Защищаем эндпоинт
+    current_user: models.User = Depends(auth.get_current_user)
 ):
-    """
-    Шаг 1: Принимает фото и/или описание, возвращает текст ответа ИИ и предложенные КБЖУ.
-    """
     if not file and not description:
         raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
-
-    # --- ИМИТАЦИЯ ВЫЗОВА ИИ И ПОЛУЧЕНИЯ ТЕКСТОВОГО ОТВЕТА ---
-    # В будущем здесь будет реальный вызов вашей AI-модели
     ai_response_text = "Проанализировав изображение и описание, я думаю, это куриная грудка (около 150г) с рисом. "
     ai_response_text += "Примерные КБЖУ: Калории: 350, Белки: 40, Жиры: 8, Углеводы: 30."
-    
-    # --- ПАРСИНГ ТЕКСТОВОГО ОТВЕТА ИИ ---
-    # Используем регулярные выражения для извлечения чисел
     calories = float(re.search(r"Калории: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
     protein = float(re.search(r"Белки: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
     fat = float(re.search(r"Жиры: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
     carbs = float(re.search(r"Углеводы: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
-
     suggested_totals = schemas.MealTotals(
-        total_calories=calories,
-        total_protein=protein,
-        total_fat=fat,
-        total_carbohydrates=carbs
+        total_calories=calories, total_protein=protein, total_fat=fat, total_carbohydrates=carbs
     )
-
     return schemas.AnalysisResponse(
-        suggested_totals=suggested_totals,
-        ai_response_text=ai_response_text
+        suggested_totals=suggested_totals, ai_response_text=ai_response_text
     )
 
 @app.post("/meals/", response_model=schemas.Meal)
@@ -107,47 +84,30 @@ def confirm_and_create_meal(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """
-    Шаг 2: Принимает финальные (отредактированные) КБЖУ и создает запись о приеме пищи.
-    """
     return crud.create_meal(db=db, meal=meal_data, user_id=current_user.id)
-
-# --- История и Статистика ---
 
 @app.get("/meals/", response_model=List[schemas.Meal])
 def read_user_meals(
-    skip: int = 0, 
-    limit: int = 100, 
-    db: Session = Depends(get_db), 
-    current_user: models.User = Depends(auth.get_current_user)
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Получает историю приемов пищи пользователя."""
     return crud.get_meals_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
 
 @app.delete("/meals/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_meal(
-    meal_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
+    meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Удаляет прием пищи."""
     db_meal = crud.get_meal_by_id(db, meal_id)
     if not db_meal:
         raise HTTPException(status_code=404, detail="Meal not found")
     if db_meal.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this meal")
-    
     crud.delete_meal(db, meal_id=meal_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @app.get("/users/me/stats", response_model=schemas.StatsSummary)
 def get_user_stats(
-    start_date: date, 
-    end_date: date, 
-    db: Session = Depends(get_db), 
-    current_user: models.User = Depends(auth.get_current_user)
+    start_date: date, end_date: date, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Получает статистику по КБЖУ за указанный период."""
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="Start date cannot be after end date")
     stats = crud.get_user_stats_by_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date)
@@ -158,6 +118,74 @@ def get_user_stats(
         total_carbohydrates=stats.total_carbohydrates or 0,
         start_date=start_date,
         end_date=end_date
+    )
+
+@app.get("/users/me/stats/weekly-summary", response_model=schemas.WeeklySummaryResponse)
+def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # 1. Рассчитать норму КБЖУ
+    latest_weight = crud.get_latest_user_weight(db, user_id=current_user.id)
+    targets = utils.calculate_user_targets(current_user, latest_weight)
+    target_calories = targets["target_calories"]
+
+    # 2. Определить период (последние 7 дней)
+    end_date = date.today()
+    start_date = end_date - timedelta(days=6)
+
+    # 3. Получить фактическое потребление за эти дни
+    daily_consumptions = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date)
+    consumption_map = {item["date"]: item for item in daily_consumptions}
+
+    # 4. Сформировать детализацию по дням
+    daily_breakdown = []
+    total_consumed = {"calories": 0, "protein": 0, "fat": 0, "carbohydrates": 0}
+    days_with_data = 0
+
+    for i in range(7):
+        current_date = end_date - timedelta(days=i)
+        consumed = consumption_map.get(current_date)
+        
+        status = "no_data"
+        consumed_calories = 0
+        if consumed:
+            days_with_data += 1
+            consumed_calories = consumed["total_calories"]
+            total_consumed["calories"] += consumed["total_calories"]
+            total_consumed["protein"] += consumed["total_protein"]
+            total_consumed["fat"] += consumed["total_fat"]
+            total_consumed["carbohydrates"] += consumed["total_carbohydrates"]
+            
+            # Определяем статус дня
+            if abs(consumed_calories - target_calories) < (target_calories * 0.1): # в пределах 10% от цели
+                status = "completed"
+            elif consumed_calories > target_calories:
+                status = "over_limit"
+            else: # consumed_calories < target_calories
+                status = "under_limit"
+
+        daily_breakdown.append(schemas.DailyStatDetail(
+            date=current_date,
+            consumed_calories=consumed_calories,
+            target_calories=target_calories,
+            status=status
+        ))
+
+    # 5. Рассчитать средние значения
+    avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
+    avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0
+    avg_fat = (total_consumed["fat"] / days_with_data) if days_with_data > 0 else 0
+    avg_carbohydrates = (total_consumed["carbohydrates"] / days_with_data) if days_with_data > 0 else 0
+
+    period_summary = schemas.AverageSummary(
+        avg_calories=round(avg_calories),
+        avg_protein=round(avg_protein),
+        avg_fat=round(avg_fat),
+        avg_carbohydrates=round(avg_carbohydrates),
+        **targets
+    )
+
+    return schemas.WeeklySummaryResponse(
+        daily_breakdown=daily_breakdown,
+        period_summary=period_summary
     )
 
 @app.get("/")

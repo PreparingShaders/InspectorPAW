@@ -10,12 +10,54 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: Optional[str] = None
 
+# --- New Weekly Summary Schemas ---
+class DailyStatDetail(BaseModel):
+    date: date
+    consumed_calories: float
+    target_calories: float
+    status: str  # "completed", "over_limit", "under_limit", "no_data"
+
+class AverageSummary(BaseModel):
+    avg_calories: float
+    avg_protein: float
+    avg_fat: float
+    avg_carbohydrates: float
+    target_calories: float
+    target_protein: float
+    target_fat: float
+    target_carbohydrates: float
+
+class WeeklySummaryResponse(BaseModel):
+    daily_breakdown: List[DailyStatDetail]
+    period_summary: AverageSummary
+
 # --- Stats Schemas ---
-class StatsSummary(BaseModel):
+class DailyStat(BaseModel):
+    date: date
     total_calories: float = 0
     total_protein: float = 0
     total_fat: float = 0
     total_carbohydrates: float = 0
+
+class PeriodSummary(BaseModel):
+    total_calories: float = 0
+    total_protein: float = 0
+    total_fat: float = 0
+    total_carbohydrates: float = 0
+    average_daily_calories: float = 0
+    average_daily_protein: float = 0
+    average_daily_fat: float = 0
+    average_daily_carbohydrates: float = 0
+
+class StatsResponse(BaseModel):
+    period_summary: PeriodSummary
+    daily_breakdown: List[DailyStat]
+
+class StatsSummary(BaseModel):
+    total_calories: float
+    total_protein: float
+    total_fat: float
+    total_carbohydrates: float
     start_date: date
     end_date: date
 
@@ -36,7 +78,6 @@ class MealBase(BaseModel):
     meal_type: Optional[str] = None
 
 class MealCreate(MealBase, MealTotals):
-    # Для создания Meal теперь требуются и тип, и КБЖУ
     pass
 
 class Meal(MealBase, MealTotals):
@@ -70,8 +111,8 @@ class UserBase(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     height_cm: Optional[int] = None
-    goal: Optional[str] = None # 'fat_loss', 'maintenance', 'mass_gain'
-    goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0) # Валидация диапазона
+    goal: Optional[str] = None
+    goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0)
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=72)
