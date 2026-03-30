@@ -39,21 +39,42 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('password', password);
 
         try {
-            const response = await fetch('/token', {
+            // Step 1: Get Token
+            const tokenResponse = await fetch('/token', {
                 method: 'POST',
                 body: formData
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('accessToken', data.access_token);
-                window.location.href = '/dashboard';
-            } else {
-                const errorData = await response.json();
-                errorMessage.textContent = errorData.detail || 'Ошибка входа. Проверьте email и пароль.';
+            if (!tokenResponse.ok) {
+                const errorData = await tokenResponse.json();
+                throw new Error(errorData.detail || 'Ошибка входа. Проверьте email и пароль.');
             }
+
+            const tokenData = await tokenResponse.json();
+            const accessToken = tokenData.access_token;
+            localStorage.setItem('accessToken', accessToken);
+
+            // Step 2: Check if profile is complete
+            const userResponse = await fetch('/users/me', {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+
+            if (!userResponse.ok) {
+                throw new Error('Не удалось получить данные пользователя.');
+            }
+
+            const user = await userResponse.json();
+
+            // Check for essential profile data.
+            // Note: `metrics` being empty is a valid check for the initial weight.
+            if (!user.date_of_birth || !user.gender || !user.height_cm || !user.goal || user.metrics.length === 0) {
+                window.location.href = '/profile';
+            } else {
+                window.location.href = '/dashboard';
+            }
+
         } catch (error) {
-            errorMessage.textContent = 'Произошла ошибка сети. Попробуйте снова.';
+            errorMessage.textContent = error.message;
         }
     });
 

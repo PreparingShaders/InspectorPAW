@@ -38,6 +38,10 @@ async def read_login_page(request: Request):
 async def read_dashboard_page(request: Request):
     return templates.TemplateResponse(name="index.html", request=request)
 
+@app.get("/profile")
+async def read_profile_page(request: Request):
+    return templates.TemplateResponse(name="profile.html", request=request)
+
 # --- API эндпоинты ---
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -55,9 +59,31 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/users/me/", response_model=schemas.User)
-async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
-    return current_user
+@app.get("/users/me/", response_model=schemas.UserWithTargets)
+async def read_users_me(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    latest_weight = crud.get_latest_user_weight(db, user_id=current_user.id)
+    
+    # Создаем копию объекта пользователя, чтобы не изменять его напрямую
+    user_with_targets = schemas.UserWithTargets.from_orm(current_user)
+    
+    if latest_weight and current_user.date_of_birth and current_user.gender and current_user.height_cm:
+        targets = utils.calculate_user_targets(current_user, latest_weight)
+        user_with_targets.calculated_targets = schemas.CalculatedTargets(**targets)
+        
+    return user_with_targets
+
+@app.post("/users/me/calculate-targets", response_model=schemas.CalculatedTargets)
+async def calculate_targets(request: schemas.TargetCalculationRequest):
+    # Создаем временный объект User для передачи в функцию расчета
+    temp_user = models.User(
+        date_of_birth=request.date_of_birth,
+        gender=request.gender,
+        height_cm=request.height_cm,
+        goal=request.goal,
+        goal_intensity=request.goal_intensity
+    )
+    targets = utils.calculate_user_targets(temp_user, request.weight_kg)
+    return schemas.CalculatedTargets(**targets)
 
 @app.put("/users/me/", response_model=schemas.User)
 def update_current_user(

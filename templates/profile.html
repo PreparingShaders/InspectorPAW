@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заполнить профиль - InspectorPAW</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    {% include 'includes/navbar.html' %}
+    <div class="container main-content">
+        <h1>Ваш профиль</h1>
+        <form id="profile-form">
+            <div class="form-group">
+                <label for="date_of_birth">Дата рождения</label>
+                <input type="date" id="date_of_birth" required>
+            </div>
+
+            <div class="form-group">
+                <label for="gender">Пол</label>
+                <select id="gender" required>
+                    <option value="">Выберите пол</option>
+                    <option value="male">Мужской</option>
+                    <option value="female">Женский</option>
+                    <option value="other">Другой</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="height_cm">Рост (см)</label>
+                <input type="number" id="height_cm" min="50" max="250" required>
+            </div>
+
+            <div class="form-group">
+                <label for="weight_kg">Текущий вес (кг)</label>
+                <input type="number" id="weight_kg" step="0.1" min="20" max="300" required>
+            </div>
+
+            <div class="form-group">
+                <label for="goal">Цель</label>
+                <select id="goal" required>
+                    <option value="">Выберите цель</option>
+                    <option value="fat_loss">Снижение веса</option>
+                    <option value="maintenance">Поддержание веса</option>
+                    <option value="mass_gain">Набор массы</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="goal-intensity-group" style="display: none;">
+                <label for="goal_intensity">Интенсивность цели</label>
+                <input type="range" id="goal_intensity" min="-1" max="1" step="0.1" value="0">
+                <span id="goal-intensity-value">0.0</span>
+            </div>
+
+            <div id="calculated-targets" class="targets-display">
+                <!-- Рассчитанные КБЖУ будут отображаться здесь -->
+            </div>
+
+            <button type="submit">Сохранить профиль</button>
+        </form>
+        <p id="error-message" class="error-message"></p>
+        <p id="success-message" class="success-message"></p>
+    </div>
+    <script src="/static/js/profile.js"></script>
+</body>
+</html>

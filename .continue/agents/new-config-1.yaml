@@ -1,0 +1,23 @@
+# This is an example configuration file
+# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
+
+name: Example Config
+version: 1.0.0
+schema: v1
+
+models:
+  - name: "Nvidia Nemotron 3 Super (Free)"
+    provider: openai
+    model: "nvidia/nemotron-3-super-120b-a12b:free"
+    apiKey: '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'
+    apiBase: "https://openrouter.ai/api/v1"
+    roles:
+      - chat
+      - edit
+
+tabAutocompleteModel:
+  name: "Nemotron Auto"
+  provider: openai
+  model: "nvidia/nemotron-3-super-120b-a12b:free"
+  apiKey: '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'
+  apiBase: "https://openrouter.ai/api/v1"

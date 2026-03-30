@@ -2,6 +2,21 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import date, datetime
 
+# --- Target Calculation Schemas ---
+class CalculatedTargets(BaseModel):
+    target_calories: int
+    target_protein: int
+    target_fat: int
+    target_carbohydrates: int
+
+class TargetCalculationRequest(BaseModel):
+    date_of_birth: date
+    gender: str
+    height_cm: int
+    weight_kg: float
+    goal: str
+    goal_intensity: float
+
 # --- Token Schemas ---
 class Token(BaseModel):
     access_token: str
@@ -15,7 +30,7 @@ class DailyStatDetail(BaseModel):
     date: date
     consumed_calories: float
     target_calories: float
-    status: str  # "completed", "over_limit", "under_limit", "no_data"
+    status: str
 
 class AverageSummary(BaseModel):
     avg_calories: float
@@ -84,7 +99,6 @@ class Meal(MealBase, MealTotals):
     id: int
     user_id: int
     timestamp: datetime
-
     class Config:
         from_attributes = True
 
@@ -101,7 +115,6 @@ class UserMetrics(UserMetricsBase):
     id: int
     user_id: int
     timestamp: datetime
-
     class Config:
         from_attributes = True
 
@@ -126,6 +139,8 @@ class User(UserBase):
     is_active: bool
     metrics: List[UserMetrics] = []
     meals: List[Meal] = []
-
     class Config:
         from_attributes = True
+
+class UserWithTargets(User):
+    calculated_targets: Optional[CalculatedTargets] = None
