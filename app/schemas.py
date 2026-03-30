@@ -37,39 +37,36 @@ class FoodItem(FoodItemBase):
         from_attributes = True
 
 # --- MealFoodItem Schemas ---
-class MealFoodItemBase(BaseModel):
-    # Используется для создания и подтверждения
+
+# Схема для СОЗДАНИЯ и ПОДТВЕРЖДЕНИЯ
+class MealFoodItemCreate(BaseModel):
     name: str
     quantity_grams: float
-    # Поля КБЖУ опциональны, т.к. при создании они могут быть неизвестны
     calories: Optional[float] = None
     protein: Optional[float] = None
     fat: Optional[float] = None
     carbohydrates: Optional[float] = None
 
-class MealFoodItemCreate(MealFoodItemBase):
-    pass
-
-class MealFoodItem(MealFoodItemBase):
+# Схема для ОТОБРАЖЕНИЯ (ответа от API)
+class MealFoodItem(BaseModel):
     id: int
     meal_id: int
-    food_item: FoodItem # Включаем полную информацию о продукте
+    quantity_grams: float
+    food_item: FoodItem # Включаем полную информацию о продукте (включая name)
 
     class Config:
         from_attributes = True
 
 # --- Analysis Schemas ---
 class AnalysisConfirmation(BaseModel):
-    # Схема для подтверждения финального списка продуктов
     items: List[MealFoodItemCreate]
 
 # --- Meal Schemas ---
 class MealBase(BaseModel):
-    meal_type: Optional[str] = None # 'breakfast', 'lunch', 'dinner', 'snack'
+    meal_type: Optional[str] = None
     description: Optional[str] = None
 
 class MealCreate(MealBase):
-    # При создании приема пищи список продуктов пуст
     pass
 
 class Meal(MealBase):
@@ -79,7 +76,6 @@ class Meal(MealBase):
     status: str
     photo_url: Optional[str] = None
     
-    # Денормализованные поля
     total_calories: float
     total_protein: float
     total_fat: float
@@ -113,8 +109,8 @@ class UserBase(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     height_cm: Optional[int] = None
-    goal: Optional[str] = None # 'fat_loss', 'maintenance', 'mass_gain'
-    goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0) # Валидация диапазона
+    goal: Optional[str] = None
+    goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0)
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=72)
