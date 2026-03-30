@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - InspectorPAW</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Form -->
+        <div id="login-view">
+            <h1>Вход в InspectorPAW</h1>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Пароль</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <button type="submit">Войти</button>
+            </form>
+            <p class="toggle-view">Нет аккаунта? <a href="#" id="show-register">Зарегистрироваться</a></p>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-view" style="display: none;">
+            <h1>Регистрация</h1>
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Пароль</label>
+                    <input type="password" id="register-password" minlength="8" required>
+                </div>
+                <button type="submit">Создать аккаунт</button>
+            </form>
+            <p class="toggle-view">Уже есть аккаунт? <a href="#" id="show-login">Войти</a></p>
+        </div>
+
+        <p id="error-message" class="error-message"></p>
+        <p id="success-message" class="success-message"></p>
+    </div>
+    <script src="/static/js/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+/* Nature Distilled Palette */
+:root {
+    --cloud-dancer: #F0EEE9; /* Off-white background */
+    --sage-green: #B2AC88;   /* Primary accent, buttons */
+    --dusty-rose: #D8C3A5;   /* Secondary accent */
+    --sand: #E8D5B9;         /* Card background */
+    --terracotta: #8E8D8A;   /* Text color */
+    --dark-terracotta: #585755; /* Heading color */
+
+    --status-completed: #8fbc8f; /* Dark Sea Green */
+    --status-over-limit: #f08080;   /* Light Coral */
+    --status-under-limit: #ffb347; /* "Tangerine" */
+    --status-no-data: #D3D3D3;      /* Light Grey */
+    --success-green: #2E8B57; /* SeaGreen */
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--cloud-dancer);
+    color: var(--terracotta);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+    background-color: #FFFFFF;
+    padding: 20px 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--cloud-dancer);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+h1 {
+    color: var(--dark-terracotta);
+    font-size: 24px;
+    margin: 0;
+    text-align: center;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+h2 {
+    color: var(--dark-terracotta);
+    font-size: 20px;
+    border-bottom: 1px solid var(--sand);
+    padding-bottom: 8px;
+    margin-top: 30px;
+}
+
+/* --- Login/Register Forms --- */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--dusty-rose);
+    border-radius: 5px;
+    background-color: var(--cloud-dancer);
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: var(--sage-green);
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    width: 100%;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: #a19b7c; /* Darker sage */
+}
+
+#logout-button {
+    background-color: var(--dusty-rose);
+    width: auto;
+    margin-top: 0;
+}
+#logout-button:hover {
+    background-color: #c7b294;
+}
+
+.error-message {
+    color: var(--status-over-limit);
+    margin-top: 15px;
+    text-align: center;
+}
+
+.success-message {
+    color: var(--success-green);
+    margin-top: 15px;
+    text-align: center;
+}
+
+.toggle-view {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+.toggle-view a {
+    color: var(--sage-green);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.toggle-view a:hover {
+    text-decoration: underline;
+}
+
+
+/* --- Stats --- */
+#loading-indicator {
+    text-align: center;
+    padding: 40px;
+    font-size: 18px;
+}
+
+.stats-section {
+    margin-bottom: 20px;
+}
+
+.daily-card {
+    background-color: var(--sand);
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+    font-size: 16px;
+    border-left: 5px solid;
+}
+
+.daily-card.status-completed { border-color: var(--status-completed); }
+.daily-card.status-over_limit { border-color: var(--status-over-limit); }
+.daily-card.status-under_limit { border-color: var(--status-under-limit); }
+.daily-card.status-no_data { border-color: var(--status-no-data); }
+
+#summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.summary-item {
+    background-color: var(--sand);
+    padding: 15px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.summary-label {
+    display: block;
+    font-weight: bold;
+    font-size: 14px;
+    color: var(--dark-terracotta);
+}
+
+.summary-value {
+    display: block;
+    font-size: 18px;
+    margin-top: 5px;
+}

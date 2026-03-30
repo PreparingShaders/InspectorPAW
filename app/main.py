@@ -2,8 +2,10 @@ from datetime import timedelta, date
 from typing import List, Optional
 import re
 
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas, auth, utils
@@ -14,6 +16,12 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="InspectorPAW API")
 
+# Монтируем статическую директорию
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Настраиваем шаблонизатор
+templates = Jinja2Templates(directory="templates")
+
 def get_db():
     db = SessionLocal()
     try:
@@ -21,6 +29,16 @@ def get_db():
     finally:
         db.close()
 
+# --- Веб-страницы ---
+@app.get("/")
+async def read_login_page(request: Request):
+    return templates.TemplateResponse(name="login.html", request=request)
+
+@app.get("/dashboard")
+async def read_dashboard_page(request: Request):
+    return templates.TemplateResponse(name="index.html", request=request)
+
+# --- API эндпоинты ---
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
@@ -122,28 +140,19 @@ def get_user_stats(
 
 @app.get("/users/me/stats/weekly-summary", response_model=schemas.WeeklySummaryResponse)
 def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    # 1. Рассчитать норму КБЖУ
     latest_weight = crud.get_latest_user_weight(db, user_id=current_user.id)
     targets = utils.calculate_user_targets(current_user, latest_weight)
     target_calories = targets["target_calories"]
-
-    # 2. Определить период (последние 7 дней)
     end_date = date.today()
     start_date = end_date - timedelta(days=6)
-
-    # 3. Получить фактическое потребление за эти дни
     daily_consumptions = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date)
     consumption_map = {item["date"]: item for item in daily_consumptions}
-
-    # 4. Сформировать детализацию по дням
     daily_breakdown = []
     total_consumed = {"calories": 0, "protein": 0, "fat": 0, "carbohydrates": 0}
     days_with_data = 0
-
     for i in range(7):
         current_date = end_date - timedelta(days=i)
         consumed = consumption_map.get(current_date)
-        
         status = "no_data"
         consumed_calories = 0
         if consumed:
@@ -153,28 +162,22 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
             total_consumed["protein"] += consumed["total_protein"]
             total_consumed["fat"] += consumed["total_fat"]
             total_consumed["carbohydrates"] += consumed["total_carbohydrates"]
-            
-            # Определяем статус дня
-            if abs(consumed_calories - target_calories) < (target_calories * 0.1): # в пределах 10% от цели
+            if abs(consumed_calories - target_calories) < (target_calories * 0.1):
                 status = "completed"
             elif consumed_calories > target_calories:
                 status = "over_limit"
-            else: # consumed_calories < target_calories
+            else:
                 status = "under_limit"
-
         daily_breakdown.append(schemas.DailyStatDetail(
             date=current_date,
             consumed_calories=consumed_calories,
             target_calories=target_calories,
             status=status
         ))
-
-    # 5. Рассчитать средние значения
     avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0
     avg_fat = (total_consumed["fat"] / days_with_data) if days_with_data > 0 else 0
     avg_carbohydrates = (total_consumed["carbohydrates"] / days_with_data) if days_with_data > 0 else 0
-
     period_summary = schemas.AverageSummary(
         avg_calories=round(avg_calories),
         avg_protein=round(avg_protein),
@@ -182,12 +185,7 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
         avg_carbohydrates=round(avg_carbohydrates),
         **targets
     )
-
     return schemas.WeeklySummaryResponse(
         daily_breakdown=daily_breakdown,
         period_summary=period_summary
     )
-
-@app.get("/")
-def read_root():
-    return {"message": "InspectorPAW is online!", "status": "Gym ready"}

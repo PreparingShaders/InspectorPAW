@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - InspectorPAW</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Ваша статистика</h1>
+            <button id="logout-button">Выйти</button>
+        </header>
+
+        <div id="stats-container">
+            <div id="daily-breakdown" class="stats-section">
+                <h2>Статистика за неделю</h2>
+                <div id="daily-cards-container"></div>
+            </div>
+            <div id="period-summary" class="stats-section">
+                <h2>Среднее / Норма</h2>
+                <div id="summary-grid"></div>
+            </div>
+        </div>
+        <div id="loading-indicator">Загрузка...</div>
+    </div>
+    <script src="/static/js/main.js"></script></body>
+</html>
