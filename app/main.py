@@ -2,7 +2,7 @@ from datetime import timedelta, date
 from typing import List, Optional
 import re
 
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -43,6 +43,25 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @app.get("/users/me/", response_model=schemas.User)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
+
+@app.put("/users/me/", response_model=schemas.User)
+def update_current_user(
+    user_update: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Обновляет профиль текущего пользователя."""
+    return crud.update_user(db, user=current_user, user_update=user_update)
+
+# --- Метрики пользователя ---
+@app.post("/users/me/metrics", response_model=schemas.UserMetrics)
+def create_metric_for_current_user(
+    metric: schemas.UserMetricsCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Создает новую запись метрик (вес, сон и т.д.) для текущего пользователя."""
+    return crud.create_user_metric(db, metric=metric, user_id=current_user.id)
 
 # --- Процесс работы с едой ---
 
@@ -104,6 +123,22 @@ def read_user_meals(
 ):
     """Получает историю приемов пищи пользователя."""
     return crud.get_meals_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
+
+@app.delete("/meals/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_meal(
+    meal_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Удаляет прием пищи."""
+    db_meal = crud.get_meal_by_id(db, meal_id)
+    if not db_meal:
+        raise HTTPException(status_code=404, detail="Meal not found")
+    if db_meal.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this meal")
+    
+    crud.delete_meal(db, meal_id=meal_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @app.get("/users/me/stats", response_model=schemas.StatsSummary)
 def get_user_stats(

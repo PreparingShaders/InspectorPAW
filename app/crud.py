@@ -32,6 +32,35 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.refresh(db_user)
     return db_user
 
+def update_user(db: Session, user: models.User, user_update: schemas.UserUpdate) -> models.User:
+    """Обновляет профиль пользователя."""
+    # Присоединяем отсоединенный объект пользователя к текущей сессии
+    db.add(user)
+
+    update_data = user_update.dict(exclude_unset=True)
+    
+    for key, value in update_data.items():
+        if key == "password" and value:
+            # Хешируем новый пароль, если он предоставлен
+            hashed_password = get_password_hash(value)
+            setattr(user, "hashed_password", hashed_password)
+        else:
+            setattr(user, key, value)
+            
+    db.commit()
+    db.refresh(user)
+    return user
+
+# --- UserMetrics CRUD ---
+
+def create_user_metric(db: Session, metric: schemas.UserMetricsCreate, user_id: int) -> models.UserMetrics:
+    """Создает новую запись метрик для пользователя."""
+    db_metric = models.UserMetrics(**metric.dict(), user_id=user_id)
+    db.add(db_metric)
+    db.commit()
+    db.refresh(db_metric)
+    return db_metric
+
 # --- Stats CRUD ---
 
 def get_user_stats_by_period(db: Session, user_id: int, start_date: date, end_date: date):
@@ -51,6 +80,18 @@ def get_user_stats_by_period(db: Session, user_id: int, start_date: date, end_da
     return result
 
 # --- Meal CRUD ---
+
+def get_meal_by_id(db: Session, meal_id: int):
+    """Находит прием пищи по ID."""
+    return db.query(models.Meal).filter(models.Meal.id == meal_id).first()
+
+def delete_meal(db: Session, meal_id: int):
+    """Удаляет прием пищи по ID."""
+    db_meal = db.query(models.Meal).filter(models.Meal.id == meal_id).first()
+    if db_meal:
+        db.delete(db_meal)
+        db.commit()
+    return db_meal
 
 def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.Meal:
     """Создает запись о приеме пищи с итоговыми КБЖУ."""
