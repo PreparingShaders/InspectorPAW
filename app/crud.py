@@ -64,13 +64,11 @@ def create_user_metric(db: Session, metric: schemas.UserMetricsCreate, user_id: 
     db.refresh(db_metric)
     return db_metric
 
-def get_latest_user_weight(db: Session, user_id: int) -> Optional[float]:
-    """Получает последний зафиксированный вес пользователя."""
-    latest_metric = db.query(models.UserMetrics.weight_kg).filter(
-        models.UserMetrics.user_id == user_id,
-        models.UserMetrics.weight_kg.isnot(None)
+def get_latest_user_metric(db: Session, user_id: int) -> Optional[models.UserMetrics]:
+    """Получает последнюю запись метрик пользователя."""
+    return db.query(models.UserMetrics).filter(
+        models.UserMetrics.user_id == user_id
     ).order_by(desc(models.UserMetrics.timestamp)).first()
-    return latest_metric[0] if latest_metric else None
 
 # --- Stats CRUD ---
 

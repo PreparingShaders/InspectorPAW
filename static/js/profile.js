@@ -5,10 +5,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // --- Элементы DOM ---
     const form = document.getElementById('profile-form');
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
-
     const goalSelect = document.getElementById('goal');
     const intensityGroup = document.getElementById('goal-intensity-group');
     const intensitySlider = document.getElementById('goal_intensity');
@@ -17,23 +17,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let debounceTimer;
 
-    // --- Debounced Calculation Function ---
-    const recalculateTargets = async () => {
+    // --- Функция отображения ---
+    function displayTargets(targets) {
+        // Если данных нет или они нулевые, показываем инструкцию.
+        if (!targets || !targets.target_calories) {
+            targetsDisplay.innerHTML = '<p>Заполните все обязательные поля для расчета.</p>';
+            return;
+        }
+        // Иначе, показываем рассчитанные значения.
+        targetsDisplay.innerHTML = `
+            <p><strong>Ваша норма:</strong></p>
+            <span>🔥 ${targets.target_calories} ккал</span>
+            <span>🥩 ${targets.target_protein} г</span>
+            <span>🥑 ${targets.target_fat} г</span>
+            <span>🍞 ${targets.target_carbohydrates} г</span>
+        `;
+    }
+
+    // --- Функция пересчета ---
+    const recalculateTargets = () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
+            const bodyFatValue = parseFloat(document.getElementById('body_fat_percentage').value);
             const requestBody = {
                 date_of_birth: document.getElementById('date_of_birth').value,
                 gender: document.getElementById('gender').value,
                 height_cm: parseInt(document.getElementById('height_cm').value, 10),
                 weight_kg: parseFloat(document.getElementById('weight_kg').value),
+                body_fat_percentage: !isNaN(bodyFatValue) && bodyFatValue > 0 ? bodyFatValue : null,
+                activity_level: document.getElementById('activity_level').value,
                 goal: goalSelect.value,
                 goal_intensity: parseFloat(intensitySlider.value)
             };
-
-            if (!requestBody.date_of_birth || !requestBody.gender || !requestBody.height_cm || !requestBody.weight_kg || !requestBody.goal) {
-                targetsDisplay.innerHTML = '<p>Заполните все поля для расчета</p>';
-                return;
-            }
 
             try {
                 const response = await fetch('/users/me/calculate-targets', {
@@ -44,129 +59,102 @@ document.addEventListener('DOMContentLoaded', async () => {
                     },
                     body: JSON.stringify(requestBody)
                 });
-                if (!response.ok) throw new Error('Calculation failed.');
                 const targets = await response.json();
-                displayTargets(targets);
+                if (!response.ok) {
+                    // Если сервер вернул ошибку, все равно отображаем ее, но в консоль пишем детали
+                    console.error('Server Error:', targets);
+                    displayTargets(null);
+                } else {
+                    displayTargets(targets);
+                }
             } catch (error) {
-                targetsDisplay.innerHTML = `<p class="error-message">Ошибка расчета</p>`;
+                console.error('Fetch Error:', error);
+                displayTargets(null);
             }
         }, 250);
     };
 
-    function displayTargets(targets) {
-        if (!targets) {
-            targetsDisplay.innerHTML = '';
-            return;
-        }
-        targetsDisplay.innerHTML = `
-            <p><strong>Ваша норма:</strong></p>
-            <span>🔥 ${targets.target_calories} ккал</span>
-            <span>🥩 ${targets.target_protein} г</span>
-            <span>🥑 ${targets.target_fat} г</span>
-            <span>🍞 ${targets.target_carbohydrates} г</span>
-        `;
-    }
-
+    // --- Инициализация страницы ---
     try {
-        const response = await fetch('/users/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await fetch('/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
         if (!response.ok) throw new Error('Could not fetch user data.');
-
         const user = await response.json();
 
+        // 1. Заполняем все поля формы данными с сервера
         if (user.date_of_birth) document.getElementById('date_of_birth').value = user.date_of_birth;
         if (user.gender) document.getElementById('gender').value = user.gender;
         if (user.height_cm) document.getElementById('height_cm').value = user.height_cm;
+        if (user.activity_level) document.getElementById('activity_level').value = user.activity_level;
         if (user.goal) document.getElementById('goal').value = user.goal;
         if (user.goal_intensity) {
             intensitySlider.value = user.goal_intensity;
             intensityValue.textContent = parseFloat(user.goal_intensity).toFixed(1);
         }
-
         if (user.metrics && user.metrics.length > 0) {
-            const latestWeight = user.metrics[user.metrics.length - 1].weight_kg;
-            if (latestWeight) document.getElementById('weight_kg').value = latestWeight;
+            const latestMetric = user.metrics[user.metrics.length - 1];
+            if (latestMetric.weight_kg) document.getElementById('weight_kg').value = latestMetric.weight_kg;
+            if (latestMetric.body_fat_percentage) document.getElementById('body_fat_percentage').value = latestMetric.body_fat_percentage;
         }
 
-        displayTargets(user.calculated_targets);
-        handleGoalChange();
+        // 2. **ГЛАВНОЕ ИЗМЕНЕНИЕ:** После заполнения формы, запускаем единый механизм пересчета.
+        // Это гарантирует, что начальное отображение и последующие пересчеты работают одинаково.
+        recalculateTargets();
 
     } catch (error) {
         errorMessage.textContent = `Ошибка загрузки данных: ${error.message}`;
+        displayTargets(null);
     }
 
-    function handleGoalChange() {
-        if (goalSelect.value === 'fat_loss' || goalSelect.value === 'mass_gain') {
-            intensityGroup.style.display = 'block';
-        } else {
-            intensityGroup.style.display = 'none';
-        }
+    // --- Слушатели событий ---
+    function updateGoalIntensityUI() {
+        intensityGroup.style.display = (goalSelect.value === 'fat_loss' || goalSelect.value === 'mass_gain') ? 'block' : 'none';
+    }
+
+    form.addEventListener('input', () => {
+        updateGoalIntensityUI();
         recalculateTargets();
-    }
-
-    form.addEventListener('input', (e) => {
-        if (e.target.type !== 'range') {
-            handleGoalChange();
-        }
     });
 
     intensitySlider.addEventListener('input', () => {
         intensityValue.textContent = parseFloat(intensitySlider.value).toFixed(1);
-        recalculateTargets();
     });
 
+    // --- Отправка формы ---
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
+        // ... (код отправки формы остается без изменений)
         errorMessage.textContent = '';
         successMessage.textContent = '';
-
         const userUpdateData = {
             date_of_birth: document.getElementById('date_of_birth').value,
             gender: document.getElementById('gender').value,
             height_cm: parseInt(document.getElementById('height_cm').value, 10),
+            activity_level: document.getElementById('activity_level').value,
             goal: document.getElementById('goal').value,
             goal_intensity: goalSelect.value !== 'maintenance' ? parseFloat(intensitySlider.value) : 0,
         };
-
-        const weightData = {
-            weight_kg: parseFloat(document.getElementById('weight_kg').value)
+        const bodyFatValue = parseFloat(document.getElementById('body_fat_percentage').value);
+        const metricsData = {
+            weight_kg: parseFloat(document.getElementById('weight_kg').value),
+            body_fat_percentage: !isNaN(bodyFatValue) && bodyFatValue > 0 ? bodyFatValue : null
         };
-
         try {
             const userUpdateResponse = await fetch('/users/me/', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(userUpdateData)
             });
+            if (!userUpdateResponse.ok) throw new Error('Ошибка обновления профиля');
 
-            if (!userUpdateResponse.ok) {
-                const errorData = await userUpdateResponse.json();
-                throw new Error(`Ошибка обновления профиля: ${errorData.detail}`);
-            }
-
-            const weightResponse = await fetch('/users/me/metrics', {
+            const metricsResponse = await fetch('/users/me/metrics', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(weightData)
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(metricsData)
             });
-
-            if (!weightResponse.ok) {
-                const errorData = await weightResponse.json();
-                throw new Error(`Ошибка сохранения веса: ${errorData.detail}`);
-            }
+            if (!metricsResponse.ok) throw new Error('Ошибка сохранения метрик');
 
             successMessage.textContent = 'Профиль успешно сохранен!';
-            setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 1500);
-
+            setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
         } catch (error) {
             errorMessage.textContent = error.message;
         }

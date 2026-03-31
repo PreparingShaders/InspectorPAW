@@ -15,6 +15,7 @@ class User(Base):
     date_of_birth = Column(Date, nullable=True)
     gender = Column(String, nullable=True) # 'male', 'female', 'other'
     height_cm = Column(Integer, nullable=True)
+    activity_level = Column(String, nullable=True, default='sedentary') # sedentary, light, moderate, active, very_active
 
     # Новые поля для цели пользователя
     goal = Column(String, nullable=True) # 'fat_loss', 'maintenance', 'mass_gain'
@@ -34,6 +35,7 @@ class UserMetrics(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     
     weight_kg = Column(Float, nullable=True)
+    body_fat_percentage = Column(Float, nullable=True) # Процент жира в организме
     active_calories = Column(Integer, nullable=True)
     sleep_hours = Column(Float, nullable=True)
 

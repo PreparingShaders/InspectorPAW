@@ -10,12 +10,14 @@ class CalculatedTargets(BaseModel):
     target_carbohydrates: int
 
 class TargetCalculationRequest(BaseModel):
-    date_of_birth: date
-    gender: str
-    height_cm: int
-    weight_kg: float
-    goal: str
-    goal_intensity: float
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    height_cm: Optional[int] = None
+    weight_kg: Optional[float] = None
+    body_fat_percentage: Optional[float] = None
+    activity_level: Optional[str] = None
+    goal: Optional[str] = None
+    goal_intensity: Optional[float] = None
 
 # --- Token Schemas ---
 class Token(BaseModel):
@@ -105,6 +107,7 @@ class Meal(MealBase, MealTotals):
 # --- UserMetrics Schemas ---
 class UserMetricsBase(BaseModel):
     weight_kg: Optional[float] = None
+    body_fat_percentage: Optional[float] = None
     active_calories: Optional[int] = None
     sleep_hours: Optional[float] = None
 
@@ -124,6 +127,7 @@ class UserBase(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     height_cm: Optional[int] = None
+    activity_level: Optional[str] = None
     goal: Optional[str] = None
     goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0)
 

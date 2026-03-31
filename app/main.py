@@ -61,28 +61,48 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/users/me/", response_model=schemas.UserWithTargets)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    latest_weight = crud.get_latest_user_weight(db, user_id=current_user.id)
+    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
     
-    # Создаем копию объекта пользователя, чтобы не изменять его напрямую
     user_with_targets = schemas.UserWithTargets.from_orm(current_user)
     
-    if latest_weight and current_user.date_of_birth and current_user.gender and current_user.height_cm:
-        targets = utils.calculate_user_targets(current_user, latest_weight)
+    if latest_metric and current_user.date_of_birth and current_user.gender and current_user.height_cm:
+        targets = utils.calculate_user_targets(
+            current_user, 
+            latest_metric.weight_kg, 
+            latest_metric.body_fat_percentage
+        )
         user_with_targets.calculated_targets = schemas.CalculatedTargets(**targets)
         
     return user_with_targets
 
 @app.post("/users/me/calculate-targets", response_model=schemas.CalculatedTargets)
 async def calculate_targets(request: schemas.TargetCalculationRequest):
+    # Более надежная и явная проверка на наличие всех необходимых полей
+    if any([
+        request.date_of_birth is None,
+        request.gender is None or request.gender == "",
+        request.height_cm is None or request.height_cm <= 0,
+        request.weight_kg is None or request.weight_kg <= 0,
+        request.activity_level is None or request.activity_level == "",
+        request.goal is None or request.goal == "",
+        request.goal_intensity is None
+    ]):
+        return schemas.CalculatedTargets(target_calories=0, target_protein=0, target_fat=0, target_carbohydrates=0)
+
     # Создаем временный объект User для передачи в функцию расчета
     temp_user = models.User(
         date_of_birth=request.date_of_birth,
         gender=request.gender,
         height_cm=request.height_cm,
+        activity_level=request.activity_level,
         goal=request.goal,
         goal_intensity=request.goal_intensity
     )
-    targets = utils.calculate_user_targets(temp_user, request.weight_kg)
+    targets = utils.calculate_user_targets(
+        temp_user, 
+        request.weight_kg, 
+        request.body_fat_percentage
+    )
     return schemas.CalculatedTargets(**targets)
 
 @app.put("/users/me/", response_model=schemas.User)
@@ -166,16 +186,24 @@ def get_user_stats(
 
 @app.get("/users/me/stats/weekly-summary", response_model=schemas.WeeklySummaryResponse)
 def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    latest_weight = crud.get_latest_user_weight(db, user_id=current_user.id)
-    targets = utils.calculate_user_targets(current_user, latest_weight)
+    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
+    
+    latest_weight = latest_metric.weight_kg if latest_metric else None
+    latest_body_fat = latest_metric.body_fat_percentage if latest_metric else None
+
+    targets = utils.calculate_user_targets(current_user, latest_weight, latest_body_fat)
     target_calories = targets["target_calories"]
+    
     end_date = date.today()
     start_date = end_date - timedelta(days=6)
+    
     daily_consumptions = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date)
     consumption_map = {item["date"]: item for item in daily_consumptions}
+    
     daily_breakdown = []
     total_consumed = {"calories": 0, "protein": 0, "fat": 0, "carbohydrates": 0}
     days_with_data = 0
+    
     for i in range(7):
         current_date = end_date - timedelta(days=i)
         consumed = consumption_map.get(current_date)
@@ -200,10 +228,12 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
             target_calories=target_calories,
             status=status
         ))
+        
     avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0
     avg_fat = (total_consumed["fat"] / days_with_data) if days_with_data > 0 else 0
     avg_carbohydrates = (total_consumed["carbohydrates"] / days_with_data) if days_with_data > 0 else 0
+    
     period_summary = schemas.AverageSummary(
         avg_calories=round(avg_calories),
         avg_protein=round(avg_protein),
@@ -211,6 +241,7 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
         avg_carbohydrates=round(avg_carbohydrates),
         **targets
     )
+
     return schemas.WeeklySummaryResponse(
         daily_breakdown=daily_breakdown,
         period_summary=period_summary
