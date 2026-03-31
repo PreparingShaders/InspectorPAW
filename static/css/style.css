@@ -13,147 +13,35 @@
     --success-green: #50C878;
 }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    margin: 0;
-    padding-top: 80px; /* Space for the fixed navbar */
-}
-
-.main-content {
-    padding: 20px;
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-.container {
-    width: 100%;
-    max-width: 600px;
-    background-color: var(--bg-secondary);
-    padding: 20px 40px;
-    border-radius: 10px;
-    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.2);
-    border: 1px solid #3a4a5a;
-    margin: 20px;
-}
-
-/* --- Navbar --- */
-.navbar {
-    background-color: var(--bg-secondary);
-    border-bottom: 1px solid #3a4a5a;
-    padding: 0 20px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-}
-
-.nav-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 960px;
-    margin: 0 auto;
-    height: 60px;
-}
-
-.nav-logo {
-    color: var(--accent-primary);
-    font-weight: bold;
-    font-size: 20px;
-    text-decoration: none;
-}
-
-.nav-menu {
-    list-style: none;
-    display: flex;
-    gap: 20px;
+/* Глобальный сброс для предсказуемости */
+* {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
-.nav-link {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
-}
-
-.nav-link:hover {
-    color: var(--text-primary);
-}
-
-.nav-button {
-    background-color: var(--accent-secondary);
-    color: var(--bg-primary);
-    padding: 8px 16px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #3a4a5a;
-    padding-bottom: 15px;
-    margin-bottom: 20px;
-}
-
-h1 {
-    color: var(--text-primary);
-    font-size: 24px;
-    margin: 0;
-    text-align: center;
-    width: 100%;
-    margin-bottom: 20px;
-}
-
-h2 {
-    color: var(--text-primary);
-    font-size: 20px;
-    border-bottom: 1px solid #3a4a5a;
-    padding-bottom: 8px;
-    margin-top: 30px;
-}
-
-/* --- Forms & Targets Display --- */
-.form-group { margin-bottom: 15px; }
-.form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; color: var(--text-secondary); }
-.form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #3a4a5a; border-radius: 5px; background-color: var(--bg-primary); font-size: 16px; box-sizing: border-box; color: var(--text-primary); }
-
-.targets-display {
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-primary);
-    border: 1px dashed var(--accent-primary);
-    border-radius: 5px;
-    padding: 15px;
-    margin-top: 20px;
-    text-align: center;
+    color: var(--text-primary);
 }
-.targets-display p { margin: 0 0 10px 0; font-weight: bold; color: var(--accent-primary); }
-.targets-display span { margin: 0 10px; font-size: 16px; }
 
-button { width: 100%; margin-top: 10px; background-color: var(--accent-primary); color: var(--bg-primary); padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.2s; }
-button:hover { background-color: #8dbba4; }
-
-.error-message { color: var(--status-over-limit); margin-top: 15px; text-align: center; }
-.success-message { color: var(--success-green); margin-top: 15px; text-align: center; }
-.toggle-view { text-align: center; margin-top: 20px; font-size: 14px; }
-.toggle-view a { color: var(--accent-primary); text-decoration: none; font-weight: bold; }
-
-/* --- Stats --- */
-#loading-indicator { text-align: center; padding: 40px; font-size: 18px; }
-.daily-card { background-color: var(--bg-secondary); padding: 12px; border-radius: 5px; margin-bottom: 8px; font-size: 16px; border-left: 5px solid; }
-.daily-card.status-completed { border-color: var(--status-completed); }
-.daily-card.status-over_limit { border-color: var(--status-over-limit); }
-.daily-card.status-under_limit { border-color: var(--status-under-limit); }
-.daily-card.status-no_data { border-color: var(--status-no-data); background-color: transparent; border: 1px dashed var(--status-no-data); }
-#summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.summary-item { background-color: var(--bg-secondary); padding: 15px; border-radius: 5px; text-align: center; }
-.summary-label { display: block; font-weight: bold; font-size: 14px; color: var(--text-secondary); }
-.summary-value { display: block; font-size: 18px; margin-top: 5px; }
+/* Старые стили для других страниц */
+.main-content { padding: 20px; width: 100%; max-width: 600px; margin: 80px auto 0; }
+.container { width: 100%; max-width: 600px; background-color: var(--bg-secondary); padding: 20px 40px; border-radius: 10px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.2); border: 1px solid #3a4a5a; margin: 20px auto; }
+.navbar { background-color: var(--bg-secondary); border-bottom: 1px solid #3a4a5a; padding: 0 20px; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
+.nav-container { display: flex; justify-content: space-between; align-items: center; max-width: 960px; margin: 0 auto; height: 60px; }
+.nav-logo { color: var(--accent-primary); font-weight: bold; font-size: 20px; text-decoration: none; }
+.nav-menu { list-style: none; display: flex; gap: 20px; }
+.nav-link { color: var(--text-secondary); text-decoration: none; font-weight: 500; }
+.nav-button { background-color: var(--accent-secondary); color: var(--bg-primary); padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+h1 { color: var(--text-primary); font-size: 24px; text-align: center; width: 100%; margin-bottom: 20px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 16px; color: var(--text-secondary); }
+.form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #3a4a5a; border-radius: 5px; background-color: var(--bg-primary); font-size: 18px; color: var(--text-primary); }
+.targets-display { background-color: var(--bg-primary); border: 1px dashed var(--accent-primary); border-radius: 5px; padding: 15px; margin-top: 20px; text-align: center; }
+.targets-display p { margin: 0 0 10px 0; font-weight: bold; color: var(--accent-primary); font-size: 18px; }
+.targets-display span { margin: 0 10px; font-size: 18px; }
+button { width: 100%; margin-top: 10px; background-color: var(--accent-primary); color: var(--bg-primary); padding: 14px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; }
+.error-message { color: var(--status-over-limit); margin-top: 15px; text-align: center; font-size: 16px; }
+.success-message { color: var(--success-green); margin-top: 15px; text-align: center; font-size: 16px; }

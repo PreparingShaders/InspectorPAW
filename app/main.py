@@ -193,6 +193,9 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
 
     targets = utils.calculate_user_targets(current_user, latest_weight, latest_body_fat)
     target_calories = targets["target_calories"]
+    target_protein = targets["target_protein"]
+    target_fat = targets["target_fat"]
+    target_carbohydrates = targets["target_carbohydrates"]
     
     end_date = date.today()
     start_date = end_date - timedelta(days=6)
@@ -209,22 +212,35 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
         consumed = consumption_map.get(current_date)
         status = "no_data"
         consumed_calories = 0
+        consumed_protein = 0
+        consumed_fat = 0
+        consumed_carbohydrates = 0
+
         if consumed:
             days_with_data += 1
             consumed_calories = consumed["total_calories"]
-            total_consumed["calories"] += consumed["total_calories"]
-            total_consumed["protein"] += consumed["total_protein"]
-            total_consumed["fat"] += consumed["total_fat"]
-            total_consumed["carbohydrates"] += consumed["total_carbohydrates"]
+            consumed_protein = consumed["total_protein"]
+            consumed_fat = consumed["total_fat"]
+            consumed_carbohydrates = consumed["total_carbohydrates"]
+
+            total_consumed["calories"] += consumed_calories
+            total_consumed["protein"] += consumed_protein
+            total_consumed["fat"] += consumed_fat
+            total_consumed["carbohydrates"] += consumed_carbohydrates
+            
             if abs(consumed_calories - target_calories) < (target_calories * 0.1):
                 status = "completed"
             elif consumed_calories > target_calories:
                 status = "over_limit"
             else:
                 status = "under_limit"
+        
         daily_breakdown.append(schemas.DailyStatDetail(
             date=current_date,
             consumed_calories=consumed_calories,
+            consumed_protein=consumed_protein,
+            consumed_fat=consumed_fat,
+            consumed_carbohydrates=consumed_carbohydrates,
             target_calories=target_calories,
             status=status
         ))

@@ -1,30 +1,104 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dashboard - InspectorPAW</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Подключаем ИСКЛЮЧИТЕЛЬНО стили для дашборда -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Подключаем Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 </head>
 <body>
-    {% include 'includes/navbar.html' %}
-    <div class="container main-content">
-        <header>
-            <h1>Ваша статистика</h1>
+
+    <div class="main-container">
+        <!-- Шапка -->
+        <header class="dashboard-header">
+            <div class="user-info">
+                <img src="/static/images/ivan_avatar.png" alt="Avatar" class="avatar">
+                <h1 class="user-name">Иван</h1>
+            </div>
+            <h2 class="page-title">InspectorPAW</h2>
         </header>
 
-        <div id="stats-container">
-            <div id="daily-breakdown" class="stats-section">
-                <h2>Статистика за неделю</h2>
-                <div id="daily-cards-container"></div>
+        <!-- Ключевые показатели (КБЖУ) -->
+        <section class="kpi-section">
+            <div class="kpi-header">
+                <div class="kpi-item">
+                    <span class="kpi-label">Потреблено</span>
+                    <span id="consumed-calories" class="kpi-value">0</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">Норма</span>
+                    <span id="target-calories" class="kpi-value">0</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">Осталось</span>
+                    <span id="remaining-calories" class="kpi-value">0</span>
+                </div>
             </div>
-            <div id="period-summary" class="stats-section">
-                <h2>Среднее / Норма</h2>
-                <div id="summary-grid"></div>
+            <div class="rings-container">
+                <div class="ring-wrapper">
+                    <canvas id="calories-ring"></canvas>
+                    <span class="ring-label">Ккал</span>
+                </div>
+                <div class="ring-wrapper">
+                    <canvas id="protein-ring"></canvas>
+                    <span class="ring-label">Белки</span>
+                </div>
+                <div class="ring-wrapper">
+                    <canvas id="carbs-ring"></canvas>
+                    <span class="ring-label">Углеводы</span>
+                </div>
+                <div class="ring-wrapper">
+                    <canvas id="fat-ring"></canvas>
+                    <span class="ring-label">Жиры</span>
+                </div>
             </div>
-        </div>
-        <div id="loading-indicator">Загрузка...</div>
+        </section>
+
+        <!-- A.I. Нутрициолог -->
+        <section class="ai-section">
+            <h3 class="section-title">A.I. Nutritionist</h3>
+            <button class="analyze-meal-button" onclick="location.href='/analyze'">
+                <i class="icon-camera"></i> Analyze Meal Photo
+            </button>
+            <div class="last-analysis-result">
+                <p><strong>Последний анализ:</strong> Куриная грудка с рисом.</p>
+                <p>350 ккал, 40г белка, 30г углев., 8г жира.</p>
+            </div>
+        </section>
+
+        <!-- Тренировки (пока заглушка) -->
+        <section class="workouts-section">
+            <h3 class="section-title">Workouts</h3>
+            <div class="recent-workouts">
+                <p>Recent Workouts: Full Body Strength, 24.07.2024</p>
+            </div>
+            <div class="strength-progress">
+                <p>Strength Progress: Bench Press +2.5kg</p>
+            </div>
+        </section>
     </div>
-    <script src="/static/js/main.js"></script>
+
+    <!-- Нижняя навигационная панель -->
+    <nav class="bottom-nav">
+        <a href="/dashboard" class="nav-item active">
+            <i class="icon-nutrition"></i>
+            <span>Нутрициолог</span>
+        </a>
+        <a href="/workouts" class="nav-item">
+            <i class="icon-workouts"></i>
+            <span>Тренировки</span>
+        </a>
+        <a href="/profile" class="nav-item">
+            <i class="icon-profile"></i>
+            <span>Профиль</span>
+        </a>
+    </nav>
+
+    <!-- Подключаем наш новый скрипт для дашборда -->
+    <script src="/static/js/dashboard.js"></script>
 </body>
 </html>

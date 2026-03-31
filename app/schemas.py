@@ -31,6 +31,9 @@ class TokenData(BaseModel):
 class DailyStatDetail(BaseModel):
     date: date
     consumed_calories: float
+    consumed_protein: float = 0  # Добавлено
+    consumed_fat: float = 0      # Добавлено
+    consumed_carbohydrates: float = 0 # Добавлено
     target_calories: float
     status: str
 
