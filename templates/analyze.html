@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Анализ приема пищи - InspectorPAW</title>
+    <!-- Используем те же стили, что и для дашборда, для консистентности -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+
+    <div class="main-container">
+        <!-- Шапка -->
+        <header class="dashboard-header">
+            <a href="/dashboard" class="back-button">‹ Назад</a>
+            <h2 class="page-title">Анализ</h2>
+        </header>
+
+        <!-- Форма для анализа -->
+        <section class="ai-section">
+            <h3 class="section-title">Добавить прием пищи</h3>
+            <form id="analyze-form">
+                <div class="form-group">
+                    <label for="meal-image">Фотография блюда</label>
+                    <input type="file" id="meal-image" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label for="meal-description">Или опишите его</label>
+                    <textarea id="meal-description" rows="3" placeholder="Например: 'Большая порция гречки с куриной грудкой'"></textarea>
+                </div>
+                <button type="submit" class="analyze-meal-button" id="analyze-button">
+                    <i class="icon-camera"></i> Анализировать
+                </button>
+            </form>
+        </section>
+
+        <!-- Секция с результатами (изначально скрыта) -->
+        <section id="results-section" class="ai-section" style="display: none;">
+            <h3 class="section-title">Результаты анализа</h3>
+            <div id="ai-response-text" class="last-analysis-result">
+                <!-- Сюда будет вставлен текстовый ответ от AI -->
+            </div>
+
+            <form id="confirm-form">
+                <div class="form-group">
+                    <label for="meal-type">Тип приема пищи</label>
+                    <select id="meal-type">
+                        <option value="breakfast">Завтрак</option>
+                        <option value="lunch">Обед</option>
+                        <option value="dinner">Ужин</option>
+                        <option value="snack">Перекус</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="calories">Калории</label>
+                    <input type="number" id="calories" required>
+                </div>
+                <div class="form-group">
+                    <label for="protein">Белки (г)</label>
+                    <input type="number" id="protein" required>
+                </div>
+                <div class="form-group">
+                    <label for="fat">Жиры (г)</label>
+                    <input type="number" id="fat" required>
+                </div>
+                <div class="form-group">
+                    <label for="carbohydrates">Углеводы (г)</label>
+                    <input type="number" id="carbohydrates" required>
+                </div>
+                <button type="submit" class="analyze-meal-button" id="confirm-button">Добавить прием пищи</button>
+            </form>
+        </section>
+
+        <div id="error-message" class="error-message"></div>
+
+    </div>
+
+    <!-- Подключаем скрипт для этой страницы -->
+    <script src="/static/js/analyze.js"></script>
+</body>
+</html>
