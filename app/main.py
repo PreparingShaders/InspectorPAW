@@ -42,6 +42,10 @@ async def read_dashboard_page(request: Request):
 async def read_profile_page(request: Request):
     return templates.TemplateResponse(name="profile.html", request=request)
 
+@app.get("/analyze")
+async def read_analyze_page(request: Request):
+    return templates.TemplateResponse(name="analyze.html", request=request)
+
 # --- API эндпоинты ---
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):

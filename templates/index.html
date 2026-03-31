@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dashboard - InspectorPAW</title>
-    <!-- Подключаем ИСКЛЮЧИТЕЛЬНО стили для дашборда -->
     <link rel="stylesheet" href="/static/css/dashboard.css">
-    <!-- Подключаем Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 </head>
 <body>
 
@@ -39,21 +36,46 @@
                 </div>
             </div>
             <div class="rings-container">
-                <div class="ring-wrapper">
-                    <canvas id="calories-ring"></canvas>
-                    <span class="ring-label">Ккал</span>
+                <!-- Новая структура для каждого кольца -->
+                <div class="ring-item">
+                    <div class="ring-wrapper">
+                        <canvas id="calories-ring"></canvas>
+                        <div class="ring-text">
+                            <span id="calories-value" class="ring-value">0</span>
+                            <span class="ring-unit">ккал</span>
+                        </div>
+                    </div>
+                    <span class="ring-title">Калории</span>
                 </div>
-                <div class="ring-wrapper">
-                    <canvas id="protein-ring"></canvas>
-                    <span class="ring-label">Белки</span>
+                <div class="ring-item">
+                    <div class="ring-wrapper">
+                        <canvas id="protein-ring"></canvas>
+                        <div class="ring-text">
+                            <span id="protein-value" class="ring-value">0</span>
+                            <span class="ring-unit">г</span>
+                        </div>
+                    </div>
+                    <span class="ring-title">Белки</span>
                 </div>
-                <div class="ring-wrapper">
-                    <canvas id="carbs-ring"></canvas>
-                    <span class="ring-label">Углеводы</span>
+                <div class="ring-item">
+                    <div class="ring-wrapper">
+                        <canvas id="carbs-ring"></canvas>
+                        <div class="ring-text">
+                            <span id="carbs-value" class="ring-value">0</span>
+                            <span class="ring-unit">г</span>
+                        </div>
+                    </div>
+                    <span class="ring-title">Углеводы</span>
                 </div>
-                <div class="ring-wrapper">
-                    <canvas id="fat-ring"></canvas>
-                    <span class="ring-label">Жиры</span>
+                <div class="ring-item">
+                    <div class="ring-wrapper">
+                        <canvas id="fat-ring"></canvas>
+                        <div class="ring-text">
+                            <span id="fat-value" class="ring-value">0</span>
+                            <span class="ring-unit">г</span>
+                        </div>
+                    </div>
+                    <span class="ring-title">Жиры</span>
                 </div>
             </div>
         </section>
@@ -98,7 +120,6 @@
         </a>
     </nav>
 
-    <!-- Подключаем наш новый скрипт для дашборда -->
     <script src="/static/js/dashboard.js"></script>
 </body>
 </html>
