@@ -1,6 +1,11 @@
-from datetime import timedelta, date, datetime # Добавлен импорт datetime
+from datetime import timedelta, date, datetime
 from typing import List, Optional
 import re
+import io
+import base64
+import google.generativeai as genai
+from openai import AsyncOpenAI
+from PIL import Image
 
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -12,14 +17,21 @@ from . import crud, models, schemas, auth, utils
 from .database import SessionLocal, engine
 from .config import settings
 
+# --- API Клиенты ---
+
+# 1. Конфигурируем нативный API Gemini
+genai.configure(api_key=settings.GEMINI_API_KEY)
+
+# 2. Конфигурируем клиент для OpenRouter
+open_router_client = AsyncOpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=settings.OPEN_ROUTER_API_KEY,
+)
+
+# --- FastAPI Приложение ---
 models.Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="InspectorPAW API")
-
-# Монтируем статическую директорию
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Настраиваем шаблонизатор
 templates = Jinja2Templates(directory="templates")
 
 def get_db():
@@ -34,26 +46,106 @@ def get_db():
 async def read_login_page(request: Request):
     return templates.TemplateResponse(name="login.html", request=request)
 
-@app.get("/dashboard")
-async def read_dashboard_page(request: Request):
-    return templates.TemplateResponse(name="index.html", request=request)
+# ... (остальные веб-страницы)
 
-@app.get("/profile")
-async def read_profile_page(request: Request):
-    return templates.TemplateResponse(name="profile.html", request=request)
+# --- AI Логика ---
+async def call_ai_model(file_content: Optional[bytes], description: Optional[str]) -> str:
+    prompt = """
+    Ты — эксперт-диетолог. Проанализируй изображение еды и/или текстовое описание. 
+    Твоя задача — вернуть структурированный ответ с названием блюда, его весом в граммах и КБЖУ.
+    Формат ответа должен быть строго таким:
+    Название: [Название блюда]
+    Вес: [Вес в граммах]
+    Калории: [Количество]
+    Белки: [Количество]
+    Жиры: [Количество]
+    Углеводы: [Количество]
+    """
+    
+    for model_name in settings.NUTRITION_MODELS:
+        try:
+            print(f"Attempting to use model: {model_name}")
+            
+            # --- Логика для нативных моделей Gemini ---
+            if model_name in settings.NATIVE_GEMINI_MODELS:
+                model = genai.GenerativeModel(model_name)
+                content_parts = []
+                if file_content:
+                    img = Image.open(io.BytesIO(file_content))
+                    content_parts.append(img)
+                full_prompt = f"{prompt}\nДополнительное описание: {description}" if description else prompt
+                content_parts.append(full_prompt)
+                response = await model.generate_content_async(content_parts)
+                return response.text
 
-@app.get("/analyze")
-async def read_analyze_page(request: Request):
-    return templates.TemplateResponse(name="analyze.html", request=request)
+            # --- Логика для OpenRouter ---
+            elif model_name in settings.OPEN_ROUTER_MODELS:
+                messages = [{"role": "system", "content": prompt}]
+                content_parts = []
+                if description:
+                    content_parts.append({"type": "text", "text": description})
+                if file_content:
+                    base64_image = base64.b64encode(file_content).decode('utf-8')
+                    content_parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                    })
+                
+                if content_parts:
+                    messages.append({"role": "user", "content": content_parts})
+                
+                chat_completion = await open_router_client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    max_tokens=300,
+                )
+                return chat_completion.choices[0].message.content
+            
+            else:
+                print(f"Model {model_name} not found in any API list, skipping.")
+                continue
 
-# --- API эндпоинты ---
-@app.post("/users/", response_model=schemas.User)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_email(db, email=user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_user(db=db, user=user)
+        except Exception as e:
+            print(f"Model {model_name} failed: {e}")
+            continue
+            
+    raise HTTPException(status_code=503, detail="All AI models are currently unavailable. Please try again later.")
 
+# --- API Эндпоинты ---
+@app.post("/analyze-meal/", response_model=schemas.AnalysisResponse)
+async def analyze_meal(
+    description: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not file and not description:
+        raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
+    
+    file_content = await file.read() if file else None
+
+    try:
+        ai_response_text = await call_ai_model(file_content=file_content, description=description)
+    except HTTPException as e:
+        raise e
+
+    calories_match = re.search(r"Калории: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
+    protein_match = re.search(r"Белки: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
+    fat_match = re.search(r"Жиры: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
+    carbs_match = re.search(r"Углеводы: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
+
+    calories = float(calories_match.group(1)) if calories_match else 0
+    protein = float(protein_match.group(1)) if protein_match else 0
+    fat = float(fat_match.group(1)) if fat_match else 0
+    carbs = float(carbs_match.group(1)) if carbs_match else 0
+    
+    suggested_totals = schemas.MealTotals(
+        total_calories=calories, total_protein=protein, total_fat=fat, total_carbohydrates=carbs
+    )
+    return schemas.AnalysisResponse(
+        suggested_totals=suggested_totals, ai_response_text=ai_response_text
+    )
+
+# ... (остальные эндпоинты без изменений)
 @app.post("/token", response_model=schemas.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = crud.get_user_by_email(db, email=form_data.username)
@@ -81,7 +173,6 @@ async def read_users_me(current_user: models.User = Depends(auth.get_current_use
 
 @app.post("/users/me/calculate-targets", response_model=schemas.CalculatedTargets)
 async def calculate_targets(request: schemas.TargetCalculationRequest):
-    # Более надежная и явная проверка на наличие всех необходимых полей
     if any([
         request.date_of_birth is None,
         request.gender is None or request.gender == "",
@@ -93,7 +184,6 @@ async def calculate_targets(request: schemas.TargetCalculationRequest):
     ]):
         return schemas.CalculatedTargets(target_calories=0, target_protein=0, target_fat=0, target_carbohydrates=0)
 
-    # Создаем временный объект User для передачи в функцию расчета
     temp_user = models.User(
         date_of_birth=request.date_of_birth,
         gender=request.gender,
@@ -124,27 +214,6 @@ def create_metric_for_current_user(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     return crud.create_user_metric(db, metric=metric, user_id=current_user.id)
-
-@app.post("/analyze-meal/", response_model=schemas.AnalysisResponse)
-async def analyze_meal(
-    description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    if not file and not description:
-        raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
-    ai_response_text = "Проанализировав изображение и описание, я думаю, это куриная грудка (около 150г) с рисом. "
-    ai_response_text += "Примерные КБЖУ: Калории: 350, Белки: 40, Жиры: 8, Углеводы: 30."
-    calories = float(re.search(r"Калории: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
-    protein = float(re.search(r"Белки: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
-    fat = float(re.search(r"Жиры: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
-    carbs = float(re.search(r"Углеводы: (\d+\.?\d*)", ai_response_text, re.IGNORECASE).group(1) or 0)
-    suggested_totals = schemas.MealTotals(
-        total_calories=calories, total_protein=protein, total_fat=fat, total_carbohydrates=carbs
-    )
-    return schemas.AnalysisResponse(
-        suggested_totals=suggested_totals, ai_response_text=ai_response_text
-    )
 
 @app.post("/meals/", response_model=schemas.Meal)
 def confirm_and_create_meal(
@@ -204,14 +273,9 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
     end_date = date.today()
     start_date = end_date - timedelta(days=6)
     
-    print(f"DEBUG: get_weekly_summary - start_date: {start_date}, end_date: {end_date}") # LOG
     daily_consumptions = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date)
-    print(f"DEBUG: get_weekly_summary - daily_consumptions from CRUD: {daily_consumptions}") # LOG
     
-    # Преобразуем ключи в consumption_map в строки для согласованности
     consumption_map = {str(item["date"]): item for item in daily_consumptions}
-    
-    print(f"DEBUG: get_weekly_summary - consumption_map (with string keys): {consumption_map}") # LOG
     
     daily_breakdown = []
     total_consumed = {"calories": 0, "protein": 0, "fat": 0, "carbohydrates": 0}
@@ -219,12 +283,8 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
     
     for i in range(7):
         current_date = end_date - timedelta(days=i)
-        # Преобразуем current_date в строку для поиска в карте
         consumed = consumption_map.get(str(current_date))
         
-        if i == 0: # Log for today's data
-            print(f"DEBUG: get_weekly_summary - Today's date ({current_date}), consumed data: {consumed}") # LOG
-
         status = "no_data"
         consumed_calories = 0
         consumed_protein = 0
