@@ -1,4 +1,4 @@
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime # Добавлен импорт datetime
 from typing import List, Optional
 import re
 
@@ -204,8 +204,14 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
     end_date = date.today()
     start_date = end_date - timedelta(days=6)
     
+    print(f"DEBUG: get_weekly_summary - start_date: {start_date}, end_date: {end_date}") # LOG
     daily_consumptions = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date)
-    consumption_map = {item["date"]: item for item in daily_consumptions}
+    print(f"DEBUG: get_weekly_summary - daily_consumptions from CRUD: {daily_consumptions}") # LOG
+    
+    # Преобразуем ключи в consumption_map в строки для согласованности
+    consumption_map = {str(item["date"]): item for item in daily_consumptions}
+    
+    print(f"DEBUG: get_weekly_summary - consumption_map (with string keys): {consumption_map}") # LOG
     
     daily_breakdown = []
     total_consumed = {"calories": 0, "protein": 0, "fat": 0, "carbohydrates": 0}
@@ -213,7 +219,12 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
     
     for i in range(7):
         current_date = end_date - timedelta(days=i)
-        consumed = consumption_map.get(current_date)
+        # Преобразуем current_date в строку для поиска в карте
+        consumed = consumption_map.get(str(current_date))
+        
+        if i == 0: # Log for today's data
+            print(f"DEBUG: get_weekly_summary - Today's date ({current_date}), consumed data: {consumed}") # LOG
+
         status = "no_data"
         consumed_calories = 0
         consumed_protein = 0

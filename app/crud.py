@@ -84,7 +84,7 @@ def get_daily_stats_for_period(db: Session, user_id: int, start_date: date, end_
         models.Meal.user_id == user_id,
         func.date(models.Meal.timestamp) >= start_date,
         func.date(models.Meal.timestamp) <= end_date
-    ).group_by(func.date(models.Meal.timestamp)).order_by(func.date(models.Meal.timestamp))
+    ).group_by(func.date(models.Meal.timestamp)).order_by(desc(func.date(models.Meal.timestamp))) # Изменено на desc
 
     results = query.all()
     return [

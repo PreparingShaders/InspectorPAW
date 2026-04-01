@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!response.ok) throw new Error('Failed to fetch dashboard data');
 
             const data = await response.json();
+            console.log('Fetched data:', data); // Добавлено логирование
 
             // **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:**
             // Сервер всегда возвращает сегодняшний день первым в списке.
@@ -64,12 +65,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const todayStats = data.daily_breakdown[0];
             const targets = data.period_summary;
 
+            console.log('Today Stats:', todayStats); // Добавлено логирование
+            console.log('Targets:', targets); // Добавлено логирование
+
             const consumed = {
                 calories: todayStats ? todayStats.consumed_calories : 0,
                 protein: todayStats ? todayStats.consumed_protein : 0,
                 carbs: todayStats ? todayStats.consumed_carbohydrates : 0,
                 fat: todayStats ? todayStats.consumed_fat : 0,
             };
+
+            console.log('Consumed values:', consumed); // Добавлено логирование
 
             // Обновляем текстовые KPI в шапке
             document.getElementById('consumed-calories').textContent = Math.round(consumed.calories);
