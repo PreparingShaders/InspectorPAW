@@ -22,13 +22,14 @@
         <!-- Ключевые показатели (КБЖУ) -->
         <section class="kpi-section">
             <div class="kpi-header">
-                <div class="kpi-item">
-                    <span class="kpi-label">Потреблено</span>
-                    <span id="consumed-calories" class="kpi-value">0</span>
-                </div>
+                <!-- Порядок изменен на: Норма, Потреблено, Осталось -->
                 <div class="kpi-item">
                     <span class="kpi-label">Норма</span>
                     <span id="target-calories" class="kpi-value">0</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-label">Потреблено</span>
+                    <span id="consumed-calories" class="kpi-value">0</span>
                 </div>
                 <div class="kpi-item">
                     <span class="kpi-label">Осталось</span>
@@ -36,7 +37,7 @@
                 </div>
             </div>
             <div class="rings-container">
-                <!-- Новая структура с уникальными классами -->
+                <!-- Структура с уникальными классами -->
                 <div class="ring-item calories-item">
                     <div class="ring-wrapper">
                         <canvas id="calories-ring"></canvas>
@@ -57,16 +58,7 @@
                     </div>
                     <span class="ring-title">Белки</span>
                 </div>
-                <div class="ring-item carbs-item">
-                    <div class="ring-wrapper">
-                        <canvas id="carbs-ring"></canvas>
-                        <div class="ring-text">
-                            <span id="carbs-value" class="ring-value">0</span>
-                            <span class="ring-unit">г</span>
-                        </div>
-                    </div>
-                    <span class="ring-title">Углеводы</span>
-                </div>
+                <!-- Углеводы и Жиры поменялись местами -->
                 <div class="ring-item fat-item">
                     <div class="ring-wrapper">
                         <canvas id="fat-ring"></canvas>
@@ -76,6 +68,16 @@
                         </div>
                     </div>
                     <span class="ring-title">Жиры</span>
+                </div>
+                <div class="ring-item carbs-item">
+                    <div class="ring-wrapper">
+                        <canvas id="carbs-ring"></canvas>
+                        <div class="ring-text">
+                            <span id="carbs-value" class="ring-value">0</span>
+                            <span class="ring-unit">г</span>
+                        </div>
+                    </div>
+                    <span class="ring-title">Углеводы</span>
                 </div>
             </div>
         </section>

@@ -1,10 +1,10 @@
 /* === DASHBOARD-ONLY STYLES === */
 
 :root {
-    --dashboard-bg: #121212; /* Глубокий графитово-черный */
-    --dashboard-text: #E0E0E0; /* Нежно-белый (Cloud Dancer) */
+    --dashboard-bg: #121212;
+    --dashboard-text: #E0E0E0;
     --text-secondary: #B0B8C4;
-    --container-bg: #1C1C1E; /* Фон для карточек и навбара */
+    --container-bg: #1C1C1E;
     --border-color: #333333;
 
     /* Neon Colors */
@@ -24,12 +24,7 @@ body {
     overflow-x: hidden;
 }
 
-.main-container {
-    padding: 15px 15px 100px 15px;
-    max-width: 480px;
-    margin: 0 auto;
-    box-sizing: border-box;
-}
+.main-container { padding: 15px 15px 100px 15px; max-width: 480px; margin: 0 auto; box-sizing: border-box; }
 
 /* --- Header --- */
 .dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
@@ -44,40 +39,26 @@ body {
 .kpi-item .kpi-label { font-size: 14px; color: var(--text-secondary); display: block; }
 .kpi-item .kpi-value { font-size: 22px; font-weight: 700; display: block; margin-top: 4px; }
 
-.rings-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin: 0 auto;
-    max-width: 300px;
-}
-
-@media (min-width: 400px) {
-    .rings-container { grid-template-columns: repeat(4, 1fr); max-width: none; }
-}
+.rings-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 0 auto; max-width: 300px; }
+@media (min-width: 400px) { .rings-container { grid-template-columns: repeat(4, 1fr); max-width: none; } }
 
 .ring-item { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .ring-wrapper { position: relative; width: 100%; aspect-ratio: 1 / 1; }
 .ring-wrapper canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
 
 /* --- Neon Glow Effect --- */
-.calories-item canvas { filter: drop-shadow(0 0 5px var(--calories-color)); }
-.protein-item canvas { filter: drop-shadow(0 0 5px var(--protein-color)); }
-.carbs-item canvas { filter: drop-shadow(0 0 5px var(--carbs-color)); }
-.fat-item canvas { filter: drop-shadow(0 0 5px var(--fat-color)); }
-
-.ring-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
+@keyframes neon-pulse {
+    0%, 100% { filter: drop-shadow(0 0 5px var(--glow-color)); }
+    50% { filter: drop-shadow(0 0 10px var(--glow-color)); }
 }
 
+.calories-item canvas { --glow-color: var(--calories-color); animation: neon-pulse 2s infinite ease-in-out; }
+.protein-item canvas { --glow-color: var(--protein-color); animation: neon-pulse 2.2s infinite ease-in-out; }
+.fat-item canvas { --glow-color: var(--fat-color); animation: neon-pulse 2.4s infinite ease-in-out; }
+.carbs-item canvas { --glow-color: var(--carbs-color); animation: neon-pulse 2.6s infinite ease-in-out; }
+
+
+.ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .ring-value { font-size: 20px; font-weight: bold; color: var(--dashboard-text); line-height: 1; }
 .ring-unit { font-size: 12px; color: var(--text-secondary); line-height: 1; margin-top: 2px; }
 .ring-title { font-size: 14px; font-weight: 500; color: var(--dashboard-text); margin-top: 8px; }
@@ -86,35 +67,16 @@ body {
 .ai-section, .workouts-section { margin-top: 35px; }
 .section-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
 .analyze-meal-button {
-    width: 100%;
-    padding: 16px;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--dashboard-text);
+    width: 100%; padding: 16px; font-size: 18px; font-weight: 700; color: var(--dashboard-text);
     background: linear-gradient(90deg, var(--protein-color), var(--fat-color));
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: none; border-radius: 12px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
     box-shadow: 0 0 15px rgba(157, 0, 255, 0.3);
 }
 .analyze-meal-button:hover { transform: scale(1.03); box-shadow: 0 0 25px rgba(0, 163, 255, 0.5); }
 .last-analysis-result, .recent-workouts, .strength-progress { background-color: var(--container-bg); padding: 16px; border-radius: 12px; font-size: 15px; margin-top: 15px; line-height: 1.5; }
 
 /* --- Bottom Navigation Bar --- */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--container-bg);
-    display: flex;
-    justify-content: space-around;
-    padding: 10px 0 20px 0;
-    border-top: 1px solid var(--border-color);
-    z-index: 1000;
-}
-
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--container-bg); display: flex; justify-content: space-around; padding: 10px 0 20px 0; border-top: 1px solid var(--border-color); z-index: 1000; }
 .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-secondary); text-decoration: none; font-size: 12px; gap: 4px; }
 .nav-item.active { color: var(--fat-color); }
 .nav-item i { font-size: 26px; }
