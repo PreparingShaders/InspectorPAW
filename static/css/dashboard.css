@@ -21,25 +21,18 @@ body {
     color: var(--dashboard-text);
     margin: 0;
     padding: 0;
-    /* Предотвращаем "плавание" и горизонтальный скролл */
     overflow-x: hidden;
 }
 
 .main-container {
-    padding: 15px 15px 100px 15px; /* Нижний отступ для навбара */
+    padding: 15px 15px 100px 15px;
     max-width: 480px;
     margin: 0 auto;
     box-sizing: border-box;
 }
 
 /* --- Header --- */
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-}
-
+.dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
 .user-info { display: flex; align-items: center; gap: 12px; }
 .avatar { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--protein-color); }
 .user-name { font-size: 24px; font-weight: 600; margin: 0; }
@@ -47,52 +40,31 @@ body {
 
 /* --- KPI & Rings Section --- */
 .kpi-section { margin-top: 20px; }
-
-.kpi-header {
-    display: flex;
-    justify-content: space-around;
-    text-align: center;
-    margin-bottom: 20px;
-}
-
+.kpi-header { display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; }
 .kpi-item .kpi-label { font-size: 14px; color: var(--text-secondary); display: block; }
 .kpi-item .kpi-value { font-size: 22px; font-weight: 700; display: block; margin-top: 4px; }
 
 .rings-container {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Два кольца в ряд на узких экранах */
+    grid-template-columns: 1fr 1fr;
     gap: 20px;
     margin: 0 auto;
-    max-width: 300px; /* Ограничиваем ширину контейнера колец */
+    max-width: 300px;
 }
 
-@media (min-width: 400px) { /* На экранах пошире делаем 4 колонки */
-    .rings-container {
-        grid-template-columns: repeat(4, 1fr);
-        max-width: none; /* Снимаем ограничение, если есть место */
-    }
+@media (min-width: 400px) {
+    .rings-container { grid-template-columns: repeat(4, 1fr); max-width: none; }
 }
 
-.ring-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-}
+.ring-item { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ring-wrapper { position: relative; width: 100%; aspect-ratio: 1 / 1; }
+.ring-wrapper canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
 
-.ring-wrapper {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1 / 1; /* Делает контейнер квадратным */
-}
-
-.ring-wrapper canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100% !important; /* !important для переопределения возможных инлайн-стилей Chart.js */
-    height: 100% !important;
-}
+/* --- Neon Glow Effect --- */
+.calories-item canvas { filter: drop-shadow(0 0 5px var(--calories-color)); }
+.protein-item canvas { filter: drop-shadow(0 0 5px var(--protein-color)); }
+.carbs-item canvas { filter: drop-shadow(0 0 5px var(--carbs-color)); }
+.fat-item canvas { filter: drop-shadow(0 0 5px var(--fat-color)); }
 
 .ring-text {
     position: absolute;
@@ -103,43 +75,16 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    pointer-events: none; /* Чтобы не мешать взаимодействию с canvas */
+    pointer-events: none;
 }
 
-.ring-value {
-    font-size: 20px;
-    font-weight: bold;
-    color: var(--dashboard-text);
-    line-height: 1; /* Убираем лишний интерлиньяж */
-}
-
-.ring-unit {
-    font-size: 12px;
-    color: var(--text-secondary);
-    line-height: 1;
-    margin-top: 2px; /* Небольшой отступ от значения */
-}
-
-.ring-title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--dashboard-text);
-    margin-top: 8px; /* Отступ от кольца */
-}
+.ring-value { font-size: 20px; font-weight: bold; color: var(--dashboard-text); line-height: 1; }
+.ring-unit { font-size: 12px; color: var(--text-secondary); line-height: 1; margin-top: 2px; }
+.ring-title { font-size: 14px; font-weight: 500; color: var(--dashboard-text); margin-top: 8px; }
 
 /* --- AI & Workouts Section --- */
-.ai-section, .workouts-section {
-    margin-top: 35px;
-}
-
-.section-title {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 15px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 10px;
-}
-
+.ai-section, .workouts-section { margin-top: 35px; }
+.section-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
 .analyze-meal-button {
     width: 100%;
     padding: 16px;
@@ -153,19 +98,8 @@ body {
     transition: transform 0.2s, box-shadow 0.2s;
     box-shadow: 0 0 15px rgba(157, 0, 255, 0.3);
 }
-.analyze-meal-button:hover {
-    transform: scale(1.03);
-    box-shadow: 0 0 25px rgba(0, 163, 255, 0.5);
-}
-
-.last-analysis-result, .recent-workouts, .strength-progress {
-    background-color: var(--container-bg);
-    padding: 16px;
-    border-radius: 12px;
-    font-size: 15px;
-    margin-top: 15px;
-    line-height: 1.5;
-}
+.analyze-meal-button:hover { transform: scale(1.03); box-shadow: 0 0 25px rgba(0, 163, 255, 0.5); }
+.last-analysis-result, .recent-workouts, .strength-progress { background-color: var(--container-bg); padding: 16px; border-radius: 12px; font-size: 15px; margin-top: 15px; line-height: 1.5; }
 
 /* --- Bottom Navigation Bar --- */
 .bottom-nav {
@@ -176,21 +110,12 @@ body {
     background-color: var(--container-bg);
     display: flex;
     justify-content: space-around;
-    padding: 10px 0 20px 0; /* Добавляем отступ снизу для безопасной зоны iPhone */
+    padding: 10px 0 20px 0;
     border-top: 1px solid var(--border-color);
     z-index: 1000;
 }
 
-.nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 12px;
-    gap: 4px;
-}
-
+.nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-secondary); text-decoration: none; font-size: 12px; gap: 4px; }
 .nav-item.active { color: var(--fat-color); }
 .nav-item i { font-size: 26px; }
 

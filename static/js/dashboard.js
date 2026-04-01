@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = {
             datasets: [{
                 data: [consumed, Math.max(0, target - consumed)],
-                backgroundColor: [color, '#333'],
+                backgroundColor: [color, '#333'], // Используем переданный цвет
                 borderWidth: 0,
                 borderRadius: 20,
             }]
@@ -57,16 +57,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!response.ok) throw new Error('Failed to fetch dashboard data');
 
             const data = await response.json();
-            console.log('Fetched data:', data); // Добавлено логирование
+            console.log('Fetched data:', data); // Логирование
 
-            // **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:**
-            // Сервер всегда возвращает сегодняшний день первым в списке.
-            // Просто берем первый элемент, это надежно и не зависит от часовых поясов.
             const todayStats = data.daily_breakdown[0];
             const targets = data.period_summary;
 
-            console.log('Today Stats:', todayStats); // Добавлено логирование
-            console.log('Targets:', targets); // Добавлено логирование
+            console.log('Today Stats:', todayStats); // Логирование
+            console.log('Targets:', targets); // Логирование
 
             const consumed = {
                 calories: todayStats ? todayStats.consumed_calories : 0,
@@ -75,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 fat: todayStats ? todayStats.consumed_fat : 0,
             };
 
-            console.log('Consumed values:', consumed); // Добавлено логирование
+            console.log('Consumed values:', consumed); // Логирование
 
             // Обновляем текстовые KPI в шапке
             document.getElementById('consumed-calories').textContent = Math.round(consumed.calories);
@@ -88,15 +85,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('carbs-value').textContent = Math.round(consumed.carbs);
             document.getElementById('fat-value').textContent = Math.round(consumed.fat);
 
-            // Создаем или обновляем сами кольца
-            createOrUpdateRingChart('calories-ring', consumed.calories, targets.target_calories, 'var(--calories-color)');
-            createOrUpdateRingChart('protein-ring', consumed.protein, targets.target_protein, 'var(--protein-color)');
-            createOrUpdateRingChart('carbs-ring', consumed.carbs, targets.target_carbohydrates, 'var(--carbs-color)');
-            createOrUpdateRingChart('fat-ring', consumed.fat, targets.target_fat, 'var(--fat-color)');
+            // **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ЦВЕТА:**
+            // Считываем реальные значения цветов из CSS переменных
+            const style = getComputedStyle(document.body);
+            const caloriesColor = style.getPropertyValue('--calories-color').trim();
+            const proteinColor = style.getPropertyValue('--protein-color').trim();
+            const carbsColor = style.getPropertyValue('--carbs-color').trim();
+            const fatColor = style.getPropertyValue('--fat-color').trim();
+
+            // Создаем или обновляем кольца с реальными цветами
+            createOrUpdateRingChart('calories-ring', consumed.calories, targets.target_calories, caloriesColor);
+            createOrUpdateRingChart('protein-ring', consumed.protein, targets.target_protein, proteinColor);
+            createOrUpdateRingChart('carbs-ring', consumed.carbs, targets.target_carbohydrates, carbsColor);
+            createOrUpdateRingChart('fat-ring', consumed.fat, targets.target_fat, fatColor);
 
         } catch (error) {
             console.error("Error initializing dashboard:", error);
-            // Можно добавить отображение ошибки на UI
         }
     }
 
