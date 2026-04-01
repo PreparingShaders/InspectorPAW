@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // --- Элементы DOM ---
     const analyzeForm = document.getElementById('analyze-form');
     const mealImageInput = document.getElementById('meal-image');
     const mealDescriptionInput = document.getElementById('meal-description');
@@ -12,14 +13,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resultsSection = document.getElementById('results-section');
     const aiResponseTextDiv = document.getElementById('ai-response-text');
     const confirmForm = document.getElementById('confirm-form');
-    const mealTypeSelect = document.getElementById('meal-type');
-    const caloriesInput = document.getElementById('calories');
-    const proteinInput = document.getElementById('protein');
-    const fatInput = document.getElementById('fat');
-    const carbohydratesInput = document.getElementById('carbohydrates');
     const errorMessageDiv = document.getElementById('error-message');
+    const imagePreview = document.getElementById('image-preview');
+    const uploadBox = document.querySelector('.upload-box');
+    const uploadLabel = document.querySelector('.upload-label');
 
-    // --- Обработка формы анализа (фото/описание) ---
+    // --- Предпросмотр изображения и индикация ---
+    mealImageInput.addEventListener('change', () => {
+        const file = mealImageInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                imagePreview.classList.remove('image-preview-hidden');
+                imagePreview.classList.add('image-preview-visible');
+                uploadLabel.style.display = 'none';
+                uploadBox.classList.add('has-image'); // Добавляем класс для индикации
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // --- **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Надежная синхронизация слайдеров и инпутов ---
+    function setupSliderSync(sliderId, inputId) {
+        const slider = document.getElementById(sliderId);
+        const input = document.getElementById(inputId);
+
+        // Обновляет инпут, когда двигается слайдер
+        slider.addEventListener('input', (event) => {
+            input.value = event.target.value;
+        });
+
+        // Обновляет слайдер, когда меняется значение в инпуте
+        input.addEventListener('change', (event) => {
+            slider.value = event.target.value;
+        });
+    }
+    setupSliderSync('calories-slider', 'calories');
+    setupSliderSync('protein-slider', 'protein');
+    setupSliderSync('fat-slider', 'fat');
+    setupSliderSync('carbohydrates-slider', 'carbohydrates');
+
+    // --- Обработка формы анализа ---
     analyzeForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         errorMessageDiv.textContent = '';
@@ -27,12 +62,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         analyzeButton.textContent = 'Анализируем...';
 
         const formData = new FormData();
-        if (mealImageInput.files.length > 0) {
-            formData.append('file', mealImageInput.files[0]);
-        }
-        if (mealDescriptionInput.value.trim() !== '') {
-            formData.append('description', mealDescriptionInput.value.trim());
-        }
+        if (mealImageInput.files.length > 0) formData.append('file', mealImageInput.files[0]);
+        if (mealDescriptionInput.value.trim() !== '') formData.append('description', mealDescriptionInput.value.trim());
 
         if (!mealImageInput.files.length && mealDescriptionInput.value.trim() === '') {
             errorMessageDiv.textContent = 'Пожалуйста, загрузите фото или введите описание.';
@@ -44,9 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const response = await fetch('/analyze-meal/', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
 
@@ -58,46 +87,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await response.json();
             aiResponseTextDiv.innerHTML = `<p>${result.ai_response_text}</p>`;
 
-            // Заполняем поля формы подтверждения результатами AI
-            caloriesInput.value = Math.round(result.suggested_totals.total_calories);
-            proteinInput.value = Math.round(result.suggested_totals.total_protein);
-            fatInput.value = Math.round(result.suggested_totals.total_fat);
-            carbohydratesInput.value = Math.round(result.suggested_totals.total_carbohydrates);
+            // Обновляем значения и в инпутах, и в слайдерах
+            const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
+            fields.forEach(field => {
+                const value = Math.round(result.suggested_totals[`total_${field}`] || 0);
+                document.getElementById(field).value = value;
+                document.getElementById(`${field}-slider`).value = value;
+            });
 
-            resultsSection.style.display = 'block'; // Показываем секцию с результатами
+            resultsSection.style.display = 'block';
 
         } catch (error) {
             errorMessageDiv.textContent = error.message;
-            resultsSection.style.display = 'none';
         } finally {
             analyzeButton.disabled = false;
             analyzeButton.textContent = 'Анализировать';
         }
     });
 
-    // --- Обработка формы подтверждения и добавления приема пищи ---
+    // --- Обработка формы подтверждения ---
     confirmForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        // ... (остальной код без изменений)
         errorMessageDiv.textContent = '';
         const confirmButton = document.getElementById('confirm-button');
         confirmButton.disabled = true;
         confirmButton.textContent = 'Добавляем...';
 
         const mealData = {
-            meal_type: mealTypeSelect.value,
-            total_calories: parseFloat(caloriesInput.value),
-            total_protein: parseFloat(proteinInput.value),
-            total_fat: parseFloat(fatInput.value),
-            total_carbohydrates: parseFloat(carbohydratesInput.value),
+            meal_type: document.getElementById('meal-type').value,
+            total_calories: parseFloat(document.getElementById('calories').value),
+            total_protein: parseFloat(document.getElementById('protein').value),
+            total_fat: parseFloat(document.getElementById('fat').value),
+            total_carbohydrates: parseFloat(document.getElementById('carbohydrates').value),
         };
 
         try {
             const response = await fetch('/meals/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(mealData)
             });
 
@@ -106,7 +134,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error(errorData.detail || 'Ошибка добавления приема пищи.');
             }
 
-            // Успешно добавлено, перенаправляем на дашборд
             window.location.href = '/dashboard';
 
         } catch (error) {

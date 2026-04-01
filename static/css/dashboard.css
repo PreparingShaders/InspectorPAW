@@ -66,13 +66,19 @@ body {
 /* --- AI & Workouts Section --- */
 .ai-section, .workouts-section { margin-top: 35px; }
 .section-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+
+/* --- Button Redesign --- */
 .analyze-meal-button {
     width: 100%; padding: 16px; font-size: 18px; font-weight: 700; color: var(--dashboard-text);
-    background: linear-gradient(90deg, var(--protein-color), var(--fat-color));
-    border: none; border-radius: 12px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 0 15px rgba(157, 0, 255, 0.3);
+    background: linear-gradient(90deg, #4cc9f0, #9d4edd); /* Яркий градиент от голубого к фиолетовому */
+    border: none; border-radius: 12px; cursor: pointer; transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(157, 78, 221, 0.5); /* Свечение в тон */
 }
-.analyze-meal-button:hover { transform: scale(1.03); box-shadow: 0 0 25px rgba(0, 163, 255, 0.5); }
+.analyze-meal-button:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 25px rgba(157, 78, 221, 0.8); /* Усиленное свечение при наведении */
+}
+
 .last-analysis-result, .recent-workouts, .strength-progress { background-color: var(--container-bg); padding: 16px; border-radius: 12px; font-size: 15px; margin-top: 15px; line-height: 1.5; }
 
 /* --- Bottom Navigation Bar --- */
@@ -86,3 +92,59 @@ body {
 .icon-workouts::before { content: "🏋️"; }
 .icon-profile::before { content: "👤"; }
 .icon-camera::before { content: "📷"; margin-right: 8px; }
+
+/* === STYLES FOR ANALYZE PAGE === */
+
+.upload-box {
+    width: 100%;
+    height: 150px; /* Уменьшено */
+    border: 2px dashed var(--border-color);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+.upload-box.has-image {
+    border-color: var(--protein-color); /* Индикация добавленного фото */
+}
+
+.upload-label i { font-size: 40px; color: var(--text-secondary); }
+.upload-label span { font-size: 16px; font-weight: 500; color: var(--text-secondary); margin-top: 10px; }
+.upload-input { display: none; }
+.image-preview-hidden { display: none; }
+.image-preview-visible { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.form-group label, .slider-group > label { font-size: 16px; font-weight: 500; color: var(--text-secondary); margin-bottom: 12px; display: block; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; background-color: var(--container-bg); border: 1px solid var(--border-color); border-radius: 8px; color: var(--dashboard-text); font-size: 16px; }
+.form-group textarea { resize: vertical; }
+.back-button { color: var(--fat-color); text-decoration: none; font-size: 16px; font-weight: 500; }
+
+/* --- Slider Styles --- */
+.slider-group { margin-bottom: 20px; }
+.slider-wrapper { display: flex; align-items: center; gap: 15px; }
+.slider-wrapper input[type="range"] {
+    flex-grow: 1; -webkit-appearance: none; appearance: none;
+    width: 100%; height: 8px; background: #333;
+    border-radius: 5px; outline: none;
+    transition: box-shadow 0.2s;
+}
+.slider-wrapper input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; background: var(--protein-color);
+    border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 10px var(--protein-color); /* Статичное свечение */
+}
+.slider-wrapper input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px; background: var(--protein-color);
+    border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 10px var(--protein-color); /* Статичное свечение */
+}
+
+.slider-value { width: 70px; padding: 8px; text-align: center; background-color: var(--container-bg); border: 1px solid var(--border-color); border-radius: 8px; color: var(--dashboard-text); font-size: 16px; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
