@@ -1,127 +1,206 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard - InspectorPAW</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ИНСПЕКТОР AI</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png">
+
+    <style>
+        :root {
+            --color-cream: #F0EBE0;
+            --color-orange-yellow: #f59e0b;
+            --color-turquoise: #2dd4bf;
+            --color-white: #FFFFFF;
+            --bg-ring-cream: rgba(240, 235, 224, 0.15);
+            --bg-ring-orange: rgba(245, 158, 11, 0.15);
+            --bg-ring-turquoise: rgba(45, 212, 191, 0.15);
+            --bg-ring-white: rgba(255, 255, 255, 0.15);
+        }
+        body {
+            background-color: #000;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden; /* Важно для предотвращения случайного скролла */
+        }
+        /* Улучшенный Glassmorphism */
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.05);
+            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Эффект свечения (Bloom) через drop-shadow */
+        .bloom-cream {
+            filter: drop-shadow(0 0 20px rgba(240, 235, 224, 0.6));
+        }
+        .bloom-orange-yellow {
+            filter: drop-shadow(0 0 15px var(--color-orange-yellow));
+        }
+        .bloom-turquoise {
+            filter: drop-shadow(0 0 15px var(--color-turquoise));
+        }
+        .bloom-white {
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8));
+        }
+        /* Стиль для контейнера кольца, чтобы свечение не обрезалось */
+        .ring-container {
+            /* Этот контейнер не имеет overflow:hidden, позволяя тени выходить за пределы */
+        }
+        /* Стиль для самого кольца на conic-gradient */
+        .progress-ring {
+            border-radius: 50%;
+            transition: background 0.8s ease-out;
+        }
+    </style>
 </head>
-<body>
+<body class="h-full flex flex-col">
 
-    <div class="main-container">
-        <!-- Шапка -->
-        <header class="dashboard-header">
-            <div class="user-info">
-                <img src="/static/images/ivan_avatar.png" alt="Avatar" class="avatar">
-                <h1 class="user-name">Иван</h1>
-            </div>
-            <h2 class="page-title">InspectorPAW</h2>
-        </header>
+    <header class="text-center pt-6 pb-2">
+        <h1 class="text-xl font-bold tracking-wider">1 ИНСПЕКТОР AI</h1>
+        <p class="text-xs text-gray-500">Beta 1.1</p>
+    </header>
 
-        <!-- Ключевые показатели (КБЖУ) -->
-        <section class="kpi-section">
-            <div class="kpi-header">
-                <!-- Порядок изменен на: Норма, Потреблено, Осталось -->
-                <div class="kpi-item">
-                    <span class="kpi-label">Норма</span>
-                    <span id="target-calories" class="kpi-value">0</span>
-                </div>
-                <div class="kpi-item">
-                    <span class="kpi-label">Потреблено</span>
-                    <span id="consumed-calories" class="kpi-value">0</span>
-                </div>
-                <div class="kpi-item">
-                    <span class="kpi-label">Осталось</span>
-                    <span id="remaining-calories" class="kpi-value">0</span>
+    <!-- Основной контент с уплотненной композицией -->
+    <main class="flex-grow flex flex-col items-center justify-center px-4 space-y-4 pb-24">
+
+        <!-- 1. Центральное кольцо калорий (Conic Gradient) -->
+        <div class="ring-container w-2/5 bloom-cream">
+            <div id="calorie-ring" class="progress-ring relative aspect-square"
+                 data-goal="2400" data-remaining="810" data-color="var(--color-cream)" data-bg-color="var(--bg-ring-cream)">
+                <!-- Внутренняя часть для создания "дырки" бублика -->
+                <div class="absolute inset-[12px] bg-black rounded-full"></div>
+                <!-- Текст -->
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span class="text-5xl font-extrabold" style="color: var(--color-cream);">810</span>
+                    <span class="text-sm text-gray-400 -mt-1">ОСТАЛОСЬ</span>
                 </div>
             </div>
-            <div class="rings-container">
-                <!-- Структура с уникальными классами -->
-                <div class="ring-item calories-item">
-                    <div class="ring-wrapper">
-                        <canvas id="calories-ring"></canvas>
-                        <div class="ring-text">
-                            <span id="calories-value" class="ring-value">0</span>
-                            <span class="ring-unit">ккал</span>
-                        </div>
-                    </div>
-                    <span class="ring-title">Калории</span>
-                </div>
-                <div class="ring-item protein-item">
-                    <div class="ring-wrapper">
-                        <canvas id="protein-ring"></canvas>
-                        <div class="ring-text">
-                            <span id="protein-value" class="ring-value">0</span>
-                            <span class="ring-unit">г</span>
-                        </div>
-                    </div>
-                    <span class="ring-title">Белки</span>
-                </div>
-                <!-- Углеводы и Жиры поменялись местами -->
-                <div class="ring-item fat-item">
-                    <div class="ring-wrapper">
-                        <canvas id="fat-ring"></canvas>
-                        <div class="ring-text">
-                            <span id="fat-value" class="ring-value">0</span>
-                            <span class="ring-unit">г</span>
-                        </div>
-                    </div>
-                    <span class="ring-title">Жиры</span>
-                </div>
-                <div class="ring-item carbs-item">
-                    <div class="ring-wrapper">
-                        <canvas id="carbs-ring"></canvas>
-                        <div class="ring-text">
-                            <span id="carbs-value" class="ring-value">0</span>
-                            <span class="ring-unit">г</span>
-                        </div>
-                    </div>
-                    <span class="ring-title">Углеводы</span>
-                </div>
-            </div>
-        </section>
+        </div>
 
-        <!-- A.I. Нутрициолог -->
-        <section class="ai-section">
-            <h3 class="section-title">A.I. Nutritionist</h3>
-            <button class="analyze-meal-button" onclick="location.href='/analyze'">
-                <i class="icon-camera"></i> Analyze Meal Photo
+        <!-- 2. Сетка макронутриентов (Conic Gradient, увеличены) -->
+        <div class="flex justify-around w-full max-w-md">
+            <!-- Белки -->
+            <div class="text-center flex flex-col items-center space-y-2">
+                <div class="ring-container w-24 bloom-white">
+                    <div id="protein-ring" class="progress-ring relative aspect-square"
+                         data-goal="120" data-remaining="50" data-color="var(--color-white)" data-bg-color="var(--bg-ring-white)">
+                        <div class="absolute inset-[8px] bg-black rounded-full"></div>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="font-bold text-2xl">50</span>
+                            <span class="text-xs text-gray-400 -mt-1">осталось</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-base font-semibold" style="color: white;">Белки</p>
+                <p class="text-xs text-gray-500 -mt-1.5">120г</p>
+            </div>
+            <!-- Жиры -->
+            <div class="text-center flex flex-col items-center space-y-2">
+                <div class="ring-container w-24 bloom-orange-yellow">
+                    <div id="fat-ring" class="progress-ring relative aspect-square"
+                         data-goal="70" data-remaining="30" data-color="var(--color-orange-yellow)" data-bg-color="var(--bg-ring-orange)">
+                        <div class="absolute inset-[8px] bg-black rounded-full"></div>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="font-bold text-2xl">30</span>
+                            <span class="text-xs text-gray-400 -mt-1">осталось</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-base font-semibold" style="color: var(--color-orange-yellow);">Жиры</p>
+                <p class="text-xs text-gray-500 -mt-1.5">70г</p>
+            </div>
+            <!-- Углеводы -->
+            <div class="text-center flex flex-col items-center space-y-2">
+                <div class="ring-container w-24 bloom-turquoise">
+                    <div id="carbs-ring" class="progress-ring relative aspect-square"
+                         data-goal="300" data-remaining="150" data-color="var(--color-turquoise)" data-bg-color="var(--bg-ring-turquoise)">
+                        <div class="absolute inset-[8px] bg-black rounded-full"></div>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="font-bold text-2xl">150</span>
+                            <span class="text-xs text-gray-400 -mt-1">осталось</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-base font-semibold" style="color: var(--color-turquoise);">Углеводы</p>
+                <p class="text-xs text-gray-500 -mt-1.5">300г</p>
+            </div>
+        </div>
+
+        <!-- 3. Главная кнопка с эффектом Bloom -->
+        <div class="w-full max-w-sm pt-2">
+            <button onclick="location.href='/analyze'" class="w-full py-3 text-lg font-semibold rounded-full border-2 border-transparent bg-transparent bloom-cream" style="color: var(--color-cream);">
+                Анализ еды
             </button>
-            <div class="last-analysis-result">
-                <p><strong>Последний анализ:</strong> Куриная грудка с рисом.</p>
-                <p>350 ккал, 40г белка, 30г углев., 8г жира.</p>
-            </div>
-        </section>
+        </div>
 
-        <!-- Тренировки (пока заглушка) -->
-        <section class="workouts-section">
-            <h3 class="section-title">Workouts</h3>
-            <div class="recent-workouts">
-                <p>Recent Workouts: Full Body Strength, 24.07.2024</p>
+        <!-- 4. Информационные карточки -->
+        <div class="grid grid-cols-2 gap-4 w-full max-w-sm">
+            <div class="glassmorphism rounded-xl p-3 h-24">
+                <h3 class="font-bold text-sm">Тренировки</h3>
+                <p class="text-xs text-gray-300 mt-1">Сегодня: Жим лежа 3x8, Присед 4x10</p>
             </div>
-            <div class="strength-progress">
-                <p>Strength Progress: Bench Press +2.5kg</p>
+            <div class="glassmorphism rounded-xl p-3 h-24">
+                <h3 class="font-bold text-sm">Нутрициолог</h3>
+                <p class="text-xs text-gray-300 mt-1">Совет: Добавьте больше клетчатки. Например, авокадо.</p>
             </div>
-        </section>
-    </div>
+        </div>
+    </main>
 
-    <!-- Нижняя навигационная панель -->
-    <nav class="bottom-nav">
-        <a href="/dashboard" class="nav-item active">
-            <i class="icon-nutrition"></i>
-            <span>Нутрициолог</span>
+    <!-- 5. Нижняя навигация (Tab Bar) -->
+    <nav class="glassmorphism fixed bottom-0 left-0 right-0 h-20 flex justify-around items-center" style="border-top-color: rgba(240, 235, 224, 0.2);">
+        <a href="/dashboard" class="text-center bloom-cream" style="color: var(--color-cream);">
+            <svg class="w-7 h-7 mx-auto" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
+            <span class="text-xs">Дашборд</span>
         </a>
-        <a href="/workouts" class="nav-item">
-            <i class="icon-workouts"></i>
-            <span>Тренировки</span>
+        <a href="#" class="text-center" style="color: var(--color-cream); opacity: 0.6;">
+            <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            <span class="text-xs">Тренировки</span>
         </a>
-        <a href="/profile" class="nav-item">
-            <i class="icon-profile"></i>
-            <span>Профиль</span>
+        <a href="#" class="text-center" style="color: var(--color-cream); opacity: 0.6;">
+             <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-14v4m-2-2h4m5 10v4m-2-2h4M5 3a2 2 0 00-2 2v1m14-3a2 2 0 012 2v1m-16 8a2 2 0 002 2h1m14 0a2 2 0 01-2 2h-1m-4-4a3 3 0 00-3-3h-2a3 3 0 00-3 3v2a3 3 0 003 3h2a3 3 0 003-3v-2z"></path></svg>
+            <span class="text-xs">Питание</span>
+        </a>
+        <a href="/profile" class="text-center" style="color: var(--color-cream); opacity: 0.6;">
+            <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            <span class="text-xs">Профиль</span>
         </a>
     </nav>
 
-    <script src="/static/js/dashboard.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function updateRing(elementId) {
+                const ring = document.getElementById(elementId);
+                if (!ring) return;
+
+                const goal = parseFloat(ring.dataset.goal);
+                const remaining = parseFloat(ring.dataset.remaining);
+                const color = ring.dataset.color;
+                const bgColor = ring.dataset.bgcColor;
+
+                if (goal === 0) {
+                    ring.style.background = bgColor;
+                    return;
+                }
+
+                const consumed = goal - remaining;
+                const percentage = Math.min(Math.max(consumed / goal, 0), 1);
+                const degree = percentage * 360;
+
+                ring.style.background = `conic-gradient(${color} ${degree}deg, ${bgColor} ${degree}deg)`;
+            }
+
+            updateRing('calorie-ring');
+            updateRing('protein-ring');
+            updateRing('fat-ring');
+            updateRing('carbs-ring');
+        });
+    </script>
+
 </body>
 </html>
