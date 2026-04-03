@@ -3,34 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Анализ приема пищи - InspectorPAW</title>
+    <title>Добавить прием пищи - ProgressLab</title>
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
 
     <div class="main-container">
         <!-- Шапка -->
         <header class="dashboard-header">
-            <h1 class="user-name">Прием пищи</h1>
+            <h1 class="user-name">Добавить прием пищи</h1>
         </header>
 
         <!-- Форма для анализа -->
         <section class="ai-section">
             <form id="analyze-form">
-                <div class="upload-box">
-                    <label for="meal-image" class="upload-label">
-                        <i class="icon-camera"></i>
-                        <span>Сделать фото или прикрепить</span>
-                    </label>
-                    <input type="file" id="meal-image" accept="image/*" class="upload-input">
-                    <img id="image-preview" src="#" alt="Image Preview" class="image-preview-hidden"/>
-                </div>
+
+                <!-- Новая кнопка для загрузки фото -->
+                <label for="meal-image" class="upload-button-label">
+                    Добавить фото
+                </label>
+                <input type="file" id="meal-image" accept="image/*" class="upload-input">
 
                 <div class="form-group" style="margin-top: 20px;">
-                    <label for="meal-description">Добавьте описание блюда, чтобы получить более точный анализ</label>
+                    <label for="meal-description">Описание</label>
                     <textarea id="meal-description" rows="3" placeholder="Например: 'Большая порция гречки с куриной грудкой'"></textarea>
                 </div>
-                <button type="submit" class="analyze-meal-button" id="analyze-button">
+
+                <!-- Кнопка "Анализировать" теперь будет прозрачной с контуром -->
+                <button type="submit" class="analyze-meal-button transparent" id="analyze-button">
                     Анализировать
                 </button>
             </form>
@@ -82,28 +83,15 @@
                     </div>
                 </div>
 
-                <button type="submit" class="analyze-meal-button" id="confirm-button">Добавить прием пищи</button>
+                <button type="submit" class="analyze-meal-button transparent" id="confirm-button">Сохранить</button>
             </form>
         </section>
 
         <div id="error-message" class="error-message" style="text-align: center; margin-top: 20px;"></div>
     </div>
 
-    <!-- Нижняя навигационная панель -->
-    <nav class="bottom-nav">
-        <a href="/dashboard" class="nav-item active">
-            <i class="icon-nutrition"></i>
-            <span>Нутрициолог</span>
-        </a>
-        <a href="/workouts" class="nav-item">
-            <i class="icon-workouts"></i>
-            <span>Тренировки</span>
-        </a>
-        <a href="/profile" class="nav-item">
-            <i class="icon-profile"></i>
-            <span>Профиль</span>
-        </a>
-    </nav>
+    {% set active_page = 'nutrition' %}
+    {% include 'includes/bottom_nav.html' %}
 
     <script src="/static/js/analyze.js"></script>
 </body>

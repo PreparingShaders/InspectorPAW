@@ -14,23 +14,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const aiResponseTextDiv = document.getElementById('ai-response-text');
     const confirmForm = document.getElementById('confirm-form');
     const errorMessageDiv = document.getElementById('error-message');
-    const imagePreview = document.getElementById('image-preview');
-    const uploadBox = document.querySelector('.upload-box');
-    const uploadLabel = document.querySelector('.upload-label');
+    const uploadButtonLabel = document.querySelector('.upload-button-label');
 
-    // --- Предпросмотр изображения и индикация ---
+    // --- Индикация добавления фото ---
     mealImageInput.addEventListener('change', () => {
         const file = mealImageInput.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
-                imagePreview.classList.remove('image-preview-hidden');
-                imagePreview.classList.add('image-preview-visible');
-                uploadLabel.style.display = 'none';
-                uploadBox.classList.add('has-image'); // Добавляем класс для индикации
-            };
-            reader.readAsDataURL(file);
+            uploadButtonLabel.classList.add('has-image');
+            uploadButtonLabel.textContent = 'Фото добавлено!';
         }
     });
 
