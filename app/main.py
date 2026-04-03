@@ -1,9 +1,9 @@
-from datetime import timedelta, date, datetime  # Добавлен импорт datetime
+from datetime import timedelta, date, datetime
 from typing import List, Optional
 import re
 import io
 import base64
-import asyncio # Импортируем asyncio
+import asyncio
 import google.genai as genai
 from openai import AsyncOpenAI
 from PIL import Image
@@ -31,6 +31,7 @@ templates = Jinja2Templates(directory="templates")
 # --- API Клиенты ---
 
 # 1. Конфигурируем нативный API Gemini
+# Возвращаем к исходному способу инициализации клиента
 gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 # 2. Конфигурируем клиент для OpenRouter
@@ -89,12 +90,15 @@ async def call_ai_model(file_content: Optional[bytes], description: Optional[str
             # --- Логика для нативных моделей Gemini ---
             if model_name in settings.NATIVE_GEMINI_MODELS:
                 content_parts = []
+                # Убедимся, что full_prompt определен до использования
+                full_prompt = f"{prompt}\nДополнительное описание: {description}" if description else prompt
+                
                 if file_content:
                     img = Image.open(io.BytesIO(file_content))
-                    content_parts.append(full_prompt)
-                full_prompt = f"{prompt}\nДополнительное описание: {description}" if description else prompt
+                    content_parts.append(img)
                 content_parts.append(full_prompt)
-                # Используем asyncio.to_thread для синхронного вызова в асинхронной функции
+                
+                # Возвращаем к исходному способу вызова модели
                 response = await asyncio.to_thread(gemini_client.models.generate_content, model=model_name, contents=content_parts)
                 return response.text
 
@@ -232,6 +236,10 @@ async def analyze_meal(
         ai_response_text = await call_ai_model(file_content=file_content, description=description)
     except HTTPException as e:
         raise e
+
+    # Проверяем, что ответ не пустой
+    if not ai_response_text:
+        raise HTTPException(status_code=500, detail="AI model returned an empty response.")
 
     calories_match = re.search(r"Калории: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
     protein_match = re.search(r"Белки: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
