@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ИНСПЕКТОР AI</title>
+    <title>ProgressLab</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,176 +16,203 @@
     <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png">
 
     <style>
+        /* Обновленные CSS переменные для новой палитры */
         :root {
-            --color-cream: #F0EBE0;
-            --color-orange-yellow: #f59e0b;
-            --color-turquoise: #2dd4bf;
-            --color-white: #FFFFFF;
-            --bg-ring-cream: rgba(240, 235, 224, 0.15);
-            --bg-ring-orange: rgba(245, 158, 11, 0.15);
-            --bg-ring-turquoise: rgba(45, 212, 191, 0.15);
-            --bg-ring-white: rgba(255, 255, 255, 0.15);
+            --color-amber: #F5E1B0; /* Энергия/Калории */
+            --color-protein-white: #FFFFFF; /* Белки */
+            --color-golden-orange: #E2A35D; /* Жиры */
+            --color-muted-teal: #569DAA; /* Углеводы */
+            --color-pantone-gray: #E0E0E0; /* Для кнопки и навигации */
+            --color-inactive-icon: rgba(255, 255, 255, 0.4); /* Для неактивных иконок */
+
+            /* Фоновые цвета для колец прогресса (с прозрачностью) */
+            --bg-ring-amber: rgba(245, 225, 176, 0.1);
+            --bg-ring-protein-white: rgba(255, 255, 255, 0.1);
+            --bg-ring-golden-orange: rgba(226, 163, 93, 0.1);
+            --bg-ring-muted-teal: rgba(86, 157, 170, 0.1);
         }
         body {
-            background-color: #000;
+            background-color: #0F0F10; /* Глубокий антрацит */
             color: white;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            /* Футуристический гротеск без засечек */
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             overflow: hidden; /* Важно для предотвращения случайного скролла */
         }
-        /* Улучшенный Glassmorphism */
+        /* Улучшенный Glassmorphism с градиентом и тонкой обводкой */
         .glassmorphism {
-            background: rgba(255, 255, 255, 0.05);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
             -webkit-backdrop-filter: blur(16px);
             backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            /* Границы будут заданы через neon-glow-border классы */
         }
-        /* Эффект свечения (Bloom) через drop-shadow */
-        .bloom-cream {
-            filter: drop-shadow(0 0 20px rgba(240, 235, 224, 0.6));
-        }
-        .bloom-orange-yellow {
-            filter: drop-shadow(0 0 15px var(--color-orange-yellow));
-        }
-        .bloom-turquoise {
-            filter: drop-shadow(0 0 15px var(--color-turquoise));
-        }
-        .bloom-white {
-            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8));
-        }
+        /* Новые классы для четких неоновых границ с свечением */
+        .neon-glow-amber { box-shadow: 0 0 10px 2px var(--color-amber); border: 1px solid var(--color-amber); }
+        .neon-glow-protein-white { box-shadow: 0 0 10px 2px var(--color-protein-white); border: 1px solid var(--color-protein-white); }
+        .neon-glow-golden-orange { box-shadow: 0 0 10px 2px var(--color-golden-orange); border: 1px solid var(--color-golden-orange); }
+        .neon-glow-muted-teal { box-shadow: 0 0 10px 2px var(--color-muted-teal); border: 1px solid var(--color-muted-teal); }
+        .neon-glow-pantone-gray { box-shadow: 0 0 10px 2px var(--color-pantone-gray); border: 1px solid var(--color-pantone-gray); }
+
+
         /* Стиль для контейнера кольца, чтобы свечение не обрезалось */
         .ring-container {
-            /* Этот контейнер не имеет overflow:hidden, позволяя тени выходить за пределы */
+            border-radius: 50%; /* Делаем контейнер круглым */
         }
         /* Стиль для самого кольца на conic-gradient */
         .progress-ring {
             border-radius: 50%;
             transition: background 0.8s ease-out;
         }
+        /* Стили для типографики */
+        .label-text {
+            font-size: 0.75rem; /* text-xs */
+            text-transform: uppercase;
+            letter-spacing: 0.05em; /* tracking-wider */
+            color: rgba(255, 255, 255, 0.6); /* Приглушенный серый для подписей */
+        }
+        .calorie-label {
+            font-size: 1rem; /* Увеличенный размер для "КАЛОРИИ" */
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 4px;
+        }
+        .calorie-goal-text {
+            font-size: 0.85rem; /* Размер для цели и общего калоража */
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 4px;
+        }
+        /* Увеличенный шрифт для меток макросов */
+        .macro-goal-value {
+            font-size: 0.95rem; /* Slightly larger than label-text */
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+        }
     </style>
 </head>
 <body class="h-full flex flex-col">
 
     <header class="text-center pt-6 pb-2">
-        <h1 class="text-xl font-bold tracking-wider">1 ИНСПЕКТОР AI</h1>
-        <p class="text-xs text-gray-500">Beta 1.1</p>
+        <h1 class="text-4xl font-extrabold tracking-wider">ProgressLab</h1>
+        <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
     <!-- Основной контент с уплотненной композицией -->
-    <main class="flex-grow flex flex-col items-center justify-center px-4 space-y-4 pb-24">
+    <main class="flex-grow flex flex-col items-center justify-center px-4 space-y-6 pb-24">
 
         <!-- 1. Центральное кольцо калорий (Conic Gradient) -->
-        <div class="ring-container w-2/5 bloom-cream">
+        <div class="ring-container w-4/5 max-w-xs aspect-square neon-glow-amber">
             <div id="calorie-ring" class="progress-ring relative aspect-square"
-                 data-goal="2400" data-remaining="810" data-color="var(--color-cream)" data-bg-color="var(--bg-ring-cream)">
+                 data-goal="2400" data-remaining="810" data-color="var(--color-amber)" data-bg-color="var(--bg-ring-amber)">
                 <!-- Внутренняя часть для создания "дырки" бублика -->
-                <div class="absolute inset-[12px] bg-black rounded-full"></div>
+                <div class="absolute inset-[10px] bg-[#0F0F10] rounded-full"></div>
                 <!-- Текст -->
                 <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span class="text-5xl font-extrabold" style="color: var(--color-cream);">810</span>
-                    <span class="text-sm text-gray-400 -mt-1">ОСТАЛОСЬ</span>
+                    <span class="calorie-label">КАЛОРИИ</span>
+                    <span class="text-7xl font-extrabold" style="color: var(--color-amber);">810</span>
+                    <span class="label-text -mt-2">ОСТАЛОСЬ ККАЛ</span>
+                    <span class="calorie-goal-text" id="calorie-goal-info"></span>
                 </div>
             </div>
         </div>
 
         <!-- 2. Сетка макронутриентов (Conic Gradient, увеличены) -->
-        <div class="flex justify-around w-full max-w-md">
+        <div class="flex justify-around w-full max-w-lg space-x-4">
             <!-- Белки -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 bloom-white">
+                <div class="ring-container w-32 aspect-square neon-glow-protein-white">
                     <div id="protein-ring" class="progress-ring relative aspect-square"
-                         data-goal="120" data-remaining="50" data-color="var(--color-white)" data-bg-color="var(--bg-ring-white)">
-                        <div class="absolute inset-[8px] bg-black rounded-full"></div>
+                         data-goal="120" data-remaining="50" data-color="var(--color-protein-white)" data-bg-color="var(--bg-ring-protein-white)">
+                        <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="font-bold text-2xl">50</span>
-                            <span class="text-xs text-gray-400 -mt-1">осталось</span>
+                            <span class="font-bold text-3xl" style="color: var(--color-protein-white);">50г</span>
+                            <span class="label-text -mt-1">осталось</span>
                         </div>
                     </div>
                 </div>
-                <p class="text-base font-semibold" style="color: white;">Белки</p>
-                <p class="text-xs text-gray-500 -mt-1.5">120г</p>
+                <p class="text-base font-semibold" style="color: var(--color-protein-white);">Белки</p>
+                <p class="macro-goal-value -mt-1.5">120г</p>
             </div>
             <!-- Жиры -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 bloom-orange-yellow">
+                <div class="ring-container w-32 aspect-square neon-glow-golden-orange">
                     <div id="fat-ring" class="progress-ring relative aspect-square"
-                         data-goal="70" data-remaining="30" data-color="var(--color-orange-yellow)" data-bg-color="var(--bg-ring-orange)">
-                        <div class="absolute inset-[8px] bg-black rounded-full"></div>
+                         data-goal="70" data-remaining="30" data-color="var(--color-golden-orange)" data-bg-color="var(--bg-ring-golden-orange)">
+                        <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="font-bold text-2xl">30</span>
-                            <span class="text-xs text-gray-400 -mt-1">осталось</span>
+                            <span class="font-bold text-3xl" style="color: var(--color-golden-orange);">30г</span>
+                            <span class="label-text -mt-1">осталось</span>
                         </div>
                     </div>
                 </div>
-                <p class="text-base font-semibold" style="color: var(--color-orange-yellow);">Жиры</p>
-                <p class="text-xs text-gray-500 -mt-1.5">70г</p>
+                <p class="text-base font-semibold" style="color: var(--color-golden-orange);">Жиры</p>
+                <p class="macro-goal-value -mt-1.5">70г</p>
             </div>
             <!-- Углеводы -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 bloom-turquoise">
+                <div class="ring-container w-32 aspect-square neon-glow-muted-teal">
                     <div id="carbs-ring" class="progress-ring relative aspect-square"
-                         data-goal="300" data-remaining="150" data-color="var(--color-turquoise)" data-bg-color="var(--bg-ring-turquoise)">
-                        <div class="absolute inset-[8px] bg-black rounded-full"></div>
+                         data-goal="300" data-remaining="150" data-color="var(--color-muted-teal)" data-bg-color="var(--bg-ring-muted-teal)">
+                        <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="font-bold text-2xl">150</span>
-                            <span class="text-xs text-gray-400 -mt-1">осталось</span>
+                            <span class="font-bold text-3xl" style="color: var(--color-muted-teal);">150г</span>
+                            <span class="label-text -mt-1">осталось</span>
                         </div>
                     </div>
                 </div>
-                <p class="text-base font-semibold" style="color: var(--color-turquoise);">Углеводы</p>
-                <p class="text-xs text-gray-500 -mt-1.5">300г</p>
+                <p class="text-base font-semibold" style="color: var(--color-muted-teal);">Углеводы</p>
+                <p class="macro-goal-value -mt-1.5">300г</p>
             </div>
         </div>
 
         <!-- 3. Главная кнопка с эффектом Bloom -->
-        <div class="w-full max-w-sm pt-2">
-            <button onclick="location.href='/analyze'" class="w-full py-3 text-lg font-semibold rounded-full border-2 border-transparent bg-transparent bloom-cream" style="color: var(--color-cream);">
+        <div class="w-full max-w-sm pt-4">
+            <button onclick="location.href='/analyze'" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" style="color: var(--color-pantone-gray);">
                 Анализ еды
             </button>
         </div>
 
         <!-- 4. Информационные карточки -->
         <div class="grid grid-cols-2 gap-4 w-full max-w-sm">
-            <div class="glassmorphism rounded-xl p-3 h-24">
+            <div class="glassmorphism rounded-xl p-3 h-24 neon-glow-pantone-gray">
                 <h3 class="font-bold text-sm">Тренировки</h3>
-                <p class="text-xs text-gray-300 mt-1">Сегодня: Жим лежа 3x8, Присед 4x10</p>
+                <p class="label-text mt-1">Сегодня: Жим лежа 3x8, Присед 4x10</p>
             </div>
-            <div class="glassmorphism rounded-xl p-3 h-24">
+            <div class="glassmorphism rounded-xl p-3 h-24 neon-glow-pantone-gray">
                 <h3 class="font-bold text-sm">Нутрициолог</h3>
-                <p class="text-xs text-gray-300 mt-1">Совет: Добавьте больше клетчатки. Например, авокадо.</p>
+                <p class="label-text mt-1">Совет: Добавьте больше клетчатки. Например, авокадо.</p>
             </div>
         </div>
     </main>
 
     <!-- 5. Нижняя навигация (Tab Bar) -->
-    <nav class="glassmorphism fixed bottom-0 left-0 right-0 h-20 flex justify-around items-center" style="border-top-color: rgba(240, 235, 224, 0.2);">
-        <a href="/dashboard" class="text-center bloom-cream" style="color: var(--color-cream);">
+    <nav class="glassmorphism fixed bottom-0 left-0 right-0 h-20 flex justify-around items-center neon-glow-pantone-gray">
+        <a href="/dashboard" class="text-center" style="color: var(--color-amber);">
             <svg class="w-7 h-7 mx-auto" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
-            <span class="text-xs">Дашборд</span>
+            <span class="label-text" style="color: var(--color-amber);">Дашборд</span>
         </a>
-        <a href="#" class="text-center" style="color: var(--color-cream); opacity: 0.6;">
+        <a href="#" class="text-center" style="color: var(--color-inactive-icon);">
             <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            <span class="text-xs">Тренировки</span>
+            <span class="label-text" style="color: var(--color-inactive-icon);">Тренировки</span>
         </a>
-        <a href="#" class="text-center" style="color: var(--color-cream); opacity: 0.6;">
+        <a href="#" class="text-center" style="color: var(--color-inactive-icon);">
              <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-14v4m-2-2h4m5 10v4m-2-2h4M5 3a2 2 0 00-2 2v1m14-3a2 2 0 012 2v1m-16 8a2 2 0 002 2h1m14 0a2 2 0 01-2 2h-1m-4-4a3 3 0 00-3-3h-2a3 3 0 00-3 3v2a3 3 0 003 3h2a3 3 0 003-3v-2z"></path></svg>
-            <span class="text-xs">Питание</span>
+            <span class="label-text" style="color: var(--color-inactive-icon);">Питание</span>
         </a>
-        <a href="/profile" class="text-center" style="color: var(--color-cream); opacity: 0.6;">
+        <a href="/profile" class="text-center" style="color: var(--color-inactive-icon);">
             <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-            <span class="text-xs">Профиль</span>
+            <span class="label-text" style="color: var(--color-inactive-icon);">Профиль</span>
         </a>
     </nav>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            function updateRing(elementId) {
+            function updateRing(elementId, isCalorie = false) {
                 const ring = document.getElementById(elementId);
                 if (!ring) return;
 
                 const goal = parseFloat(ring.dataset.goal);
                 const remaining = parseFloat(ring.dataset.remaining);
                 const color = ring.dataset.color;
-                const bgColor = ring.dataset.bgcColor;
+                const bgColor = ring.dataset.bgColor;
 
                 if (goal === 0) {
                     ring.style.background = bgColor;
@@ -193,9 +224,23 @@
                 const degree = percentage * 360;
 
                 ring.style.background = `conic-gradient(${color} ${degree}deg, ${bgColor} ${degree}deg)`;
+
+                // Обновление текста с суффиксом
+                const valueSpan = ring.querySelector('span:nth-child(2)'); // Теперь это второе span
+                if (valueSpan) {
+                    valueSpan.textContent = isCalorie ? `${Math.round(remaining)}` : `${Math.round(remaining)}г`;
+                }
+
+                // Обновление информации о цели и общем калораже для кольца калорий
+                if (isCalorie) {
+                    const calorieGoalInfo = document.getElementById('calorie-goal-info');
+                    if (calorieGoalInfo) {
+                        calorieGoalInfo.textContent = `ЦЕЛЬ: ${Math.round(goal)}`;
+                    }
+                }
             }
 
-            updateRing('calorie-ring');
+            updateRing('calorie-ring', true);
             updateRing('protein-ring');
             updateRing('fat-ring');
             updateRing('carbs-ring');
