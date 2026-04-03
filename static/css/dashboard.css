@@ -27,7 +27,7 @@ body {
     /* padding-top: env(safe-area-inset-top); */ /* Удалено */
 }
 
-.main-container { padding: 15px 15px 100px 15px; max-width: 480px; margin: 0 auto; box-sizing: border-box; }
+.main-container { padding: 15px 15px 15px 15px; max-width: 480px; margin: 0 auto; box-sizing: border-box; }
 
 /* --- Header --- */
 .dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
