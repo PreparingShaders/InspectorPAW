@@ -36,7 +36,7 @@
             color: white;
             /* Футуристический гротеск без засечек */
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            overflow: hidden; /* Важно для предотвращения случайного скролла */
+            /* overflow: hidden; */ /* Удалено, чтобы не мешать отступам */
         }
         /* Улучшенный Glassmorphism с градиентом и тонкой обводкой */
         .glassmorphism {
@@ -90,8 +90,8 @@
 </head>
 <body class="h-full flex flex-col">
 
-    <header class="text-center pt-6 pb-2">
-        <h1 class="text-4xl font-extrabold tracking-wider">ProgressLab</h1>
+    <header class="text-center pb-2" style="padding-top: calc(2.5rem + env(safe-area-inset-top));">
+        <h1 class="text-3xl font-extrabold tracking-wider">ProgressLab</h1>
         <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
@@ -99,7 +99,7 @@
     <main class="flex-grow flex flex-col items-center justify-center px-4 space-y-6 pb-24">
 
         <!-- 1. Центральное кольцо калорий (Conic Gradient) -->
-        <div class="ring-container w-4/5 max-w-xs aspect-square neon-glow-amber">
+        <div class="ring-container w-3/4 max-w-xs aspect-square neon-glow-amber">
             <div id="calorie-ring" class="progress-ring relative aspect-square"
                  data-goal="0" data-consumed="0" data-color="var(--color-amber)" data-bg-color="var(--bg-ring-amber)">
                 <!-- Внутренняя часть для создания "дырки" бублика -->
@@ -107,7 +107,7 @@
                 <!-- Текст -->
                 <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
                     <span class="calorie-label">КАЛОРИИ</span>
-                    <span id="calories-consumed" class="text-7xl font-extrabold" style="color: var(--color-amber);">0</span>
+                    <span id="calories-consumed" class="text-6xl font-extrabold" style="color: var(--color-amber);">0</span>
                     <span class="label-text -mt-2">ПОТРЕБЛЕНО ККАЛ</span>
                     <span class="calorie-goal-text" id="calorie-goal-info"></span>
                 </div>
@@ -118,12 +118,12 @@
         <div class="flex justify-around w-full max-w-lg space-x-4">
             <!-- Белки -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-32 aspect-square neon-glow-protein-white">
+                <div class="ring-container w-24 aspect-square neon-glow-protein-white">
                     <div id="protein-ring" class="progress-ring relative aspect-square"
                          data-goal="0" data-consumed="0" data-color="var(--color-protein-white)" data-bg-color="var(--bg-ring-protein-white)">
                         <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="protein-consumed" class="font-bold text-3xl" style="color: var(--color-protein-white);">0г</span>
+                            <span id="protein-consumed" class="font-bold text-2xl" style="color: var(--color-protein-white);">0г</span>
                             <span class="label-text -mt-1">потреблено</span>
                         </div>
                     </div>
@@ -133,12 +133,12 @@
             </div>
             <!-- Жиры -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-32 aspect-square neon-glow-golden-orange">
+                <div class="ring-container w-24 aspect-square neon-glow-golden-orange">
                     <div id="fat-ring" class="progress-ring relative aspect-square"
                          data-goal="0" data-consumed="0" data-color="var(--color-golden-orange)" data-bg-color="var(--bg-ring-golden-orange)">
                         <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="fat-consumed" class="font-bold text-3xl" style="color: var(--color-golden-orange);">0г</span>
+                            <span id="fat-consumed" class="font-bold text-2xl" style="color: var(--color-golden-orange);">0г</span>
                             <span class="label-text -mt-1">потреблено</span>
                         </div>
                     </div>
@@ -148,12 +148,12 @@
             </div>
             <!-- Углеводы -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-32 aspect-square neon-glow-muted-teal">
+                <div class="ring-container w-24 aspect-square neon-glow-muted-teal">
                     <div id="carbs-ring" class="progress-ring relative aspect-square"
                          data-goal="0" data-consumed="0" data-color="var(--color-muted-teal)" data-bg-color="var(--bg-ring-muted-teal)">
                         <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="carbs-consumed" class="font-bold text-3xl" style="color: var(--color-muted-teal);">0г</span>
+                            <span id="carbs-consumed" class="font-bold text-2xl" style="color: var(--color-muted-teal);">0г</span>
                             <span class="label-text -mt-1">потреблено</span>
                         </div>
                     </div>
@@ -183,25 +183,8 @@
         </div>
     </main>
 
-    <!-- 5. Нижняя навигация (Tab Bar) -->
-    <nav class="glassmorphism fixed bottom-0 left-0 right-0 h-20 flex justify-around items-center neon-glow-pantone-gray">
-        <a href="/dashboard" class="text-center" style="color: var(--color-amber);">
-            <svg class="w-7 h-7 mx-auto" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
-            <span class="label-text" style="color: var(--color-amber);">Дашборд</span>
-        </a>
-        <a href="#" class="text-center" style="color: var(--color-inactive-icon);">
-            <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            <span class="label-text" style="color: var(--color-inactive-icon);">Тренировки</span>
-        </a>
-        <a href="#" class="text-center" style="color: var(--color-inactive-icon);">
-             <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-14v4m-2-2h4m5 10v4m-2-2h4M5 3a2 2 0 00-2 2v1m14-3a2 2 0 012 2v1m-16 8a2 2 0 002 2h1m14 0a2 2 0 01-2 2h-1m-4-4a3 3 0 00-3-3h-2a3 3 0 00-3 3v2a3 3 0 003 3h2a3 3 0 003-3v-2z"></path></svg>
-            <span class="label-text" style="color: var(--color-inactive-icon);">Питание</span>
-        </a>
-        <a href="/profile" class="text-center" style="color: var(--color-inactive-icon);">
-            <svg class="w-7 h-7 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-            <span class="label-text" style="color: var(--color-inactive-icon);">Профиль</span>
-        </a>
-    </nav>
+    {% set active_page = 'dashboard' %}
+    {% include 'includes/bottom_nav.html' %}
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
