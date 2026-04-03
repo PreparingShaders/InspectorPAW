@@ -81,6 +81,17 @@ class StatsSummary(BaseModel):
     start_date: date
     end_date: date
 
+# --- Dashboard Stats Schema ---
+class DashboardStats(BaseModel):
+    target_calories: float
+    target_protein: float
+    target_fat: float
+    target_carbohydrates: float
+    consumed_calories: float
+    consumed_protein: float
+    consumed_fat: float
+    consumed_carbohydrates: float
+
 # --- Meal Totals Schema (для передачи КБЖУ) ---
 class MealTotals(BaseModel):
     total_calories: float = 0

@@ -91,7 +91,7 @@ async def call_ai_model(file_content: Optional[bytes], description: Optional[str
                 content_parts = []
                 if file_content:
                     img = Image.open(io.BytesIO(file_content))
-                    content_parts.append(img)
+                    content_parts.append(full_prompt)
                 full_prompt = f"{prompt}\nДополнительное описание: {description}" if description else prompt
                 content_parts.append(full_prompt)
                 # Используем asyncio.to_thread для синхронного вызова в асинхронной функции
@@ -334,15 +334,6 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
         # Преобразуем current_date в строку для поиска в карте
         consumed = consumption_map.get(str(current_date))
 
-        if i == 0:  # Log for today's data
-            print(f"DEBUG: get_weekly_summary - Today's date ({current_date}), consumed data: {consumed}")  # LOG
-
-        status = "no_data"
-        consumed_calories = 0
-        consumed_protein = 0
-        consumed_fat = 0
-        consumed_carbohydrates = 0
-
         if consumed:
             days_with_data += 1
             consumed_calories = consumed["total_calories"]
@@ -361,6 +352,8 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
                 status = "over_limit"
             else:
                 status = "under_limit"
+        else:
+            status = "no_data" # Ensure status is set even if no consumption
 
         daily_breakdown.append(schemas.DailyStatDetail(
             date=current_date,
@@ -388,4 +381,45 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
     return schemas.WeeklySummaryResponse(
         daily_breakdown=daily_breakdown,
         period_summary=period_summary
+    )
+
+
+@app.get("/users/me/dashboard-stats", response_model=schemas.DashboardStats)
+async def get_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    today = date.today()
+    
+    # Получаем цели пользователя
+    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
+    latest_weight = latest_metric.weight_kg if latest_metric else None
+    latest_body_fat = latest_metric.body_fat_percentage if latest_metric else None
+    targets = utils.calculate_user_targets(current_user, latest_weight, latest_body_fat)
+
+    # Получаем потребление за сегодня
+    today_stats = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=today, end_date=today)
+    
+    consumed_calories = 0
+    consumed_protein = 0
+    consumed_fat = 0
+    consumed_carbohydrates = 0
+
+    if today_stats:
+        # crud.get_daily_stats_for_period возвращает список словарей, берем первый (и единственный) элемент
+        day_data = today_stats[0] 
+        consumed_calories = day_data['total_calories']
+        consumed_protein = day_data['total_protein']
+        consumed_fat = day_data['total_fat']
+        consumed_carbohydrates = day_data['total_carbohydrates']
+
+    return schemas.DashboardStats(
+        target_calories=targets["target_calories"],
+        target_protein=targets["target_protein"],
+        target_fat=targets["target_fat"],
+        target_carbohydrates=targets["target_carbohydrates"],
+        consumed_calories=consumed_calories,
+        consumed_protein=consumed_protein,
+        consumed_fat=consumed_fat,
+        consumed_carbohydrates=consumed_carbohydrates,
     )

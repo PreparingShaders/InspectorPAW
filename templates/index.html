@@ -101,14 +101,14 @@
         <!-- 1. Центральное кольцо калорий (Conic Gradient) -->
         <div class="ring-container w-4/5 max-w-xs aspect-square neon-glow-amber">
             <div id="calorie-ring" class="progress-ring relative aspect-square"
-                 data-goal="2400" data-remaining="810" data-color="var(--color-amber)" data-bg-color="var(--bg-ring-amber)">
+                 data-goal="0" data-consumed="0" data-color="var(--color-amber)" data-bg-color="var(--bg-ring-amber)">
                 <!-- Внутренняя часть для создания "дырки" бублика -->
                 <div class="absolute inset-[10px] bg-[#0F0F10] rounded-full"></div>
                 <!-- Текст -->
                 <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
                     <span class="calorie-label">КАЛОРИИ</span>
-                    <span class="text-7xl font-extrabold" style="color: var(--color-amber);">810</span>
-                    <span class="label-text -mt-2">ОСТАЛОСЬ ККАЛ</span>
+                    <span id="calories-consumed" class="text-7xl font-extrabold" style="color: var(--color-amber);">0</span>
+                    <span class="label-text -mt-2">ПОТРЕБЛЕНО ККАЛ</span>
                     <span class="calorie-goal-text" id="calorie-goal-info"></span>
                 </div>
             </div>
@@ -120,46 +120,46 @@
             <div class="text-center flex flex-col items-center space-y-2">
                 <div class="ring-container w-32 aspect-square neon-glow-protein-white">
                     <div id="protein-ring" class="progress-ring relative aspect-square"
-                         data-goal="120" data-remaining="50" data-color="var(--color-protein-white)" data-bg-color="var(--bg-ring-protein-white)">
+                         data-goal="0" data-consumed="0" data-color="var(--color-protein-white)" data-bg-color="var(--bg-ring-protein-white)">
                         <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="font-bold text-3xl" style="color: var(--color-protein-white);">50г</span>
-                            <span class="label-text -mt-1">осталось</span>
+                            <span id="protein-consumed" class="font-bold text-3xl" style="color: var(--color-protein-white);">0г</span>
+                            <span class="label-text -mt-1">потреблено</span>
                         </div>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-protein-white);">Белки</p>
-                <p class="macro-goal-value -mt-1.5">120г</p>
+                <p id="protein-goal" class="macro-goal-value -mt-1.5">0г</p>
             </div>
             <!-- Жиры -->
             <div class="text-center flex flex-col items-center space-y-2">
                 <div class="ring-container w-32 aspect-square neon-glow-golden-orange">
                     <div id="fat-ring" class="progress-ring relative aspect-square"
-                         data-goal="70" data-remaining="30" data-color="var(--color-golden-orange)" data-bg-color="var(--bg-ring-golden-orange)">
+                         data-goal="0" data-consumed="0" data-color="var(--color-golden-orange)" data-bg-color="var(--bg-ring-golden-orange)">
                         <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="font-bold text-3xl" style="color: var(--color-golden-orange);">30г</span>
-                            <span class="label-text -mt-1">осталось</span>
+                            <span id="fat-consumed" class="font-bold text-3xl" style="color: var(--color-golden-orange);">0г</span>
+                            <span class="label-text -mt-1">потреблено</span>
                         </div>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-golden-orange);">Жиры</p>
-                <p class="macro-goal-value -mt-1.5">70г</p>
+                <p id="fat-goal" class="macro-goal-value -mt-1.5">0г</p>
             </div>
             <!-- Углеводы -->
             <div class="text-center flex flex-col items-center space-y-2">
                 <div class="ring-container w-32 aspect-square neon-glow-muted-teal">
                     <div id="carbs-ring" class="progress-ring relative aspect-square"
-                         data-goal="300" data-remaining="150" data-color="var(--color-muted-teal)" data-bg-color="var(--bg-ring-muted-teal)">
+                         data-goal="0" data-consumed="0" data-color="var(--color-muted-teal)" data-bg-color="var(--bg-ring-muted-teal)">
                         <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="font-bold text-3xl" style="color: var(--color-muted-teal);">150г</span>
-                            <span class="label-text -mt-1">осталось</span>
+                            <span id="carbs-consumed" class="font-bold text-3xl" style="color: var(--color-muted-teal);">0г</span>
+                            <span class="label-text -mt-1">потреблено</span>
                         </div>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-muted-teal);">Углеводы</p>
-                <p class="macro-goal-value -mt-1.5">300г</p>
+                <p id="carbs-goal" class="macro-goal-value -mt-1.5">0г</p>
             </div>
         </div>
 
@@ -205,12 +205,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            function updateRing(elementId, isCalorie = false) {
+            function updateRing(elementId) {
                 const ring = document.getElementById(elementId);
                 if (!ring) return;
 
                 const goal = parseFloat(ring.dataset.goal);
-                const remaining = parseFloat(ring.dataset.remaining);
+                const consumed = parseFloat(ring.dataset.consumed); // Используем consumed
                 const color = ring.dataset.color;
                 const bgColor = ring.dataset.bgColor;
 
@@ -219,31 +219,67 @@
                     return;
                 }
 
-                const consumed = goal - remaining;
                 const percentage = Math.min(Math.max(consumed / goal, 0), 1);
                 const degree = percentage * 360;
 
                 ring.style.background = `conic-gradient(${color} ${degree}deg, ${bgColor} ${degree}deg)`;
+            }
 
-                // Обновление текста с суффиксом
-                const valueSpan = ring.querySelector('span:nth-child(2)'); // Теперь это второе span
-                if (valueSpan) {
-                    valueSpan.textContent = isCalorie ? `${Math.round(remaining)}` : `${Math.round(remaining)}г`;
-                }
+            async function fetchDashboardData() {
+                try {
+                    const response = await fetch('/users/me/dashboard-stats', {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                        }
+                    });
 
-                // Обновление информации о цели и общем калораже для кольца калорий
-                if (isCalorie) {
-                    const calorieGoalInfo = document.getElementById('calorie-goal-info');
-                    if (calorieGoalInfo) {
-                        calorieGoalInfo.textContent = `ЦЕЛЬ: ${Math.round(goal)}`;
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            window.location.href = '/';
+                        }
+                        throw new Error('Failed to fetch dashboard data');
                     }
+
+                    const data = await response.json();
+
+                    // Калории
+                    const caloriesRing = document.getElementById('calorie-ring');
+                    caloriesRing.dataset.goal = data.target_calories;
+                    caloriesRing.dataset.consumed = data.consumed_calories;
+                    document.getElementById('calories-consumed').textContent = Math.round(data.consumed_calories);
+                    document.getElementById('calorie-goal-info').textContent = `ЦЕЛЬ: ${Math.round(data.target_calories)}`;
+                    updateRing('calorie-ring');
+
+                    // Белки
+                    const proteinRing = document.getElementById('protein-ring');
+                    proteinRing.dataset.goal = data.target_protein;
+                    proteinRing.dataset.consumed = data.consumed_protein;
+                    document.getElementById('protein-consumed').textContent = `${Math.round(data.consumed_protein)}г`;
+                    document.getElementById('protein-goal').textContent = `${Math.round(data.target_protein)}г`;
+                    updateRing('protein-ring');
+
+                    // Жиры
+                    const fatRing = document.getElementById('fat-ring');
+                    fatRing.dataset.goal = data.target_fat;
+                    fatRing.dataset.consumed = data.consumed_fat;
+                    document.getElementById('fat-consumed').textContent = `${Math.round(data.consumed_fat)}г`;
+                    document.getElementById('fat-goal').textContent = `${Math.round(data.target_fat)}г`;
+                    updateRing('fat-ring');
+
+                    // Углеводы
+                    const carbsRing = document.getElementById('carbs-ring');
+                    carbsRing.dataset.goal = data.target_carbohydrates;
+                    carbsRing.dataset.consumed = data.consumed_carbohydrates;
+                    document.getElementById('carbs-consumed').textContent = `${Math.round(data.consumed_carbohydrates)}г`;
+                    document.getElementById('carbs-goal').textContent = `${Math.round(data.target_carbohydrates)}г`;
+                    updateRing('carbs-ring');
+
+                } catch (error) {
+                    console.error('Error fetching dashboard data:', error);
                 }
             }
 
-            updateRing('calorie-ring', true);
-            updateRing('protein-ring');
-            updateRing('fat-ring');
-            updateRing('carbs-ring');
+            fetchDashboardData();
         });
     </script>
 
