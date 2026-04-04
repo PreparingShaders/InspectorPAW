@@ -15,8 +15,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const confirmForm = document.getElementById('confirm-form');
     const errorMessageDiv = document.getElementById('error-message');
     const uploadButtonLabel = document.querySelector('.upload-button-label');
+    const mealLogsContainer = document.getElementById('meal-logs-container');
 
-    // --- Функция обновления SVG-колец ---
+    // --- Функция обновления SVG-колец (для верхнего блока) ---
     function updateRing(ringId, value, maxValue) {
         const ring = document.getElementById(ringId);
         if (!ring) return;
@@ -46,14 +47,61 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!response.ok) throw new Error('Could not fetch average stats.');
 
             const stats = await response.json();
-
             updateRing('avg-calories-ring', stats.avg_calories, stats.target_calories);
             updateRing('avg-protein-ring', stats.avg_protein, stats.target_protein);
             updateRing('avg-fat-ring', stats.avg_fat, stats.target_fat);
             updateRing('avg-carbs-ring', stats.avg_carbohydrates, stats.target_carbohydrates);
-
         } catch (error) {
             console.error("Error fetching average stats:", error);
+        }
+    }
+
+    // --- Загрузка и отображение логов за сегодня (УПРОЩЕННАЯ ВЕРСИЯ) ---
+    async function fetchAndDisplayTodayMeals() {
+        try {
+            const response = await fetch('/meals/today', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Could not fetch today\'s meals.');
+
+            const meals = await response.json();
+            mealLogsContainer.innerHTML = ''; // Всегда очищаем контейнер
+
+            if (meals.length === 0) {
+                mealLogsContainer.innerHTML = `<p class="text-center text-gray-500 mt-4">Записей о приемах пищи за сегодня еще нет.</p>`;
+                return;
+            }
+
+            const mealTypeTranslations = {
+                breakfast: 'Завтрак',
+                lunch: 'Обед',
+                dinner: 'Ужин',
+                snack: 'Перекус'
+            };
+
+            meals.forEach(meal => {
+                const mealType = mealTypeTranslations[meal.meal_type] || 'Прием пищи';
+
+                const card = document.createElement('div');
+                // Стили для карточки
+                card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray';
+
+                // Простое и надежное отображение данных
+                card.innerHTML = `
+                    <h4 class="text-lg font-semibold text-center mb-3">${mealType}</h4>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <span>Калории:</span><span class="text-right font-bold">${Math.round(meal.total_calories)} ккал</span>
+                        <span>Белки:</span><span class="text-right font-bold">${Math.round(meal.total_protein)} г</span>
+                        <span>Жиры:</span><span class="text-right font-bold">${Math.round(meal.total_fat)} г</span>
+                        <span>Углеводы:</span><span class="text-right font-bold">${Math.round(meal.total_carbohydrates)} г</span>
+                    </div>
+                `;
+                mealLogsContainer.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error("Error fetching today's meals:", error);
+            mealLogsContainer.innerHTML = `<p class="text-center text-red-500 mt-4">Не удалось загрузить историю приемов пищи.</p>`;
         }
     }
 
@@ -173,6 +221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error(errorData.detail || 'Ошибка добавления приема пищи.');
             }
 
+            // Возвращаем редирект на дашборд
             window.location.href = '/dashboard';
 
         } catch (error) {
@@ -184,5 +233,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- Инициализация страницы ---
-    fetchAndDisplayAverageStats();
+    await fetchAndDisplayAverageStats();
+    await fetchAndDisplayTodayMeals();
 });

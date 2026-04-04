@@ -14,9 +14,9 @@
         <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
-    <!-- Блок со средними показателями за 21 день -->
+    <!-- Блок со средними показателями -->
     <div id="average-stats" class="px-4 pt-4">
-        <h3 class="text-lg font-semibold text-center mb-4">Среднее за 21 день</h3>
+        <h3 class="text-lg font-semibold text-center mb-4">Средние данные</h3>
         <div class="flex justify-around w-full">
             <!-- Калории -->
             <div class="text-center flex flex-col items-center space-y-1">
@@ -74,9 +74,9 @@
     </div>
 
     <main class="flex-grow flex flex-col items-center px-4 space-y-6 pb-24">
-        <!-- Форма для анализа, растягивающаяся на всю высоту -->
-        <section class="ai-section w-full max-w-sm flex-grow flex flex-col">
-            <form id="analyze-form" class="flex flex-col h-full">
+        <!-- Форма для анализа -->
+        <section class="ai-section w-full max-w-sm">
+            <form id="analyze-form">
                 <div>
                     <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">
                         Добавить фото
@@ -89,7 +89,7 @@
                     </div>
                 </div>
 
-                <div class="mt-auto pt-16">
+                <div class="mt-4">
                     <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button">
                         Анализировать
                     </button>
@@ -145,6 +145,11 @@
                 <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4" id="confirm-button">Сохранить</button>
             </form>
         </section>
+
+        <!-- Контейнер для логов приемов пищи -->
+        <div id="meal-logs-container" class="w-full max-w-sm space-y-4">
+            <!-- Сюда будут добавляться логи -->
+        </div>
 
         <div id="error-message" class="text-red-500 text-center mt-4"></div>
     </main>
