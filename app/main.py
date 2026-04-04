@@ -8,6 +8,7 @@ import google.genai as genai
 from openai import AsyncOpenAI
 from PIL import Image
 
+from datetime import timedelta, date, datetime, timezone
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
@@ -422,35 +423,55 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
         period_summary=period_summary
     )
 
+# ... existing code ...
 
 @app.get("/users/me/dashboard-stats", response_model=schemas.DashboardStats)
 async def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    today = date.today()
-    
-    # Получаем цели пользователя
+    # 1. Устанавливаем часовой пояс МСК (UTC+3)
+    msk_tz = timezone(timedelta(hours=3))
+    now_msk = datetime.now(msk_tz)
+
+    # 2. Границы сегодняшнего дня по МСК в UTC для запроса к БД
+    start_msk = now_msk.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_msk = start_msk + timedelta(days=1)
+    start_utc = start_msk.astimezone(timezone.utc)
+    end_utc = end_msk.astimezone(timezone.utc)
+
+    today_msk_str = now_msk.strftime("%Y-%m-%d")
+    print(f"\n[DEBUG] Текущее время по МСК: {now_msk}")
+    print(f"[DEBUG] Ищем записи между (UTC): {start_utc} и {end_utc}")
+
+    # 3. Запрос к базе с явным диапазоном timestamp
+    meals = (
+        db.query(models.Meal)
+        .filter(
+            models.Meal.user_id == current_user.id,
+            models.Meal.timestamp >= start_utc,
+            models.Meal.timestamp < end_utc
+        )
+        .all()
+    )
+
+    print(f"[DEBUG] Найдено записей в базе: {len(meals)}")
+    if meals:
+        print(f"[DEBUG] Пример timestamp: {meals[0].timestamp} | калории: {meals[0].total_calories}")
+
+    # 4. Считаем суммы
+    consumed_calories = sum(m.total_calories or 0 for m in meals)
+    consumed_protein = sum(m.total_protein or 0 for m in meals)
+    consumed_fat = sum(m.total_fat or 0 for m in meals)
+    consumed_carbohydrates = sum(m.total_carbohydrates or 0 for m in meals)
+
+    print(f"[DEBUG] Суммируем: calories={consumed_calories}, protein={consumed_protein}")
+
+    # 5. Таргеты
     latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
     latest_weight = latest_metric.weight_kg if latest_metric else None
     latest_body_fat = latest_metric.body_fat_percentage if latest_metric else None
     targets = utils.calculate_user_targets(current_user, latest_weight, latest_body_fat)
-
-    # Получаем потребление за сегодня
-    today_stats = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=today, end_date=today)
-    
-    consumed_calories = 0
-    consumed_protein = 0
-    consumed_fat = 0
-    consumed_carbohydrates = 0
-
-    if today_stats:
-        # crud.get_daily_stats_for_period возвращает список словарей, берем первый (и единственный) элемент
-        day_data = today_stats[0] 
-        consumed_calories = day_data['total_calories']
-        consumed_protein = day_data['total_protein']
-        consumed_fat = day_data['total_fat']
-        consumed_carbohydrates = day_data['total_carbohydrates']
 
     return schemas.DashboardStats(
         target_calories=targets["target_calories"],
