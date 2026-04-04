@@ -4,23 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Добавить прием пищи - ProgressLab</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body class="h-full flex flex-col">
 
-    <div class="main-container flex-grow flex flex-col items-center justify-center px-4 pb-24">
-        <!-- Шапка -->
-        <header class="dashboard-header">
-            <h1 class="user-name">Добавить прием пищи</h1>
-        </header>
+    <header class="text-center pb-2" style="padding-top: calc(2.5rem + env(safe-area-inset-top));">
+        <h1 class="text-3xl font-extrabold tracking-wider">Добавить прием пищи</h1>
+    </header>
 
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
         <!-- Форма для анализа -->
-        <section class="ai-section">
+        <section class="ai-section w-full max-w-sm">
             <form id="analyze-form">
-
-                <!-- Новая кнопка для загрузки фото -->
-                <label for="meal-image" class="upload-button-label">
+                <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">
                     Добавить фото
                 </label>
                 <input type="file" id="meal-image" accept="image/*" class="upload-input">
@@ -30,17 +27,16 @@
                     <textarea id="meal-description" rows="3" placeholder="Например: 'Большая порция гречки с куриной грудкой'"></textarea>
                 </div>
 
-                <!-- Кнопка "Анализировать" теперь будет прозрачной с контуром -->
-                <button type="submit" class="analyze-meal-button transparent" id="analyze-button">
+                <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4" id="analyze-button">
                     Анализировать
                 </button>
             </form>
         </section>
 
         <!-- Секция с результатами (изначально скрыта) -->
-        <section id="results-section" class="ai-section" style="display: none;">
+        <section id="results-section" class="ai-section w-full max-w-sm" style="display: none;">
             <h3 class="section-title">Результаты анализа</h3>
-            <div id="ai-response-text" class="last-analysis-result"></div>
+            <div id="ai-response-text" class="p-4 bg-gray-800 rounded-lg my-4"></div>
 
             <form id="confirm-form">
                 <div class="form-group">
@@ -53,7 +49,6 @@
                     </select>
                 </div>
 
-                <!-- Новые слайдеры -->
                 <div class="slider-group">
                     <label for="calories">Калории</label>
                     <div class="slider-wrapper">
@@ -83,12 +78,12 @@
                     </div>
                 </div>
 
-                <button type="submit" class="analyze-meal-button transparent" id="confirm-button">Сохранить</button>
+                <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4" id="confirm-button">Сохранить</button>
             </form>
         </section>
 
-        <div id="error-message" class="error-message" style="text-align: center; margin-top: 20px;"></div>
-    </div>
+        <div id="error-message" class="text-red-500 text-center mt-4"></div>
+    </main>
 
     {% set active_page = 'nutrition' %}
     {% include 'includes/bottom_nav.html' %}

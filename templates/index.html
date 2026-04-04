@@ -10,83 +10,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png">
-
-    <style>
-        /* Обновленные CSS переменные для новой палитры */
-        :root {
-            --color-amber: #F5E1B0; /* Энергия/Калории */
-            --color-protein-white: #FFFFFF; /* Белки */
-            --color-golden-orange: #E2A35D; /* Жиры */
-            --color-muted-teal: #569DAA; /* Углеводы */
-            --color-pantone-gray: #E0E0E0; /* Для кнопки и навигации */
-            --color-inactive-icon: rgba(255, 255, 255, 0.4); /* Для неактивных иконок */
-
-            /* Фоновые цвета для колец прогресса (с прозрачностью) */
-            --bg-ring-amber: rgba(245, 225, 176, 0.1);
-            --bg-ring-protein-white: rgba(255, 255, 255, 0.1);
-            --bg-ring-golden-orange: rgba(226, 163, 93, 0.1);
-            --bg-ring-muted-teal: rgba(86, 157, 170, 0.1);
-        }
-        body {
-            background-color: #0F0F10; /* Глубокий антрацит */
-            color: white;
-            /* Футуристический гротеск без засечек */
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            overflow-y: auto;
-        }
-        /* Улучшенный Glassmorphism с градиентом и тонкой обводкой */
-        .glassmorphism {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-            -webkit-backdrop-filter: blur(16px);
-            backdrop-filter: blur(16px);
-            /* Границы будут заданы через neon-glow-border классы */
-        }
-        /* Новые классы для четких неоновых границ с свечением */
-        .neon-glow-amber { box-shadow: 0 0 10px 2px var(--color-amber); border: 1px solid var(--color-amber); }
-        .neon-glow-protein-white { box-shadow: 0 0 10px 2px var(--color-protein-white); border: 1px solid var(--color-protein-white); }
-        .neon-glow-golden-orange { box-shadow: 0 0 10px 2px var(--color-golden-orange); border: 1px solid var(--color-golden-orange); }
-        .neon-glow-muted-teal { box-shadow: 0 0 10px 2px var(--color-muted-teal); border: 1px solid var(--color-muted-teal); }
-        .neon-glow-pantone-gray { box-shadow: 0 0 10px 2px var(--color-pantone-gray); border: 1px solid var(--color-pantone-gray); }
-
-
-        /* Стиль для контейнера кольца, чтобы свечение не обрезалось */
-        .ring-container {
-            border-radius: 50%; /* Делаем контейнер круглым */
-        }
-        /* Стиль для самого кольца на conic-gradient */
-        .progress-ring {
-            border-radius: 50%;
-            transition: background 0.8s ease-out;
-        }
-        /* Стили для типографики */
-        .label-text {
-            font-size: 0.75rem; /* text-xs */
-            text-transform: uppercase;
-            letter-spacing: 0.05em; /* tracking-wider */
-            color: rgba(255, 255, 255, 0.6); /* Приглушенный серый для подписей */
-        }
-        .calorie-label {
-            font-size: 1rem; /* Увеличенный размер для "КАЛОРИИ" */
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 4px;
-        }
-        .calorie-goal-text {
-            font-size: 0.85rem; /* Размер для цели и общего калоража */
-            color: rgba(255, 255, 255, 0.7);
-            margin-top: 4px;
-        }
-        /* Увеличенный шрифт для меток макросов */
-        .macro-goal-value {
-            font-size: 0.95rem; /* Slightly larger than label-text */
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.8);
-        }
-    </style>
 </head>
 <body class="h-full flex flex-col">
 
@@ -95,37 +24,34 @@
         <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
-    <!-- Основной контент с уплотненной композицией -->
     <main class="flex-grow flex flex-col items-center justify-center px-4 space-y-6 pb-24">
 
-        <!-- 1. Центральное кольцо калорий (Conic Gradient) -->
-        <div class="ring-container w-3/4 max-w-xs aspect-square neon-glow-amber">
-            <div id="calorie-ring" class="progress-ring relative aspect-square"
-                 data-goal="0" data-consumed="0" data-color="var(--color-amber)" data-bg-color="var(--bg-ring-amber)">
-                <!-- Внутренняя часть для создания "дырки" бублика -->
-                <div class="absolute inset-[10px] bg-[#0F0F10] rounded-full"></div>
-                <!-- Текст -->
-                <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span class="calorie-label">КАЛОРИИ</span>
-                    <span id="calories-consumed" class="text-6xl font-extrabold" style="color: var(--color-amber);">0</span>
-                    <span class="label-text -mt-2">ПОТРЕБЛЕНО ККАЛ</span>
-                    <span class="calorie-goal-text" id="calorie-goal-info"></span>
-                </div>
+        <!-- 1. Центральное кольцо калорий (SVG) -->
+        <div class="ring-container w-3/4 max-w-xs aspect-square neon-glow-amber relative">
+            <svg id="calorie-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span class="calorie-label">КАЛОРИИ</span>
+                <span id="calories-consumed" class="text-6xl font-extrabold" style="color: var(--color-amber);">0</span>
+                <span class="label-text -mt-2">ПОТРЕБЛЕНО ККАЛ</span>
+                <span class="calorie-goal-text" id="calorie-goal-info"></span>
             </div>
         </div>
 
-        <!-- 2. Сетка макронутриентов (Conic Gradient, увеличены) -->
+        <!-- 2. Сетка макронутриентов (SVG) -->
         <div class="flex justify-around w-full max-w-lg space-x-4">
             <!-- Белки -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 aspect-square neon-glow-protein-white">
-                    <div id="protein-ring" class="progress-ring relative aspect-square"
-                         data-goal="0" data-consumed="0" data-color="var(--color-protein-white)" data-bg-color="var(--bg-ring-protein-white)">
-                        <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="protein-consumed" class="font-bold text-2xl" style="color: var(--color-protein-white);">0г</span>
-                            <span class="label-text -mt-1">потреблено</span>
-                        </div>
+                <div class="ring-container w-24 aspect-square neon-glow-protein-white relative">
+                    <svg id="protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="protein-consumed" class="font-bold text-2xl" style="color: var(--color-protein-white);">0г</span>
+                        <span class="label-text -mt-1">потреблено</span>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-protein-white);">Белки</p>
@@ -133,14 +59,14 @@
             </div>
             <!-- Жиры -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 aspect-square neon-glow-golden-orange">
-                    <div id="fat-ring" class="progress-ring relative aspect-square"
-                         data-goal="0" data-consumed="0" data-color="var(--color-golden-orange)" data-bg-color="var(--bg-ring-golden-orange)">
-                        <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="fat-consumed" class="font-bold text-2xl" style="color: var(--color-golden-orange);">0г</span>
-                            <span class="label-text -mt-1">потреблено</span>
-                        </div>
+                <div class="ring-container w-24 aspect-square neon-glow-golden-orange relative">
+                    <svg id="fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="fat-consumed" class="font-bold text-2xl" style="color: var(--color-golden-orange);">0г</span>
+                        <span class="label-text -mt-1">потреблено</span>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-golden-orange);">Жиры</p>
@@ -148,14 +74,14 @@
             </div>
             <!-- Углеводы -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 aspect-square neon-glow-muted-teal">
-                    <div id="carbs-ring" class="progress-ring relative aspect-square"
-                         data-goal="0" data-consumed="0" data-color="var(--color-muted-teal)" data-bg-color="var(--bg-ring-muted-teal)">
-                        <div class="absolute inset-[6px] bg-[#0F0F10] rounded-full"></div>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="carbs-consumed" class="font-bold text-2xl" style="color: var(--color-muted-teal);">0г</span>
-                            <span class="label-text -mt-1">потреблено</span>
-                        </div>
+                <div class="ring-container w-24 aspect-square neon-glow-muted-teal relative">
+                    <svg id="carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="carbs-consumed" class="font-bold text-2xl" style="color: var(--color-muted-teal);">0г</span>
+                        <span class="label-text -mt-1">потреблено</span>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-muted-teal);">Углеводы</p>
@@ -188,74 +114,58 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            function updateRing(elementId) {
-                const ring = document.getElementById(elementId);
+            function updateRing(ringId, consumed, goal) {
+                const ring = document.getElementById(ringId);
                 if (!ring) return;
 
-                const goal = parseFloat(ring.dataset.goal);
-                const consumed = parseFloat(ring.dataset.consumed); // Используем consumed
-                const color = ring.dataset.color;
-                const bgColor = ring.dataset.bgColor;
+                const bar = ring.querySelector('.progress-ring-bar');
+                const radius = bar.r.baseVal.value;
+                const circumference = 2 * Math.PI * radius;
+
+                bar.style.strokeDasharray = `${circumference} ${circumference}`;
 
                 if (goal === 0) {
-                    ring.style.background = bgColor;
+                    bar.style.strokeDashoffset = circumference;
                     return;
                 }
 
                 const percentage = Math.min(Math.max(consumed / goal, 0), 1);
-                const degree = percentage * 360;
-
-                ring.style.background = `conic-gradient(${color} ${degree}deg, ${bgColor} ${degree}deg)`;
+                const offset = circumference - (percentage * circumference);
+                bar.style.strokeDashoffset = offset;
             }
 
             async function fetchDashboardData() {
                 try {
                     const response = await fetch('/users/me/dashboard-stats', {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-                        }
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
                     });
 
                     if (!response.ok) {
-                        if (response.status === 401) {
-                            window.location.href = '/';
-                        }
+                        if (response.status === 401) window.location.href = '/';
                         throw new Error('Failed to fetch dashboard data');
                     }
 
                     const data = await response.json();
 
                     // Калории
-                    const caloriesRing = document.getElementById('calorie-ring');
-                    caloriesRing.dataset.goal = data.target_calories;
-                    caloriesRing.dataset.consumed = data.consumed_calories;
                     document.getElementById('calories-consumed').textContent = Math.round(data.consumed_calories);
                     document.getElementById('calorie-goal-info').textContent = `ЦЕЛЬ: ${Math.round(data.target_calories)}`;
-                    updateRing('calorie-ring');
+                    updateRing('calorie-ring', data.consumed_calories, data.target_calories);
 
                     // Белки
-                    const proteinRing = document.getElementById('protein-ring');
-                    proteinRing.dataset.goal = data.target_protein;
-                    proteinRing.dataset.consumed = data.consumed_protein;
                     document.getElementById('protein-consumed').textContent = `${Math.round(data.consumed_protein)}г`;
                     document.getElementById('protein-goal').textContent = `${Math.round(data.target_protein)}г`;
-                    updateRing('protein-ring');
+                    updateRing('protein-ring', data.consumed_protein, data.target_protein);
 
                     // Жиры
-                    const fatRing = document.getElementById('fat-ring');
-                    fatRing.dataset.goal = data.target_fat;
-                    fatRing.dataset.consumed = data.consumed_fat;
                     document.getElementById('fat-consumed').textContent = `${Math.round(data.consumed_fat)}г`;
                     document.getElementById('fat-goal').textContent = `${Math.round(data.target_fat)}г`;
-                    updateRing('fat-ring');
+                    updateRing('fat-ring', data.consumed_fat, data.target_fat);
 
                     // Углеводы
-                    const carbsRing = document.getElementById('carbs-ring');
-                    carbsRing.dataset.goal = data.target_carbohydrates;
-                    carbsRing.dataset.consumed = data.consumed_carbohydrates;
                     document.getElementById('carbs-consumed').textContent = `${Math.round(data.consumed_carbohydrates)}г`;
                     document.getElementById('carbs-goal').textContent = `${Math.round(data.target_carbohydrates)}г`;
-                    updateRing('carbs-ring');
+                    updateRing('carbs-ring', data.consumed_carbohydrates, data.target_carbohydrates);
 
                 } catch (error) {
                     console.error('Error fetching dashboard data:', error);

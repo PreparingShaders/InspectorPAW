@@ -17,24 +17,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let debounceTimer;
 
-    // --- Функция отображения ---
-    function displayTargets(targets) {
-        // Если данных нет или они нулевые, показываем инструкцию.
-        if (!targets || !targets.target_calories) {
-            targetsDisplay.innerHTML = '<p>Заполните все обязательные поля для расчета.</p>';
-            return;
+    // --- Функция обновления SVG-колец ---
+    function updateRing(ringId, value, maxValue) {
+        const ring = document.getElementById(ringId);
+        if (!ring) return;
+
+        const bar = ring.querySelector('.progress-ring-bar');
+        const radius = bar.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        bar.style.strokeDasharray = `${circumference} ${circumference}`;
+
+        const normalizedValue = maxValue > 0 ? Math.min(value / maxValue, 1) : 0;
+        const offset = circumference - (normalizedValue * circumference);
+        bar.style.strokeDashoffset = offset;
+
+        const valueElementId = ringId.replace('-ring', '-value');
+        const valueElement = document.getElementById(valueElementId);
+        if (valueElement) {
+            valueElement.textContent = Math.round(value);
         }
-        // Иначе, показываем рассчитанные значения.
-        targetsDisplay.innerHTML = `
-            <p><strong>Ваша норма:</strong></p>
-            <span>🔥 ${targets.target_calories} ккал</span>
-            <span>🥩 ${targets.target_protein} г</span>
-            <span>🥑 ${targets.target_fat} г</span>
-            <span>🍞 ${targets.target_carbohydrates} г</span>
-        `;
     }
 
-    // --- Функция пересчета ---
+    // --- Функция пересчета и обновления UI ---
     const recalculateTargets = () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
@@ -50,26 +54,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 goal_intensity: parseFloat(intensitySlider.value)
             };
 
+            if (!requestBody.date_of_birth || !requestBody.gender || !requestBody.height_cm || !requestBody.weight_kg || !requestBody.activity_level || !requestBody.goal) {
+                targetsDisplay.style.display = 'none';
+                return;
+            }
+
             try {
                 const response = await fetch('/users/me/calculate-targets', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(requestBody)
                 });
                 const targets = await response.json();
                 if (!response.ok) {
-                    // Если сервер вернул ошибку, все равно отображаем ее, но в консоль пишем детали
                     console.error('Server Error:', targets);
-                    displayTargets(null);
+                    targetsDisplay.style.display = 'none';
                 } else {
-                    displayTargets(targets);
+                    targetsDisplay.style.display = 'block';
+                    const maxValues = { calories: 4000, protein: 300, fat: 200, carbs: 500 };
+                    updateRing('profile-calories-ring', targets.target_calories, maxValues.calories);
+                    updateRing('profile-protein-ring', targets.target_protein, maxValues.protein);
+                    updateRing('profile-fat-ring', targets.target_fat, maxValues.fat);
+                    updateRing('profile-carbs-ring', targets.target_carbohydrates, maxValues.carbs);
                 }
             } catch (error) {
                 console.error('Fetch Error:', error);
-                displayTargets(null);
+                targetsDisplay.style.display = 'none';
             }
         }, 250);
     };
@@ -80,7 +90,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!response.ok) throw new Error('Could not fetch user data.');
         const user = await response.json();
 
-        // 1. Заполняем все поля формы данными с сервера
         if (user.date_of_birth) document.getElementById('date_of_birth').value = user.date_of_birth;
         if (user.gender) document.getElementById('gender').value = user.gender;
         if (user.height_cm) document.getElementById('height_cm').value = user.height_cm;
@@ -96,13 +105,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (latestMetric.body_fat_percentage) document.getElementById('body_fat_percentage').value = latestMetric.body_fat_percentage;
         }
 
-        // 2. **ГЛАВНОЕ ИЗМЕНЕНИЕ:** После заполнения формы, запускаем единый механизм пересчета.
-        // Это гарантирует, что начальное отображение и последующие пересчеты работают одинаково.
+        updateGoalIntensityUI();
         recalculateTargets();
 
     } catch (error) {
         errorMessage.textContent = `Ошибка загрузки данных: ${error.message}`;
-        displayTargets(null);
+        targetsDisplay.style.display = 'none';
     }
 
     // --- Слушатели событий ---
@@ -122,9 +130,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Отправка формы ---
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        // ... (код отправки формы остается без изменений)
         errorMessage.textContent = '';
         successMessage.textContent = '';
+
         const userUpdateData = {
             date_of_birth: document.getElementById('date_of_birth').value,
             gender: document.getElementById('gender').value,
@@ -138,6 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             weight_kg: parseFloat(document.getElementById('weight_kg').value),
             body_fat_percentage: !isNaN(bodyFatValue) && bodyFatValue > 0 ? bodyFatValue : null
         };
+
         try {
             const userUpdateResponse = await fetch('/users/me/', {
                 method: 'PUT',
@@ -155,6 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             successMessage.textContent = 'Профиль успешно сохранен!';
             setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+
         } catch (error) {
             errorMessage.textContent = error.message;
         }

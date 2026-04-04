@@ -36,11 +36,11 @@ class Settings(BaseSettings):
     @property
     def NUTRITION_MODELS(self) -> List[str]:
         return [
+            'gemini-2.5-flash',
             'gemini-3.1-flash-lite-preview',
             'gemini-2.5-flash-lite',
             'gemini-2.5-flash-image',
             'gemini-3.1-flash-image-preview',
-            'gemini-2.5-flash',
             'gemini-2.0-flash',
             'openai/gpt-5-nano',
             'google/gemini-2.5-flash-lite',

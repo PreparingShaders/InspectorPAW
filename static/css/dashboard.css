@@ -1,172 +1,166 @@
-/* === DASHBOARD-ONLY STYLES === */
+/* === UNIFIED STYLES === */
 
 :root {
-    --dashboard-bg: #121212;
-    --dashboard-text: #E0E0E0; /* PANTONE 11-4201 */
-    --text-secondary: #B0B8C4;
+    /* Основная палитра */
+    --color-amber: #F5E1B0;
+    --color-protein-white: #FFFFFF;
+    --color-golden-orange: #E2A35D;
+    --color-muted-teal: #569DAA;
+    --color-pantone-gray: #E0E0E0;
+    --color-inactive-icon: rgba(255, 255, 255, 0.4);
+
+    /* Фоны для колец */
+    --bg-ring-amber: rgba(245, 225, 176, 0.1);
+    --bg-ring-protein-white: rgba(255, 255, 255, 0.1);
+    --bg-ring-golden-orange: rgba(226, 163, 93, 0.1);
+    --bg-ring-muted-teal: rgba(86, 157, 170, 0.1);
+
+    /* Переменные для форм и текста */
     --container-bg: #1C1C1E;
     --border-color: #333333;
-
-    /* Neon Colors */
-    --calories-color: #FFB700;
-    --protein-color: #9D00FF;
-    --carbs-color: #05FF00;
-    --fat-color: #00A3FF;
-    --color-amber: #F5E1B0;
-    --color-pantone-gray: #E0E0E0;
+    --text-secondary: #B0B8C4;
 }
 
-/* --- General Body & Layout --- */
+/* --- Общие стили макета --- */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--dashboard-bg);
-    color: var(--dashboard-text);
+    background-color: #0F0F10;
+    color: white;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow-y: auto;
     margin: 0;
     padding: 0;
-    overflow-x: hidden;
-    /* padding-top: env(safe-area-inset-top); */ /* Удалено */
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
-.main-container { padding: 15px 15px 15px 15px; max-width: 480px; margin: 0 auto; box-sizing: border-box; }
+/* --- Анимация свечения --- */
+@keyframes neon-pulse-amber { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-amber); } 50% { box-shadow: 0 0 18px 3px var(--color-amber); } }
+@keyframes neon-pulse-protein { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-protein-white); } 50% { box-shadow: 0 0 18px 3px var(--color-protein-white); } }
+@keyframes neon-pulse-orange { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-golden-orange); } 50% { box-shadow: 0 0 18px 3px var(--color-golden-orange); } }
+@keyframes neon-pulse-teal { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-muted-teal); } 50% { box-shadow: 0 0 18px 3px var(--color-muted-teal); } }
+@keyframes neon-pulse-gray { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-pantone-gray); } 50% { box-shadow: 0 0 18px 3px var(--color-pantone-gray); } }
 
-/* --- Header --- */
-.dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
-.user-info { display: flex; align-items: center; gap: 12px; }
-.avatar { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--protein-color); }
-.user-name { font-size: 24px; font-weight: 600; margin: 0; }
-.page-title { font-size: 16px; font-weight: 500; color: var(--text-secondary); margin: 0; }
-
-/* --- KPI & Rings Section --- */
-.kpi-section { margin-top: 20px; }
-.kpi-header { display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; }
-.kpi-item .kpi-label { font-size: 14px; color: var(--text-secondary); display: block; }
-.kpi-item .kpi-value { font-size: 22px; font-weight: 700; display: block; margin-top: 4px; }
-
-.rings-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 0 auto; max-width: 300px; }
-@media (min-width: 400px) { .rings-container { grid-template-columns: repeat(4, 1fr); max-width: none; } }
-
-.ring-item { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.ring-wrapper { position: relative; width: 100%; aspect-ratio: 1 / 1; }
-.ring-wrapper canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
-
-/* --- Neon Glow Effect --- */
-@keyframes neon-pulse {
-    0%, 100% { filter: drop-shadow(0 0 5px var(--glow-color)); }
-    50% { filter: drop-shadow(0 0 10px var(--glow-color)); }
-}
-
-.calories-item canvas { --glow-color: var(--calories-color); animation: neon-pulse 2s infinite ease-in-out; }
-.protein-item canvas { --glow-color: var(--protein-color); animation: neon-pulse 2.2s infinite ease-in-out; }
-.fat-item canvas { --glow-color: var(--fat-color); animation: neon-pulse 2.4s infinite ease-in-out; }
-.carbs-item canvas { --glow-color: var(--carbs-color); animation: neon-pulse 2.6s infinite ease-in-out; }
-
-
-.ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-.ring-value { font-size: 20px; font-weight: bold; color: var(--dashboard-text); line-height: 1; }
-.ring-unit { font-size: 12px; color: var(--text-secondary); line-height: 1; margin-top: 2px; }
-.ring-title { font-size: 14px; font-weight: 500; color: var(--dashboard-text); margin-top: 8px; }
-
-/* --- AI & Workouts Section --- */
-.ai-section, .workouts-section { margin-top: 35px; }
-.section-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-
-/* --- Button Redesign --- */
-.analyze-meal-button {
-    width: 100%; padding: 16px; font-size: 18px; font-weight: 700; color: var(--dashboard-text);
-    background: linear-gradient(90deg, #4cc9f0, #9d4edd); /* Яркий градиент от голубого к фиолетовому */
-    border: none; border-radius: 12px; cursor: pointer; transition: all 0.3s ease;
-    box-shadow: 0 0 15px rgba(157, 78, 221, 0.5); /* Свечение в тон */
-}
-.analyze-meal-button:hover {
-    transform: scale(1.03);
-    box-shadow: 0 0 25px rgba(157, 78, 221, 0.8); /* Усиленное свечение при наведении */
-}
-
-.analyze-meal-button.transparent {
-    background: transparent;
-    border: 1px solid var(--dashboard-text);
-    box-shadow: 0 0 8px var(--dashboard-text);
-}
-
-.analyze-meal-button.transparent:hover {
-    background-color: rgba(224, 224, 224, 0.1);
-    box-shadow: 0 0 15px var(--dashboard-text), 0 0 25px var(--dashboard-text);
-    color: var(--dashboard-text);
-}
-
-.last-analysis-result, .recent-workouts, .strength-progress { background-color: var(--container-bg); padding: 16px; border-radius: 12px; font-size: 15px; margin-top: 15px; line-height: 1.5; }
-
-/* --- Bottom Navigation Bar --- */
+/* --- Glassmorphism и Neon Glow --- */
 .glassmorphism {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
 }
-.neon-glow-pantone-gray {
-    box-shadow: 0 0 10px 2px var(--color-pantone-gray);
-    border: 1px solid var(--color-pantone-gray);
+.neon-glow-amber { border: 1px solid var(--color-amber); animation: neon-pulse-amber 2.5s infinite ease-in-out; }
+.neon-glow-protein-white { border: 1px solid var(--color-protein-white); animation: neon-pulse-protein 2.5s infinite ease-in-out; }
+.neon-glow-golden-orange { border: 1px solid var(--color-golden-orange); animation: neon-pulse-orange 2.5s infinite ease-in-out; }
+.neon-glow-muted-teal { border: 1px solid var(--color-muted-teal); animation: neon-pulse-teal 2.5s infinite ease-in-out; }
+.neon-glow-pantone-gray { border: 1px solid var(--color-pantone-gray); animation: neon-pulse-gray 2.5s infinite ease-in-out; }
+
+/* --- Стили для SVG колец прогресса --- */
+.ring-container { border-radius: 50%; }
+.progress-ring-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+.progress-ring-bg {
+    fill: none;
+    stroke-width: 8;
+}
+#calorie-ring .progress-ring-bg, #profile-calories-ring .progress-ring-bg { stroke: var(--bg-ring-amber); }
+#protein-ring .progress-ring-bg, #profile-protein-ring .progress-ring-bg { stroke: var(--bg-ring-protein-white); }
+#fat-ring .progress-ring-bg, #profile-fat-ring .progress-ring-bg { stroke: var(--bg-ring-golden-orange); }
+#carbs-ring .progress-ring-bg, #profile-carbs-ring .progress-ring-bg { stroke: var(--bg-ring-muted-teal); }
+
+.progress-ring-bar {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease-out;
 }
 
-/* === STYLES FOR ANALYZE PAGE === */
+/* --- Стили для типографики --- */
+.label-text { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.6); }
+.calorie-label { font-size: 1rem; font-weight: 600; color: rgba(255, 255, 255, 0.8); margin-bottom: 4px; }
+.calorie-goal-text { font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); margin-top: 4px; }
+.macro-goal-value { font-size: 0.95rem; font-weight: 600; color: rgba(255, 255, 255, 0.8); }
 
+/* === Стили для страниц "Анализ" и "Профиль" === */
+.dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+.user-name { font-size: 24px; font-weight: 600; margin: 0; }
+.ai-section { margin-top: 35px; width: 100%; }
+.section-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+
+.form-group label, .slider-group > label { font-size: 16px; font-weight: 500; color: var(--text-secondary); margin-bottom: 12px; display: block; }
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    min-width: 0; /* <-- Вот оно, исправление */
+    padding: 12px;
+    background-color: var(--container-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: box-shadow 0.3s, border-color 0.3s;
+}
+.form-group textarea { resize: vertical; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--color-pantone-gray);
+    box-shadow: 0 0 12px 2px var(--color-pantone-gray);
+    outline: none;
+}
+
+/* --- Стили для ползунка --- */
+#goal_intensity {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: #333;
+    border-radius: 5px;
+    outline: none;
+    transition: box-shadow 0.2s;
+}
+#goal_intensity::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: var(--color-pantone-gray);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--color-pantone-gray);
+}
+#goal_intensity::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: var(--color-pantone-gray);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--color-pantone-gray);
+}
+#goal-intensity-value {
+    display: block;
+    text-align: center;
+    margin-top: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-pantone-gray);
+}
+
+/* --- Стили для кнопки загрузки фото --- */
 .upload-button-label {
     display: inline-block;
     padding: 12px 20px;
     background-color: transparent;
-    border: 1px solid var(--dashboard-text);
     border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.3s, color 0.3s;
     text-align: center;
     width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 0 8px var(--dashboard-text);
 }
-
 .upload-button-label.has-image {
-    background-color: var(--dashboard-text);
-    color: var(--dashboard-bg);
-    border-color: var(--dashboard-text);
+    background-color: var(--color-pantone-gray);
+    color: #0F0F10;
 }
-
-.upload-input { display: none; }
-.image-preview-hidden { display: none; }
-
-.form-group label, .slider-group > label { font-size: 16px; font-weight: 500; color: var(--text-secondary); margin-bottom: 12px; display: block; }
-.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; background-color: var(--container-bg); border: 1px solid var(--border-color); border-radius: 8px; color: var(--dashboard-text); font-size: 16px; box-sizing: border-box; }
-.form-group textarea { resize: vertical; }
-
-.form-group textarea:focus {
-    border-width: 2px;
-    border-color: var(--dashboard-text);
-    box-shadow: 0 0 8px var(--dashboard-text);
-    outline: none;
+.upload-input {
+    display: none;
 }
-
-.back-button { color: var(--fat-color); text-decoration: none; font-size: 16px; font-weight: 500; }
-
-/* --- Slider Styles --- */
-.slider-group { margin-bottom: 20px; }
-.slider-wrapper { display: flex; align-items: center; gap: 15px; }
-.slider-wrapper input[type="range"] {
-    flex-grow: 1; -webkit-appearance: none; appearance: none;
-    width: 100%; height: 8px; background: #333;
-    border-radius: 5px; outline: none;
-    transition: box-shadow 0.2s;
-}
-.slider-wrapper input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 22px; height: 22px; background: var(--dashboard-text);
-    border-radius: 50%; cursor: pointer;
-    box-shadow: 0 0 10px var(--dashboard-text); /* Статичное свечение */
-}
-.slider-wrapper input[type="range"]::-moz-range-thumb {
-    width: 22px; height: 22px; background: var(--dashboard-text);
-    border-radius: 50%; cursor: pointer;
-    box-shadow: 0 0 10px var(--dashboard-text); /* Статичное свечение */
-}
-
-.slider-value { width: 70px; padding: 8px; text-align: center; background-color: var(--container-bg); border: 1px solid var(--border-color); border-radius: 8px; color: var(--dashboard-text); font-size: 16px; }
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type=number] { -moz-appearance: textfield; }
