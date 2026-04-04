@@ -307,6 +307,37 @@ def get_user_stats(
     )
 
 
+@app.get("/users/me/average-stats", response_model=schemas.AverageSummary)
+def get_average_stats(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    end_date = date.today()
+    start_date = end_date - timedelta(days=20)
+    
+    daily_stats = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date)
+    
+    total_calories = sum(s['total_calories'] for s in daily_stats)
+    total_protein = sum(s['total_protein'] for s in daily_stats)
+    total_fat = sum(s['total_fat'] for s in daily_stats)
+    total_carbohydrates = sum(s['total_carbohydrates'] for s in daily_stats)
+    
+    days_with_data = len(daily_stats) if daily_stats else 1 # Избегаем деления на ноль
+
+    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
+    latest_weight = latest_metric.weight_kg if latest_metric else None
+    latest_body_fat = latest_metric.body_fat_percentage if latest_metric else None
+    targets = utils.calculate_user_targets(current_user, latest_weight, latest_body_fat)
+
+    return schemas.AverageSummary(
+        avg_calories=round(total_calories / days_with_data),
+        avg_protein=round(total_protein / days_with_data),
+        avg_fat=round(total_fat / days_with_data),
+        avg_carbohydrates=round(total_carbohydrates / days_with_data),
+        target_calories=targets.get("target_calories", 0),
+        target_protein=targets.get("target_protein", 0),
+        target_fat=targets.get("target_fat", 0),
+        target_carbohydrates=targets.get("target_carbohydrates", 0)
+    )
+
+
 @app.get("/users/me/stats/weekly-summary", response_model=schemas.WeeklySummaryResponse)
 def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)

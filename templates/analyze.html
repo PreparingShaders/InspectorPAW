@@ -3,33 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Добавить прием пищи - ProgressLab</title>
+    <title>Анализ еды - ProgressLab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body class="h-full flex flex-col">
 
     <header class="text-center pb-2" style="padding-top: calc(2.5rem + env(safe-area-inset-top));">
-        <h1 class="text-3xl font-extrabold tracking-wider">Добавить прием пищи</h1>
+        <h1 class="text-3xl font-extrabold tracking-wider">ProgressLab</h1>
+        <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
-        <!-- Форма для анализа -->
-        <section class="ai-section w-full max-w-sm">
-            <form id="analyze-form">
-                <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">
-                    Добавить фото
-                </label>
-                <input type="file" id="meal-image" accept="image/*" class="upload-input">
+    <!-- Блок со средними показателями за 21 день -->
+    <div id="average-stats" class="px-4 pt-4">
+        <h3 class="text-lg font-semibold text-center mb-4">Среднее за 21 день</h3>
+        <div class="flex justify-around w-full">
+            <!-- Калории -->
+            <div class="text-center flex flex-col items-center space-y-1">
+                <div class="ring-container w-16 aspect-square neon-glow-amber relative">
+                    <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="avg-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
+                        <span class="label-text text-xs -mt-1">ккал</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Белки -->
+            <div class="text-center flex flex-col items-center space-y-1">
+                <div class="ring-container w-16 aspect-square neon-glow-protein-white relative">
+                    <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="avg-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
+                        <span class="label-text text-xs -mt-1">г</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Жиры -->
+            <div class="text-center flex flex-col items-center space-y-1">
+                <div class="ring-container w-16 aspect-square neon-glow-golden-orange relative">
+                    <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="avg-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
+                        <span class="label-text text-xs -mt-1">г</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Углеводы -->
+            <div class="text-center flex flex-col items-center space-y-1">
+                <div class="ring-container w-16 aspect-square neon-glow-muted-teal relative">
+                    <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="avg-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
+                        <span class="label-text text-xs -mt-1">г</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="form-group" style="margin-top: 20px;">
-                    <label for="meal-description">Описание</label>
-                    <textarea id="meal-description" rows="3" placeholder="Например: 'Большая порция гречки с куриной грудкой'"></textarea>
+    <main class="flex-grow flex flex-col items-center px-4 space-y-6 pb-24">
+        <!-- Форма для анализа, растягивающаяся на всю высоту -->
+        <section class="ai-section w-full max-w-sm flex-grow flex flex-col">
+            <form id="analyze-form" class="flex flex-col h-full">
+                <div>
+                    <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">
+                        Добавить фото
+                    </label>
+                    <input type="file" id="meal-image" accept="image/*" class="upload-input">
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label for="meal-description">Описание еды (необязательно)</label>
+                        <textarea id="meal-description" rows="4" placeholder="Например: 'Большая порция гречки с куриной грудкой и овощным салатом'"></textarea>
+                    </div>
                 </div>
 
-                <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4" id="analyze-button">
-                    Анализировать
-                </button>
+                <div class="mt-auto pt-16">
+                    <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button">
+                        Анализировать
+                    </button>
+                </div>
             </form>
         </section>
 

@@ -16,6 +16,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     const errorMessageDiv = document.getElementById('error-message');
     const uploadButtonLabel = document.querySelector('.upload-button-label');
 
+    // --- Функция обновления SVG-колец ---
+    function updateRing(ringId, value, maxValue) {
+        const ring = document.getElementById(ringId);
+        if (!ring) return;
+
+        const bar = ring.querySelector('.progress-ring-bar');
+        const radius = bar.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        bar.style.strokeDasharray = `${circumference} ${circumference}`;
+
+        const normalizedValue = maxValue > 0 ? Math.min(value / maxValue, 1) : 0;
+        const offset = circumference - (normalizedValue * circumference);
+        bar.style.strokeDashoffset = offset;
+
+        const valueElementId = ringId.replace('-ring', '-value');
+        const valueElement = document.getElementById(valueElementId);
+        if (valueElement) {
+            valueElement.textContent = Math.round(value);
+        }
+    }
+
+    // --- Загрузка и отображение средних данных ---
+    async function fetchAndDisplayAverageStats() {
+        try {
+            const response = await fetch('/users/me/average-stats', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Could not fetch average stats.');
+
+            const stats = await response.json();
+
+            updateRing('avg-calories-ring', stats.avg_calories, stats.target_calories);
+            updateRing('avg-protein-ring', stats.avg_protein, stats.target_protein);
+            updateRing('avg-fat-ring', stats.avg_fat, stats.target_fat);
+            updateRing('avg-carbs-ring', stats.avg_carbohydrates, stats.target_carbohydrates);
+
+        } catch (error) {
+            console.error("Error fetching average stats:", error);
+        }
+    }
+
     // --- Индикация добавления фото ---
     mealImageInput.addEventListener('change', () => {
         const file = mealImageInput.files[0];
@@ -70,7 +111,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await response.json();
             aiResponseTextDiv.innerHTML = `<p>${result.ai_response_text}</p>`;
 
-            // --- "Умный" диапазон для ползунков ---
             const fieldsConfig = {
                 calories: { minBuffer: 500, step: 10 },
                 protein: { minBuffer: 30, step: 1 },
@@ -142,4 +182,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             confirmButton.textContent = 'Добавить прием пищи';
         }
     });
+
+    // --- Инициализация страницы ---
+    fetchAndDisplayAverageStats();
 });
