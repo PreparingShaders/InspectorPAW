@@ -54,26 +54,13 @@ body {
 
 /* --- Стили для SVG колец прогресса --- */
 .ring-container { border-radius: 50%; }
-.progress-ring-svg {
-    width: 100%;
-    height: 100%;
-    transform: rotate(-90deg);
-}
-.progress-ring-bg {
-    fill: none;
-    stroke-width: 8;
-}
+.progress-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.progress-ring-bg { fill: none; stroke-width: 8; }
 #calorie-ring .progress-ring-bg, #profile-calories-ring .progress-ring-bg { stroke: var(--bg-ring-amber); }
 #protein-ring .progress-ring-bg, #profile-protein-ring .progress-ring-bg { stroke: var(--bg-ring-protein-white); }
 #fat-ring .progress-ring-bg, #profile-fat-ring .progress-ring-bg { stroke: var(--bg-ring-golden-orange); }
 #carbs-ring .progress-ring-bg, #profile-carbs-ring .progress-ring-bg { stroke: var(--bg-ring-muted-teal); }
-
-.progress-ring-bar {
-    fill: none;
-    stroke-width: 10;
-    stroke-linecap: round;
-    transition: stroke-dashoffset 0.5s ease-out;
-}
+.progress-ring-bar { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease-out; }
 
 /* --- Стили для типографики --- */
 .label-text { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.6); }
@@ -81,7 +68,7 @@ body {
 .calorie-goal-text { font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); margin-top: 4px; }
 .macro-goal-value { font-size: 0.95rem; font-weight: 600; color: rgba(255, 255, 255, 0.8); }
 
-/* === Стили для страниц "Анализ" и "Профиль" === */
+/* === Стили для форм === */
 .dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
 .user-name { font-size: 24px; font-weight: 600; margin: 0; }
 .ai-section { margin-top: 35px; width: 100%; }
@@ -89,78 +76,36 @@ body {
 
 .form-group label, .slider-group > label { font-size: 16px; font-weight: 500; color: var(--text-secondary); margin-bottom: 12px; display: block; }
 .form-group input, .form-group select, .form-group textarea {
-    width: 100%;
-    min-width: 0; /* <-- Вот оно, исправление */
-    padding: 12px;
-    background-color: var(--container-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: white;
-    font-size: 16px;
-    box-sizing: border-box;
-    transition: box-shadow 0.3s, border-color 0.3s;
+    width: 100%; min-width: 0; padding: 12px; background-color: var(--container-bg);
+    border: 1px solid var(--border-color); border-radius: 8px; color: white;
+    font-size: 16px; box-sizing: border-box; transition: box-shadow 0.3s, border-color 0.3s;
 }
 .form-group textarea { resize: vertical; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    border-color: var(--color-pantone-gray);
-    box-shadow: 0 0 12px 2px var(--color-pantone-gray);
-    outline: none;
+    border-color: var(--color-pantone-gray); box-shadow: 0 0 12px 2px var(--color-pantone-gray); outline: none;
 }
 
-/* --- Стили для ползунка --- */
-#goal_intensity {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 8px;
-    background: #333;
-    border-radius: 5px;
-    outline: none;
+/* --- Общие стили для ползунков --- */
+.slider-group { margin-bottom: 20px; }
+.slider-wrapper { display: flex; align-items: center; gap: 15px; }
+.slider-value { width: 70px; padding: 8px; text-align: center; background-color: var(--container-bg); border: 1px solid var(--border-color); border-radius: 8px; color: white; font-size: 16px; }
+
+input[type=range].styled-slider {
+    -webkit-appearance: none; appearance: none; width: 100%; min-width: 0;
+    height: 8px; background: #333; border-radius: 5px; outline: none;
     transition: box-shadow 0.2s;
 }
-#goal_intensity::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    background: var(--color-pantone-gray);
-    border-radius: 50%;
-    cursor: pointer;
+input[type=range].styled-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 24px; height: 24px;
+    background: var(--color-pantone-gray); border-radius: 50%; cursor: pointer;
     box-shadow: 0 0 10px var(--color-pantone-gray);
 }
-#goal_intensity::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
-    background: var(--color-pantone-gray);
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 10px var(--color-pantone-gray);
-}
-#goal-intensity-value {
-    display: block;
-    text-align: center;
-    margin-top: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-pantone-gray);
+input[type=range].styled-slider::-moz-range-thumb {
+    width: 24px; height: 24px; background: var(--color-pantone-gray);
+    border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px var(--color-pantone-gray);
 }
 
 /* --- Стили для кнопки загрузки фото --- */
-.upload-button-label {
-    display: inline-block;
-    padding: 12px 20px;
-    background-color: transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s, color 0.3s;
-    text-align: center;
-    width: 100%;
-    box-sizing: border-box;
-}
-.upload-button-label.has-image {
-    background-color: var(--color-pantone-gray);
-    color: #0F0F10;
-}
-.upload-input {
-    display: none;
-}
+.upload-button-label { display: inline-block; padding: 12px 20px; background-color: transparent; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, color 0.3s; text-align: center; width: 100%; box-sizing: border-box; }
+.upload-button-label.has-image { background-color: var(--color-pantone-gray); color: #0F0F10; }
+.upload-input { display: none; }

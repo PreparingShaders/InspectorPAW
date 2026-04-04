@@ -36,7 +36,7 @@
         <!-- Секция с результатами (изначально скрыта) -->
         <section id="results-section" class="ai-section w-full max-w-sm" style="display: none;">
             <h3 class="section-title">Результаты анализа</h3>
-            <div id="ai-response-text" class="p-4 bg-gray-800 rounded-lg my-4"></div>
+            <div id="ai-response-text" class="p-4 rounded-xl my-4 glassmorphism neon-glow-pantone-gray"></div>
 
             <form id="confirm-form">
                 <div class="form-group">
@@ -52,28 +52,28 @@
                 <div class="slider-group">
                     <label for="calories">Калории</label>
                     <div class="slider-wrapper">
-                        <input type="range" id="calories-slider" min="0" max="2000" step="10">
+                        <input type="range" id="calories-slider" min="0" max="2000" step="10" class="styled-slider">
                         <input type="number" id="calories" class="slider-value" min="0">
                     </div>
                 </div>
                 <div class="slider-group">
                     <label for="protein">Белки (г)</label>
                     <div class="slider-wrapper">
-                        <input type="range" id="protein-slider" min="0" max="200" step="1">
+                        <input type="range" id="protein-slider" min="0" max="200" step="1" class="styled-slider">
                         <input type="number" id="protein" class="slider-value" min="0">
                     </div>
                 </div>
                 <div class="slider-group">
                     <label for="fat">Жиры (г)</label>
                     <div class="slider-wrapper">
-                        <input type="range" id="fat-slider" min="0" max="200" step="1">
+                        <input type="range" id="fat-slider" min="0" max="200" step="1" class="styled-slider">
                         <input type="number" id="fat" class="slider-value" min="0">
                     </div>
                 </div>
                 <div class="slider-group">
                     <label for="carbohydrates">Углеводы (г)</label>
                     <div class="slider-wrapper">
-                        <input type="range" id="carbohydrates-slider" min="0" max="300" step="1">
+                        <input type="range" id="carbohydrates-slider" min="0" max="300" step="1" class="styled-slider">
                         <input type="number" id="carbohydrates" class="slider-value" min="0">
                     </div>
                 </div>

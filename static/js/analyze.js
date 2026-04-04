@@ -25,20 +25,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Надежная синхронизация слайдеров и инпутов ---
+    // --- Синхронизация слайдеров и инпутов ---
     function setupSliderSync(sliderId, inputId) {
         const slider = document.getElementById(sliderId);
         const input = document.getElementById(inputId);
-
-        // Обновляет инпут, когда двигается слайдер
-        slider.addEventListener('input', (event) => {
-            input.value = event.target.value;
-        });
-
-        // Обновляет слайдер, когда меняется значение в инпуте
-        input.addEventListener('change', (event) => {
-            slider.value = event.target.value;
-        });
+        slider.addEventListener('input', (event) => { input.value = event.target.value; });
+        input.addEventListener('change', (event) => { slider.value = event.target.value; });
     }
     setupSliderSync('calories-slider', 'calories');
     setupSliderSync('protein-slider', 'protein');
@@ -78,13 +70,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await response.json();
             aiResponseTextDiv.innerHTML = `<p>${result.ai_response_text}</p>`;
 
-            // Обновляем значения и в инпутах, и в слайдерах
-            const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
-            fields.forEach(field => {
+            // --- "Умный" диапазон для ползунков ---
+            const fieldsConfig = {
+                calories: { minBuffer: 500, step: 10 },
+                protein: { minBuffer: 30, step: 1 },
+                fat: { minBuffer: 20, step: 1 },
+                carbohydrates: { minBuffer: 40, step: 1 }
+            };
+
+            for (const field in fieldsConfig) {
+                const config = fieldsConfig[field];
                 const value = Math.round(result.suggested_totals[`total_${field}`] || 0);
-                document.getElementById(field).value = value;
-                document.getElementById(`${field}-slider`).value = value;
-            });
+
+                const buffer = Math.max(value * 0.5, config.minBuffer);
+                const minValue = Math.max(0, Math.floor((value - buffer) / config.step) * config.step);
+                const maxValue = Math.ceil((value + buffer) / config.step) * config.step;
+
+                const slider = document.getElementById(`${field}-slider`);
+                const input = document.getElementById(field);
+
+                slider.min = minValue;
+                slider.max = maxValue;
+                slider.value = value;
+                input.value = value;
+            }
 
             resultsSection.style.display = 'block';
 
@@ -99,7 +108,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Обработка формы подтверждения ---
     confirmForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        // ... (остальной код без изменений)
         errorMessageDiv.textContent = '';
         const confirmButton = document.getElementById('confirm-button');
         confirmButton.disabled = true;
