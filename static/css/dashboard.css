@@ -74,7 +74,7 @@ body {
 }
 .progress-ring-bg {
     fill: none;
-    stroke-width: 8;
+    stroke-width: 6; /* Изменено с 8 на 6 */
 }
 #calorie-ring .progress-ring-bg, #profile-calories-ring .progress-ring-bg, #avg-calories-ring .progress-ring-bg { stroke: var(--bg-ring-amber); }
 #protein-ring .progress-ring-bg, #profile-protein-ring .progress-ring-bg, #avg-protein-ring .progress-ring-bg { stroke: var(--bg-ring-protein-white); }
@@ -83,7 +83,7 @@ body {
 
 .progress-ring-bar, .progress-ring-overflow {
     fill: none;
-    stroke-width: 10;
+    stroke-width: 8; /* Изменено с 10 на 8 */
     stroke-linecap: square;  /* Плоские концы: стык на 100% — вертикальный */
     transition: stroke-dashoffset 0.5s ease-out;
 }
@@ -241,4 +241,8 @@ input[type=range].styled-slider::-moz-range-thumb {
     background-color: #0F0F10;
     padding: 0 10px;
     font-weight: 600;
+}
+
+.home-label-text {
+    font-size: 0.675rem; /* Уменьшено примерно на 10% от 0.75rem */
 }
