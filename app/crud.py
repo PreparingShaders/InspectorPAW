@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, asc
 from passlib.context import CryptContext
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from . import models, schemas
 from typing import List, Optional
 
@@ -84,7 +84,7 @@ def get_daily_stats_for_period(db: Session, user_id: int, start_date: date, end_
         models.Meal.user_id == user_id,
         func.date(models.Meal.timestamp) >= start_date,
         func.date(models.Meal.timestamp) <= end_date
-    ).group_by(func.date(models.Meal.timestamp)).order_by(desc(func.date(models.Meal.timestamp))) # Изменено на desc
+    ).group_by(func.date(models.Meal.timestamp)).order_by(desc(func.date(models.Meal.timestamp)))
 
     results = query.all()
     return [
@@ -142,5 +142,9 @@ def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.M
     return db_meal
 
 def get_meals_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    """Получает историю приемов пищи пользователя с сортировкой по дате (от новых к старым)."""
-    return db.query(models.Meal).filter(models.Meal.user_id == user_id).order_by(models.Meal.timestamp.desc()).offset(skip).limit(limit).all()
+    """Получает историю приемов пищи пользователя за последние 7 дней."""
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    return db.query(models.Meal).filter(
+        models.Meal.user_id == user_id,
+        models.Meal.timestamp >= seven_days_ago
+    ).order_by(models.Meal.timestamp.desc()).offset(skip).limit(limit).all()

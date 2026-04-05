@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const uploadButtonLabel = document.querySelector('.upload-button-label');
     const mealLogsContainer = document.getElementById('meal-logs-container');
 
-    // --- Функция обновления SVG-колец (для верхнего блока) ---
+    // --- Функция обновления SVG-колец ---
     function updateRing(ringId, value, maxValue) {
         const ring = document.getElementById(ringId);
         if (!ring) return;
@@ -51,12 +51,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateRing('avg-protein-ring', stats.avg_protein, stats.target_protein);
             updateRing('avg-fat-ring', stats.avg_fat, stats.target_fat);
             updateRing('avg-carbs-ring', stats.avg_carbohydrates, stats.target_carbohydrates);
+
+            // Сохраняем цели в data-атрибуты для использования в логах
+            mealLogsContainer.dataset.targetCalories = stats.target_calories;
+            mealLogsContainer.dataset.targetProtein = stats.target_protein;
+            mealLogsContainer.dataset.targetFat = stats.target_fat;
+            mealLogsContainer.dataset.targetCarbohydrates = stats.target_carbohydrates;
+
         } catch (error) {
             console.error("Error fetching average stats:", error);
         }
     }
 
-    // --- Загрузка и отображение всех логов с ПРАВИЛЬНОЙ группировкой по дням ---
+    // --- Загрузка и отображение всех логов с кольцами ---
     async function fetchAndDisplayMealHistory() {
         try {
             const response = await fetch('/meals/', {
@@ -67,7 +74,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const meals = await response.json();
-            console.log("Data received from server:", meals);
             mealLogsContainer.innerHTML = '';
 
             if (meals.length === 0) {
@@ -75,12 +81,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // 1. Группируем все приемы пищи по дате
             const mealsByDate = meals.reduce((acc, meal) => {
                 const dateKey = new Date(meal.timestamp).toLocaleDateString('ru-RU');
-                if (!acc[dateKey]) {
-                    acc[dateKey] = [];
-                }
+                if (!acc[dateKey]) acc[dateKey] = [];
                 acc[dateKey].push(meal);
                 return acc;
             }, {});
@@ -94,42 +97,67 @@ document.addEventListener('DOMContentLoaded', async () => {
                 snack: 'Перекус'
             };
 
-            // 2. Итерируемся по сгруппированным датам
             for (const dateKey in mealsByDate) {
-                let dateLabel;
-                if (dateKey === today) {
-                    dateLabel = 'Сегодня';
-                } else if (dateKey === yesterday) {
-                    dateLabel = 'Вчера';
-                } else {
-                    dateLabel = dateKey;
-                }
-
-                // 3. Вставляем разделитель ОДИН РАЗ на каждую дату
+                let dateLabel = (dateKey === today) ? 'Сегодня' : (dateKey === yesterday) ? 'Вчера' : dateKey;
                 const divider = document.createElement('div');
                 divider.className = 'date-divider';
                 divider.innerHTML = `<span>${dateLabel}</span>`;
                 mealLogsContainer.appendChild(divider);
 
-                // 4. Вставляем все карточки для этой даты
                 const mealsOnDate = mealsByDate[dateKey];
                 mealsOnDate.forEach(meal => {
+                    const mealId = meal.id;
                     const mealType = mealTypeTranslations[meal.meal_type] || 'Прием пищи';
                     const card = document.createElement('div');
                     card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray';
+
                     card.innerHTML = `
-                        <h4 class="text-lg font-semibold text-center mb-3">${mealType}</h4>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                            <span>Калории:</span><span class="text-right font-bold">${Math.round(meal.total_calories)} ккал</span>
-                            <span>Белки:</span><span class="text-right font-bold">${Math.round(meal.total_protein)} г</span>
-                            <span>Жиры:</span><span class="text-right font-bold">${Math.round(meal.total_fat)} г</span>
-                            <span>Углеводы:</span><span class="text-right font-bold">${Math.round(meal.total_carbohydrates)} г</span>
+                        <h4 class="text-lg font-semibold text-center mb-4">${mealType}</h4>
+                        <div class="flex justify-around w-full">
+                            <!-- Калории -->
+                            <div class="text-center flex flex-col items-center space-y-1">
+                                <div class="ring-container w-16 aspect-square neon-glow-amber relative">
+                                    <svg id="log-${mealId}-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);"/></svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span><span class="label-text text-xs -mt-1">ккал</span></div>
+                                </div>
+                            </div>
+                            <!-- Белки -->
+                            <div class="text-center flex flex-col items-center space-y-1">
+                                <div class="ring-container w-16 aspect-square neon-glow-protein-white relative">
+                                    <svg id="log-${mealId}-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);"/></svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span><span class="label-text text-xs -mt-1">г</span></div>
+                                </div>
+                            </div>
+                            <!-- Жиры -->
+                            <div class="text-center flex flex-col items-center space-y-1">
+                                <div class="ring-container w-16 aspect-square neon-glow-golden-orange relative">
+                                    <svg id="log-${mealId}-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);"/></svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span><span class="label-text text-xs -mt-1">г</span></div>
+                                </div>
+                            </div>
+                            <!-- Углеводы -->
+                            <div class="text-center flex flex-col items-center space-y-1">
+                                <div class="ring-container w-16 aspect-square neon-glow-muted-teal relative">
+                                    <svg id="log-${mealId}-carbohydrates-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);"/></svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-carbohydrates-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span><span class="label-text text-xs -mt-1">г</span></div>
+                                </div>
+                            </div>
                         </div>
                     `;
                     mealLogsContainer.appendChild(card);
+
+                    // Обновляем кольца с данными, используя полную суточную норму
+                    const targetCalories = parseFloat(mealLogsContainer.dataset.targetCalories || 0);
+                    const targetProtein = parseFloat(mealLogsContainer.dataset.targetProtein || 0);
+                    const targetFat = parseFloat(mealLogsContainer.dataset.targetFat || 0);
+                    const targetCarbohydrates = parseFloat(mealLogsContainer.dataset.targetCarbohydrates || 0);
+
+                    updateRing(`log-${mealId}-calories-ring`, meal.total_calories, targetCalories);
+                    updateRing(`log-${mealId}-protein-ring`, meal.total_protein, targetProtein);
+                    updateRing(`log-${mealId}-fat-ring`, meal.total_fat, targetFat);
+                    updateRing(`log-${mealId}-carbohydrates-ring`, meal.total_carbohydrates, targetCarbohydrates);
                 });
             }
-
         } catch (error) {
             console.error("Error in fetchAndDisplayMealHistory:", error);
             mealLogsContainer.innerHTML = `<p class="text-center text-red-500 mt-4">Не удалось загрузить историю приемов пищи.</p>`;
@@ -254,7 +282,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error(errorData.detail || 'Ошибка добавления приема пищи.');
             }
 
-            // Возвращаем редирект на дашборд
             window.location.href = '/dashboard';
 
         } catch (error) {
