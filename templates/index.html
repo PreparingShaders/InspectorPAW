@@ -31,6 +31,7 @@
             <svg id="calorie-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                 <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                 <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
+                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
                 <span class="calorie-label">КАЛОРИИ</span>
@@ -48,6 +49,7 @@
                     <svg id="protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
+                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="protein-consumed" class="font-bold text-2xl" style="color: var(--color-protein-white);">0г</span>
@@ -63,6 +65,7 @@
                     <svg id="fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
+                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="fat-consumed" class="font-bold text-2xl" style="color: var(--color-golden-orange);">0г</span>
@@ -78,6 +81,7 @@
                     <svg id="carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
+                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="carbs-consumed" class="font-bold text-2xl" style="color: var(--color-muted-teal);">0г</span>
@@ -114,24 +118,64 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            function updateRing(ringId, consumed, goal) {
+            const OVERFLOW_STYLES = {
+                calories:  { glowClass: 'overflow-glow-red'   },
+                protein:   { glowClass: 'overflow-glow-green' },
+                fat:       { glowClass: 'overflow-glow-red'   },
+                carbs:     { glowClass: 'overflow-glow-red'   },
+            };
+
+            function getMacroType(ringId) {
+                if (ringId.includes('protein'))   return 'protein';
+                if (ringId.includes('fat'))       return 'fat';
+                if (ringId.includes('carbs'))     return 'carbs';
+                return 'calories';
+            }
+
+            function updateRingWithOverflow(ringId, consumed, goal) {
                 const ring = document.getElementById(ringId);
                 if (!ring) return;
 
+                const type = getMacroType(ringId);
+                const style = OVERFLOW_STYLES[type];
                 const bar = ring.querySelector('.progress-ring-bar');
+                const overflowBar = ring.querySelector('.progress-ring-overflow');
+                const container = ring.closest('.ring-container');
                 const radius = bar.r.baseVal.value;
                 const circumference = 2 * Math.PI * radius;
 
                 bar.style.strokeDasharray = `${circumference} ${circumference}`;
+                overflowBar.style.strokeDasharray = `${circumference} ${circumference}`;
+
+                // Убираем старые glow-классы
+                if (container) container.classList.remove('overflow-glow-red', 'overflow-glow-green');
+                overflowBar.classList.remove('overflow-red', 'overflow-green');
 
                 if (goal === 0) {
                     bar.style.strokeDashoffset = circumference;
+                    overflowBar.style.strokeDashoffset = circumference;
                     return;
                 }
 
-                const percentage = Math.min(Math.max(consumed / goal, 0), 1);
-                const offset = circumference - (percentage * circumference);
-                bar.style.strokeDashoffset = offset;
+                const percentage = consumed / goal;
+
+                // Основной бар (до 100%)
+                const mainPercentage = Math.min(percentage, 1);
+                const mainOffset = circumference - (mainPercentage * circumference);
+                bar.style.strokeDashoffset = mainOffset;
+
+                // Бар переполнения (после 100%)
+                if (percentage > 1) {
+                    const overflowColorClass = type === 'protein' ? 'overflow-green' : 'overflow-red';
+                    overflowBar.classList.add(overflowColorClass);
+                    if (container) container.classList.add(style.glowClass);
+
+                    const overflowPercentage = Math.min(percentage - 1, 1);
+                    const overflowOffset = circumference - (overflowPercentage * circumference);
+                    overflowBar.style.strokeDashoffset = overflowOffset;
+                } else {
+                    overflowBar.style.strokeDashoffset = circumference;
+                }
             }
 
             async function fetchDashboardData() {
@@ -150,22 +194,22 @@
                     // Калории
                     document.getElementById('calories-consumed').textContent = Math.round(data.consumed_calories);
                     document.getElementById('calorie-goal-info').textContent = `ЦЕЛЬ: ${Math.round(data.target_calories)}`;
-                    updateRing('calorie-ring', data.consumed_calories, data.target_calories);
+                    updateRingWithOverflow('calorie-ring', data.consumed_calories, data.target_calories);
 
                     // Белки
                     document.getElementById('protein-consumed').textContent = `${Math.round(data.consumed_protein)}г`;
                     document.getElementById('protein-goal').textContent = `${Math.round(data.target_protein)}г`;
-                    updateRing('protein-ring', data.consumed_protein, data.target_protein);
+                    updateRingWithOverflow('protein-ring', data.consumed_protein, data.target_protein);
 
                     // Жиры
                     document.getElementById('fat-consumed').textContent = `${Math.round(data.consumed_fat)}г`;
                     document.getElementById('fat-goal').textContent = `${Math.round(data.target_fat)}г`;
-                    updateRing('fat-ring', data.consumed_fat, data.target_fat);
+                    updateRingWithOverflow('fat-ring', data.consumed_fat, data.target_fat);
 
                     // Углеводы
                     document.getElementById('carbs-consumed').textContent = `${Math.round(data.consumed_carbohydrates)}г`;
                     document.getElementById('carbs-goal').textContent = `${Math.round(data.target_carbohydrates)}г`;
-                    updateRing('carbs-ring', data.consumed_carbohydrates, data.target_carbohydrates);
+                    updateRingWithOverflow('carbs-ring', data.consumed_carbohydrates, data.target_carbohydrates);
 
                 } catch (error) {
                     console.error('Error fetching dashboard data:', error);

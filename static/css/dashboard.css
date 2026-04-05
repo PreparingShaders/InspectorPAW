@@ -8,12 +8,16 @@
     --color-muted-teal: #569DAA;
     --color-pantone-gray: #E0E0E0;
     --color-inactive-icon: rgba(255, 255, 255, 0.4);
+    --color-over-limit-red: #FF6B6B; /* Нежно-красный для перебора */
+    --color-over-limit-green: #50C878; /* Нежно-зелёный для белка */
 
     /* Фоны для колец */
     --bg-ring-amber: rgba(245, 225, 176, 0.1);
     --bg-ring-protein-white: rgba(255, 255, 255, 0.1);
     --bg-ring-golden-orange: rgba(226, 163, 93, 0.1);
     --bg-ring-muted-teal: rgba(86, 157, 170, 0.1);
+    --bg-ring-over-limit-red: rgba(255, 107, 107, 0.15);
+    --bg-ring-over-limit-green: rgba(80, 200, 120, 0.15);
 
     /* Переменные для форм и текста */
     --container-bg: #1C1C1E;
@@ -39,6 +43,10 @@ body {
 @keyframes neon-pulse-orange { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-golden-orange); } 50% { box-shadow: 0 0 18px 3px var(--color-golden-orange); } }
 @keyframes neon-pulse-teal { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-muted-teal); } 50% { box-shadow: 0 0 18px 3px var(--color-muted-teal); } }
 @keyframes neon-pulse-gray { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-pantone-gray); } 50% { box-shadow: 0 0 18px 3px var(--color-pantone-gray); } }
+@keyframes neon-pulse-red { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-red); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-red); } }
+@keyframes neon-pulse-green-overflow { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-green), 0 0 20px 2px rgba(80,200,120,0.3); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-green), 0 0 30px 3px rgba(80,200,120,0.4); } }
+@keyframes neon-pulse-red-overflow { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-red), 0 0 20px 2px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-red), 0 0 30px 3px rgba(255,107,107,0.4); } }
+
 
 /* --- Glassmorphism и Neon Glow --- */
 .glassmorphism {
@@ -51,6 +59,11 @@ body {
 .neon-glow-golden-orange { border: 1px solid var(--color-golden-orange); animation: neon-pulse-orange 2.5s infinite ease-in-out; }
 .neon-glow-muted-teal { border: 1px solid var(--color-muted-teal); animation: neon-pulse-teal 2.5s infinite ease-in-out; }
 .neon-glow-pantone-gray { border: 1px solid var(--color-pantone-gray); animation: neon-pulse-gray 2.5s infinite ease-in-out; }
+.neon-glow-over-limit-red { border: 1px solid var(--color-over-limit-red); animation: neon-pulse-red 2.5s infinite ease-in-out; }
+/* Динамические классы overflow-свечения (добавляются через JS) */
+.overflow-glow-red { animation: neon-pulse-red-overflow 2.5s infinite ease-in-out !important; }
+.overflow-glow-green { animation: neon-pulse-green-overflow 2.5s infinite ease-in-out !important; }
+
 
 /* --- Стили для SVG колец прогресса --- */
 .ring-container { border-radius: 50%; }
@@ -68,12 +81,25 @@ body {
 #fat-ring .progress-ring-bg, #profile-fat-ring .progress-ring-bg, #avg-fat-ring .progress-ring-bg { stroke: var(--bg-ring-golden-orange); }
 #carbs-ring .progress-ring-bg, #profile-carbs-ring .progress-ring-bg, #avg-carbs-ring .progress-ring-bg { stroke: var(--bg-ring-muted-teal); }
 
-.progress-ring-bar {
+.progress-ring-bar, .progress-ring-overflow {
     fill: none;
     stroke-width: 10;
-    stroke-linecap: round;
+    stroke-linecap: square;  /* Плоские концы: стык на 100% — вертикальный */
     transition: stroke-dashoffset 0.5s ease-out;
 }
+
+.progress-ring-overflow {
+    stroke: var(--color-over-limit-red);
+}
+
+/* Динамические цвета overflow */
+.progress-ring-overflow.overflow-red {
+    stroke: var(--color-over-limit-red) !important;
+}
+.progress-ring-overflow.overflow-green {
+    stroke: var(--color-over-limit-green) !important;
+}
+
 
 /* --- Стили для типографики --- */
 .label-text { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.6); }
@@ -161,6 +187,35 @@ input[type=range].styled-slider::-moz-range-thumb {
 .upload-input {
     display: none;
 }
+
+/* --- Спиннер и статус анализа --- */
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: var(--color-pantone-gray);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+.analysis-status {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    min-height: 24px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+}
+.analysis-status.visible { opacity: 1; }
 
 /* --- Стили для разделителя дат --- */
 .date-divider {

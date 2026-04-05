@@ -24,6 +24,7 @@
                     <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
+                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="avg-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
@@ -37,6 +38,7 @@
                     <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
+                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="avg-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
@@ -50,6 +52,7 @@
                     <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
+                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="avg-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
@@ -63,6 +66,7 @@
                     <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
+                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="avg-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
@@ -94,6 +98,7 @@
                         Анализировать
                     </button>
                 </div>
+                <div id="analysis-status" class="analysis-status"></div>
             </form>
         </section>
 
