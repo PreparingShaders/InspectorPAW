@@ -277,51 +277,6 @@ def read_user_meals(
     return crud.get_meals_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
 
 
-@app.get("/meals/today", response_model=List[schemas.Meal])
-def read_today_user_meals(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    # Устанавливаем часовой пояс МСК (UTC+3)
-    msk_tz = timezone(timedelta(hours=3))
-    now_msk = datetime.now(msk_tz)
-
-    # Границы сегодняшнего дня по МСК в UTC для запроса к БД
-    start_msk = now_msk.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_msk = start_msk + timedelta(days=1)
-    start_utc = start_msk.astimezone(timezone.utc)
-    end_utc = end_msk.astimezone(timezone.utc)
-
-    # Запрос к базе с явным диапазоном timestamp
-    meals_from_db = (
-        db.query(models.Meal)
-        .filter(
-            models.Meal.user_id == current_user.id,
-            models.Meal.timestamp >= start_utc,
-            models.Meal.timestamp < end_utc
-        )
-        .order_by(models.Meal.timestamp.desc())
-        .all()
-    )
-    
-    # Ручное и надежное создание списка для ответа
-    response_meals = []
-    for meal in meals_from_db:
-        response_meals.append(
-            schemas.Meal(
-                id=meal.id,
-                user_id=meal.user_id,
-                timestamp=meal.timestamp,
-                meal_type=meal.meal_type,
-                total_calories=meal.total_calories or 0.0,
-                total_protein=meal.total_protein or 0.0,
-                total_fat=meal.total_fat or 0.0,
-                total_carbohydrates=meal.total_carbohydrates or 0.0
-            )
-        )
-    return response_meals
-
-
 @app.delete("/meals/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_meal(
         meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)

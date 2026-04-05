@@ -142,5 +142,5 @@ def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.M
     return db_meal
 
 def get_meals_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    """Получает историю приемов пищи пользователя."""
-    return db.query(models.Meal).filter(models.Meal.user_id == user_id).offset(skip).limit(limit).all()
+    """Получает историю приемов пищи пользователя с сортировкой по дате (от новых к старым)."""
+    return db.query(models.Meal).filter(models.Meal.user_id == user_id).order_by(models.Meal.timestamp.desc()).offset(skip).limit(limit).all()

@@ -161,3 +161,29 @@ input[type=range].styled-slider::-moz-range-thumb {
 .upload-input {
     display: none;
 }
+
+/* --- Стили для разделителя дат --- */
+.date-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--text-secondary);
+    margin: 20px 0;
+}
+.date-divider::before, .date-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 0 5px 0px var(--color-pantone-gray);
+}
+.date-divider:not(:empty)::before {
+    margin-right: .5em;
+}
+.date-divider:not(:empty)::after {
+    margin-left: .5em;
+}
+.date-divider span {
+    background-color: #0F0F10;
+    padding: 0 10px;
+    font-weight: 600;
+}

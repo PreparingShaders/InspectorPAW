@@ -56,22 +56,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Загрузка и отображение логов за сегодня (УПРОЩЕННАЯ ВЕРСИЯ) ---
-    async function fetchAndDisplayTodayMeals() {
+    // --- Загрузка и отображение всех логов с ПРАВИЛЬНОЙ группировкой по дням ---
+    async function fetchAndDisplayMealHistory() {
         try {
-            const response = await fetch('/meals/today', {
+            const response = await fetch('/meals/', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) throw new Error('Could not fetch today\'s meals.');
+            if (!response.ok) {
+                throw new Error(`Could not fetch meal history. Status: ${response.status}`);
+            }
 
             const meals = await response.json();
-            mealLogsContainer.innerHTML = ''; // Всегда очищаем контейнер
+            console.log("Data received from server:", meals);
+            mealLogsContainer.innerHTML = '';
 
             if (meals.length === 0) {
-                mealLogsContainer.innerHTML = `<p class="text-center text-gray-500 mt-4">Записей о приемах пищи за сегодня еще нет.</p>`;
+                mealLogsContainer.innerHTML = `<p class="text-center text-gray-500 mt-4">Записей о приемах пищи еще нет.</p>`;
                 return;
             }
 
+            // 1. Группируем все приемы пищи по дате
+            const mealsByDate = meals.reduce((acc, meal) => {
+                const dateKey = new Date(meal.timestamp).toLocaleDateString('ru-RU');
+                if (!acc[dateKey]) {
+                    acc[dateKey] = [];
+                }
+                acc[dateKey].push(meal);
+                return acc;
+            }, {});
+
+            const today = new Date().toLocaleDateString('ru-RU');
+            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('ru-RU');
             const mealTypeTranslations = {
                 breakfast: 'Завтрак',
                 lunch: 'Обед',
@@ -79,28 +94,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                 snack: 'Перекус'
             };
 
-            meals.forEach(meal => {
-                const mealType = mealTypeTranslations[meal.meal_type] || 'Прием пищи';
+            // 2. Итерируемся по сгруппированным датам
+            for (const dateKey in mealsByDate) {
+                let dateLabel;
+                if (dateKey === today) {
+                    dateLabel = 'Сегодня';
+                } else if (dateKey === yesterday) {
+                    dateLabel = 'Вчера';
+                } else {
+                    dateLabel = dateKey;
+                }
 
-                const card = document.createElement('div');
-                // Стили для карточки
-                card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray';
+                // 3. Вставляем разделитель ОДИН РАЗ на каждую дату
+                const divider = document.createElement('div');
+                divider.className = 'date-divider';
+                divider.innerHTML = `<span>${dateLabel}</span>`;
+                mealLogsContainer.appendChild(divider);
 
-                // Простое и надежное отображение данных
-                card.innerHTML = `
-                    <h4 class="text-lg font-semibold text-center mb-3">${mealType}</h4>
-                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                        <span>Калории:</span><span class="text-right font-bold">${Math.round(meal.total_calories)} ккал</span>
-                        <span>Белки:</span><span class="text-right font-bold">${Math.round(meal.total_protein)} г</span>
-                        <span>Жиры:</span><span class="text-right font-bold">${Math.round(meal.total_fat)} г</span>
-                        <span>Углеводы:</span><span class="text-right font-bold">${Math.round(meal.total_carbohydrates)} г</span>
-                    </div>
-                `;
-                mealLogsContainer.appendChild(card);
-            });
+                // 4. Вставляем все карточки для этой даты
+                const mealsOnDate = mealsByDate[dateKey];
+                mealsOnDate.forEach(meal => {
+                    const mealType = mealTypeTranslations[meal.meal_type] || 'Прием пищи';
+                    const card = document.createElement('div');
+                    card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray';
+                    card.innerHTML = `
+                        <h4 class="text-lg font-semibold text-center mb-3">${mealType}</h4>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                            <span>Калории:</span><span class="text-right font-bold">${Math.round(meal.total_calories)} ккал</span>
+                            <span>Белки:</span><span class="text-right font-bold">${Math.round(meal.total_protein)} г</span>
+                            <span>Жиры:</span><span class="text-right font-bold">${Math.round(meal.total_fat)} г</span>
+                            <span>Углеводы:</span><span class="text-right font-bold">${Math.round(meal.total_carbohydrates)} г</span>
+                        </div>
+                    `;
+                    mealLogsContainer.appendChild(card);
+                });
+            }
 
         } catch (error) {
-            console.error("Error fetching today's meals:", error);
+            console.error("Error in fetchAndDisplayMealHistory:", error);
             mealLogsContainer.innerHTML = `<p class="text-center text-red-500 mt-4">Не удалось загрузить историю приемов пищи.</p>`;
         }
     }
@@ -118,8 +149,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     function setupSliderSync(sliderId, inputId) {
         const slider = document.getElementById(sliderId);
         const input = document.getElementById(inputId);
-        slider.addEventListener('input', (event) => { input.value = event.target.value; });
-        input.addEventListener('change', (event) => { slider.value = event.target.value; });
+        if (slider && input) {
+            slider.addEventListener('input', (event) => { input.value = event.target.value; });
+            input.addEventListener('change', (event) => { slider.value = event.target.value; });
+        }
     }
     setupSliderSync('calories-slider', 'calories');
     setupSliderSync('protein-slider', 'protein');
@@ -234,5 +267,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Инициализация страницы ---
     await fetchAndDisplayAverageStats();
-    await fetchAndDisplayTodayMeals();
+    await fetchAndDisplayMealHistory();
 });
