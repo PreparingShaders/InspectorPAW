@@ -15,6 +15,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const intensityValue = document.getElementById('goal-intensity-value');
     const targetsDisplay = document.getElementById('calculated-targets');
 
+    // Элементы для выбора даты
+    const daySelect = document.getElementById('date_of_birth_day');
+    const monthSelect = document.getElementById('date_of_birth_month');
+    const yearSelect = document.getElementById('date_of_birth_year');
+
     let debounceTimer;
 
     // --- Функция обновления SVG-колец ---
@@ -38,13 +43,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // --- Функции для выбора даты ---
+    function populateDatePickers() {
+        const currentYear = new Date().getFullYear();
+        const startYear = currentYear - 100;
+
+        // Годы
+        for (let i = currentYear; i >= startYear; i--) {
+            yearSelect.add(new Option(i, i));
+        }
+
+        // Месяцы
+        const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        monthNames.forEach((name, index) => {
+            monthSelect.add(new Option(name, index + 1));
+        });
+
+        // Дни (изначально)
+        updateDaysInMonth();
+    }
+
+    function updateDaysInMonth() {
+        const selectedYear = parseInt(yearSelect.value, 10);
+        const selectedMonth = parseInt(monthSelect.value, 10);
+        const currentDay = daySelect.value;
+
+        if (!selectedYear || !selectedMonth) {
+            daySelect.innerHTML = '<option value="">День</option>';
+            return;
+        }
+
+        const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+        daySelect.innerHTML = '<option value="">День</option>'; // Сброс
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            daySelect.add(new Option(i, i));
+        }
+
+        if (currentDay && currentDay <= daysInMonth) {
+            daySelect.value = currentDay;
+        }
+    }
+
+    function getAssembledDate() {
+        const day = daySelect.value;
+        const month = monthSelect.value;
+        const year = yearSelect.value;
+        if (day && month && year) {
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+        return null;
+    }
+
+
     // --- Функция пересчета и обновления UI ---
     const recalculateTargets = () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
             const bodyFatValue = parseFloat(document.getElementById('body_fat_percentage').value);
+            const dateOfBirth = getAssembledDate();
+
             const requestBody = {
-                date_of_birth: document.getElementById('date_of_birth').value,
+                date_of_birth: dateOfBirth,
                 gender: document.getElementById('gender').value,
                 height_cm: parseInt(document.getElementById('height_cm').value, 10),
                 weight_kg: parseFloat(document.getElementById('weight_kg').value),
@@ -85,12 +145,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // --- Инициализация страницы ---
+    populateDatePickers();
+
     try {
         const response = await fetch('/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
         if (!response.ok) throw new Error('Could not fetch user data.');
         const user = await response.json();
 
-        if (user.date_of_birth) document.getElementById('date_of_birth').value = user.date_of_birth;
+        if (user.date_of_birth) {
+            const [year, month, day] = user.date_of_birth.split('-').map(Number);
+            yearSelect.value = year;
+            monthSelect.value = month;
+            updateDaysInMonth(); // Важно обновить дни до установки значения
+            daySelect.value = day;
+        }
+
         if (user.gender) document.getElementById('gender').value = user.gender;
         if (user.height_cm) document.getElementById('height_cm').value = user.height_cm;
         if (user.activity_level) document.getElementById('activity_level').value = user.activity_level;
@@ -118,7 +187,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         intensityGroup.style.display = (goalSelect.value === 'fat_loss' || goalSelect.value === 'mass_gain') ? 'block' : 'none';
     }
 
-    form.addEventListener('input', () => {
+    form.addEventListener('input', (event) => {
+        if (event.target.id.startsWith('date_of_birth')) {
+            updateDaysInMonth();
+        }
         updateGoalIntensityUI();
         recalculateTargets();
     });
@@ -133,8 +205,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorMessage.textContent = '';
         successMessage.textContent = '';
 
+        const dateOfBirth = getAssembledDate();
+        if (!dateOfBirth) {
+            errorMessage.textContent = 'Пожалуйста, выберите полную дату рождения.';
+            return;
+        }
+
         const userUpdateData = {
-            date_of_birth: document.getElementById('date_of_birth').value,
+            date_of_birth: dateOfBirth,
             gender: document.getElementById('gender').value,
             height_cm: parseInt(document.getElementById('height_cm').value, 10),
             activity_level: document.getElementById('activity_level').value,
