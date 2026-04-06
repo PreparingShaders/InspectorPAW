@@ -94,6 +94,7 @@ class DashboardStats(BaseModel):
 
 # --- Meal Totals Schema (для передачи КБЖУ) ---
 class MealTotals(BaseModel):
+    food_name: Optional[str] = None # Добавлено
     total_calories: float = 0
     total_protein: float = 0
     total_fat: float = 0
@@ -102,11 +103,12 @@ class MealTotals(BaseModel):
 # --- Analysis Schemas ---
 class AnalysisResponse(BaseModel):
     suggested_totals: MealTotals
-    ai_response_text: str
+    ai_response_text: str # Это поле будет содержать только короткое описание блюда
 
 # --- Meal Schemas ---
 class MealBase(BaseModel):
     meal_type: Optional[str] = None
+    food_name: Optional[str] = None # Добавлено
 
 class MealCreate(MealBase, MealTotals):
     pass

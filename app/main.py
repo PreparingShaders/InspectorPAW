@@ -7,13 +7,14 @@ import asyncio
 import google.genai as genai
 from openai import AsyncOpenAI
 from PIL import Image
+import json # Добавляем импорт для работы с JSON
 
 from datetime import timedelta, date, datetime, timezone
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload # Добавляем импорт joinedload
 
 from . import crud, models, schemas, auth, utils
 from .database import SessionLocal, engine
@@ -73,15 +74,27 @@ async def read_analyze_page(request: Request):
 # --- AI Логика ---
 async def call_ai_model(file_content: Optional[bytes], description: Optional[str]) -> str:
     prompt = """
-    Ты — эксперт-диетолог. Проанализируй изображение еды и/или текстовое описание. 
-    Твоя задача — вернуть структурированный ответ с названием блюда, его весом в граммах и КБЖУ.
-    Формат ответа должен быть строго таким:
-    Название: [Название блюда]
-    Вес: [Вес в граммах]
-    Калории: [Количество]
-    Белки: [Количество]
-    Жиры: [Количество]
-    Углеводы: [Количество]
+    Ты — эксперт-нутрициолог с математическим уклоном. 
+    Твоя задача — проанализировать еду (фото или описание) и рассчитать КБЖУ.
+
+    ### ПРАВИЛА РАСЧЕТА:
+    1. Сначала определи вес (weight), белки (P), жиры (F) и углеводы (C) в граммах.
+    2. Итоговые калории (Kcal) ОБЯЗАТЕЛЬНО рассчитывай строго по формуле: 
+       Kcal = (P * 4) + (C * 4) + (F * 9)
+    3. Округляй все числовые значения до целых чисел.
+    4. Сумма калорий в ответе не может отличаться от результата формулы.
+
+    ### ФОРМАТ ОТВЕТА (STRICT JSON):
+    Верни короткое описание блюда  и JSON-объект без лишнего текста, пояснений и Markdown-разметки:
+    {
+      "food_name": "Название блюда",
+      "weight_g": 0,
+      "calories": 0,
+      "proteins_g": 0,
+      "fats_g": 0,
+      "carbs_g": 0,
+      "confidence_score": 0.0
+    }
     """
     
     for model_name in settings.NUTRITION_MODELS:
@@ -158,13 +171,22 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/users/me/", response_model=schemas.UserWithTargets)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
+    # Fetch the user again within the current session, eagerly loading relationships
+    user_from_db = db.query(models.User).options(
+        joinedload(models.User.meals),
+        joinedload(models.User.metrics)
+    ).filter(models.User.id == current_user.id).first()
 
-    user_with_targets = schemas.UserWithTargets.from_orm(current_user)
+    if not user_from_db:
+        raise HTTPException(status_code=404, detail="User not found in current session")
 
-    if latest_metric and current_user.date_of_birth and current_user.gender and current_user.height_cm:
+    latest_metric = crud.get_latest_user_metric(db, user_id=user_from_db.id)
+
+    user_with_targets = schemas.UserWithTargets.from_orm(user_from_db)
+
+    if latest_metric and user_from_db.date_of_birth and user_from_db.gender and user_from_db.height_cm:
         targets = utils.calculate_user_targets(
-            current_user,
+            user_from_db, # Use user_from_db here
             latest_metric.weight_kg,
             latest_metric.body_fat_percentage
         )
@@ -234,29 +256,43 @@ async def analyze_meal(
     file_content = await file.read() if file else None
 
     try:
-        ai_response_text = await call_ai_model(file_content=file_content, description=description)
+        raw_ai_response = await call_ai_model(file_content=file_content, description=description)
     except HTTPException as e:
         raise e
 
     # Проверяем, что ответ не пустой
-    if not ai_response_text:
+    if not raw_ai_response:
         raise HTTPException(status_code=500, detail="AI model returned an empty response.")
 
-    calories_match = re.search(r"Калории: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
-    protein_match = re.search(r"Белки: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
-    fat_match = re.search(r"Жиры: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
-    carbs_match = re.search(r"Углеводы: (\d+\.?\d*)", ai_response_text, re.IGNORECASE)
+    try:
+        # Пытаемся распарсить ответ как JSON
+        ai_data = json.loads(raw_ai_response)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="AI model returned invalid JSON. Response: " + raw_ai_response)
 
-    calories = float(calories_match.group(1)) if calories_match else 0
-    protein = float(protein_match.group(1)) if protein_match else 0
-    fat = float(fat_match.group(1)) if fat_match else 0
-    carbs = float(carbs_match.group(1)) if carbs_match else 0
+    # Извлекаем данные из JSON
+    food_name = ai_data.get("food_name", "Неизвестное блюдо")
+    # weight_g = round(float(ai_data.get("weight_g", 0))) # Пока не используем weight_g
+    proteins_g = round(float(ai_data.get("proteins_g", 0)))
+    fats_g = round(float(ai_data.get("fats_g", 0)))
+    carbs_g = round(float(ai_data.get("carbs_g", 0)))
     
+    # Пересчитываем калории строго по формуле
+    calculated_calories = (proteins_g * 4) + (fats_g * 9) + (carbs_g * 4)
+    calories = round(calculated_calories)
+
     suggested_totals = schemas.MealTotals(
-        total_calories=calories, total_protein=protein, total_fat=fat, total_carbohydrates=carbs
+        food_name=food_name,
+        total_calories=calories,
+        total_protein=proteins_g,
+        total_fat=fats_g,
+        total_carbohydrates=carbs_g
     )
+    
+    # ai_response_text теперь будет содержать только food_name
     return schemas.AnalysisResponse(
-        suggested_totals=suggested_totals, ai_response_text=ai_response_text
+        suggested_totals=suggested_totals,
+        ai_response_text=food_name # Возвращаем только название блюда для отображения
     )
 
 

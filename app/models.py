@@ -49,6 +49,7 @@ class Meal(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     meal_type = Column(String, nullable=True) # 'breakfast', 'lunch', 'dinner', 'snack'
+    food_name = Column(String, nullable=True) # Добавлено поле для названия блюда
     
     # Итоговые КБЖУ для приема пищи
     total_calories = Column(Float, default=0.0)

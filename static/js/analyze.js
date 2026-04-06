@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const uploadButtonLabel = document.querySelector('.upload-button-label');
     const mealLogsContainer = document.getElementById('meal-logs-container');
 
+    let currentFoodName = ''; // Переменная для хранения названия блюда от AI
+
     // --- Конфигурация цветов overflow по типу макронутриента ---
     const OVERFLOW_STYLES = {
         calories:  { glowClass: 'overflow-glow-red'   },
@@ -159,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray';
 
                     card.innerHTML = `
-                        <h4 class="text-lg font-semibold text-center mb-4">${mealType}</h4>
+                        <h4 class="text-lg font-semibold text-center mb-4">${mealType} - ${meal.food_name || 'Блюдо'}</h4>
                         <div class="flex justify-around w-full">
                             <div class="text-center flex flex-col items-center space-y-1">
                                 <div class="ring-container w-16 aspect-square neon-glow-amber relative">
@@ -216,18 +218,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- Синхронизация слайдеров и инпутов ---
-    function setupSliderSync(sliderId, inputId) {
+    function calculateCalories(protein, fat, carbs) {
+        return Math.round((protein * 4) + (fat * 9) + (carbs * 4));
+    }
+
+    function updateCaloriesFromMacros() {
+        const protein = parseFloat(document.getElementById('protein').value) || 0;
+        const fat = parseFloat(document.getElementById('fat').value) || 0;
+        const carbs = parseFloat(document.getElementById('carbohydrates').value) || 0;
+        const calculatedCalories = calculateCalories(protein, fat, carbs);
+
+        const caloriesInput = document.getElementById('calories');
+        const caloriesSlider = document.getElementById('calories-slider');
+
+        caloriesInput.value = calculatedCalories;
+
+        // Динамическая корректировка диапазона слайдера калорий
+        const currentMax = parseFloat(caloriesSlider.max);
+        const currentMin = parseFloat(caloriesSlider.min);
+
+        if (calculatedCalories > currentMax || calculatedCalories < currentMin) {
+            const config = { minBuffer: 500, step: 10 }; // Используем те же настройки, что и для AI
+            const buffer = Math.max(calculatedCalories * 0.5, config.minBuffer);
+            const minValue = Math.max(0, Math.floor((calculatedCalories - buffer) / config.step) * config.step);
+            const maxValue = Math.ceil((calculatedCalories + buffer) / config.step) * config.step;
+            caloriesSlider.min = minValue;
+            caloriesSlider.max = maxValue;
+        }
+        caloriesSlider.value = calculatedCalories;
+    }
+
+    function setupSliderSync(sliderId, inputId, isMacro = false) {
         const slider = document.getElementById(sliderId);
         const input = document.getElementById(inputId);
         if (slider && input) {
-            slider.addEventListener('input', (event) => { input.value = event.target.value; });
-            input.addEventListener('change', (event) => { slider.value = event.target.value; });
+            slider.addEventListener('input', (event) => {
+                input.value = event.target.value;
+                if (isMacro) updateCaloriesFromMacros();
+            });
+            input.addEventListener('change', (event) => {
+                slider.value = event.target.value;
+                if (isMacro) updateCaloriesFromMacros();
+            });
         }
     }
     setupSliderSync('calories-slider', 'calories');
-    setupSliderSync('protein-slider', 'protein');
-    setupSliderSync('fat-slider', 'fat');
-    setupSliderSync('carbohydrates-slider', 'carbohydrates');
+    setupSliderSync('protein-slider', 'protein', true);
+    setupSliderSync('fat-slider', 'fat', true);
+    setupSliderSync('carbohydrates-slider', 'carbohydrates', true);
 
     // --- Утилита сжатия фото через Canvas ---
     async function compressImage(file, maxSize = 1024, quality = 0.85) {
@@ -330,7 +368,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             clearInterval(statusInterval);
             const result = await response.json();
-            aiResponseTextDiv.innerHTML = `<p>${result.ai_response_text}</p>`;
+            currentFoodName = result.ai_response_text; // Сохраняем food_name
+            aiResponseTextDiv.innerHTML = `<p>${currentFoodName}</p>`; // Отображаем только food_name
 
             const fieldsConfig = {
                 calories: { minBuffer: 500, step: 10 },
@@ -378,6 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const mealData = {
             meal_type: document.getElementById('meal-type').value,
+            food_name: currentFoodName, // Добавляем food_name
             total_calories: parseFloat(document.getElementById('calories').value),
             total_protein: parseFloat(document.getElementById('protein').value),
             total_fat: parseFloat(document.getElementById('fat').value),

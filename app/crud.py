@@ -16,13 +16,10 @@ def get_password_hash(password: str) -> str:
 
 def get_user_by_email(db: Session, email: str):
     """
-    Получает пользователя по email с немедленной загрузкой связанных
-    коллекций 'meals' и 'metrics' для предотвращения DetachedInstanceError.
+    Получает пользователя по email. Для аутентификации не требуется загружать
+    связанные коллекции 'meals' и 'metrics'.
     """
-    return db.query(models.User).options(
-        joinedload(models.User.meals),
-        joinedload(models.User.metrics)
-    ).filter(models.User.email == email).first()
+    return db.query(models.User).filter(models.User.email == email).first()
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
@@ -131,6 +128,7 @@ def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.M
     db_meal = models.Meal(
         user_id=user_id,
         meal_type=meal.meal_type,
+        food_name=meal.food_name, # Добавлено
         total_calories=meal.total_calories,
         total_protein=meal.total_protein,
         total_fat=meal.total_fat,
