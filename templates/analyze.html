@@ -14,72 +14,74 @@
         <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
-    <!-- Блок со средними показателями -->
-    <div id="average-stats" class="px-4 pt-4">
-        <h3 class="text-lg font-semibold text-center mb-4">Средние данные</h3>
-        <div class="flex justify-center gap-4 w-full">
-            <!-- Калории -->
-            <div class="text-center flex flex-col items-center space-y-1">
-                <div class="ring-container w-16 aspect-square neon-glow-amber relative">
-                    <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
-                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
-                    </svg>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="avg-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
-                        <span class="label-text text-xs -mt-1">ккал</span>
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
+        <!-- Блок со средними показателями -->
+        <div class="w-full">
+            <div id="average-stats" class="pt-4">
+                <h3 class="text-lg font-semibold text-center mb-4">Средние данные</h3>
+                <div class="flex justify-around w-full">
+                    <!-- Калории -->
+                    <div class="text-center flex flex-col items-center space-y-1">
+                        <div class="ring-container w-18 aspect-square neon-glow-amber relative">
+                            <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
+                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="avg-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
+                                <span class="label-text text-xs -mt-1">ккал</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <!-- Белки -->
-            <div class="text-center flex flex-col items-center space-y-1">
-                <div class="ring-container w-16 aspect-square neon-glow-protein-white relative">
-                    <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
-                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
-                    </svg>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="avg-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
-                        <span class="label-text text-xs -mt-1">г</span>
+                    <!-- Белки -->
+                    <div class="text-center flex flex-col items-center space-y-1">
+                        <div class="ring-container w-18 aspect-square neon-glow-protein-white relative">
+                            <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
+                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="avg-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
+                                <span class="label-text text-xs -mt-1">г</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <!-- Жиры -->
-            <div class="text-center flex flex-col items-center space-y-1">
-                <div class="ring-container w-16 aspect-square neon-glow-golden-orange relative">
-                    <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
-                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
-                    </svg>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="avg-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
-                        <span class="label-text text-xs -mt-1">г</span>
+                    <!-- Жиры -->
+                    <div class="text-center flex flex-col items-center space-y-1">
+                        <div class="ring-container w-18 aspect-square neon-glow-golden-orange relative">
+                            <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
+                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="avg-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
+                                <span class="label-text text-xs -mt-1">г</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <!-- Углеводы -->
-            <div class="text-center flex flex-col items-center space-y-1">
-                <div class="ring-container w-16 aspect-square neon-glow-muted-teal relative">
-                    <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                        <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
-                        <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
-                    </svg>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="avg-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
-                        <span class="label-text text-xs -mt-1">г</span>
+                    <!-- Углеводы -->
+                    <div class="text-center flex flex-col items-center space-y-1">
+                        <div class="ring-container w-18 aspect-square neon-glow-muted-teal relative">
+                            <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
+                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="avg-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
+                                <span class="label-text text-xs -mt-1">г</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <main class="flex-grow flex flex-col items-center px-4 space-y-6 pb-24">
         <!-- Форма для анализа -->
-        <section class="ai-section w-full max-w-sm">
+        <section class="ai-section w-full">
             <form id="analyze-form">
                 <div>
                     <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">
@@ -103,7 +105,7 @@
         </section>
 
         <!-- Секция с результатами (изначально скрыта) -->
-        <section id="results-section" class="ai-section w-full max-w-sm" style="display: none;">
+        <section id="results-section" class="ai-section w-full" style="display: none;">
             <h3 class="section-title">Результаты анализа</h3>
             <div id="ai-response-text" class="p-4 rounded-xl my-4 glassmorphism neon-glow-pantone-gray"></div>
 
@@ -152,7 +154,7 @@
         </section>
 
         <!-- Контейнер для логов приемов пищи -->
-        <div id="meal-logs-container" class="w-full max-w-sm space-y-4">
+        <div id="meal-logs-container" class="w-full space-y-4">
             <!-- Сюда будут добавляться логи -->
         </div>
 

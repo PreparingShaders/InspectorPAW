@@ -24,10 +24,10 @@
         <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-center px-4 space-y-6 pb-24">
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
 
         <!-- 1. Центральное кольцо калорий (SVG) -->
-        <div class="ring-container w-3/4 max-w-xs aspect-square neon-glow-amber relative">
+        <div class="ring-container w-1/2 max-w-xs aspect-square neon-glow-amber relative">
             <svg id="calorie-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                 <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                 <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
@@ -35,9 +35,8 @@
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
                 <span class="calorie-label">КАЛОРИИ</span>
-                <span id="calories-consumed" class="text-6xl font-extrabold" style="color: var(--color-amber);">0</span>
-                <span class="label-text -mt-2">ПОТРЕБЛЕНО ККАЛ</span>
-                <span class="calorie-goal-text" id="calorie-goal-info"></span>
+                <span id="calories-consumed" class="text-5xl font-extrabold" style="color: var(--color-amber);">0</span>
+                <span class="calorie-goal-text" id="calorie-goal-info" style="font-size: 0.935rem;">ВСЕГО:</span>
             </div>
         </div>
 
@@ -45,7 +44,7 @@
         <div class="flex justify-around w-full max-w-lg space-x-4">
             <!-- Белки -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 aspect-square neon-glow-protein-white relative">
+                <div class="ring-container w-20 aspect-square neon-glow-protein-white relative">
                     <svg id="protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
@@ -53,7 +52,6 @@
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="protein-consumed" class="font-bold text-2xl" style="color: var(--color-protein-white);">0г</span>
-                        <span class="label-text -mt-1">потреблено</span>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-protein-white);">Белки</p>
@@ -61,7 +59,7 @@
             </div>
             <!-- Жиры -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 aspect-square neon-glow-golden-orange relative">
+                <div class="ring-container w-20 aspect-square neon-glow-golden-orange relative">
                     <svg id="fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
@@ -69,7 +67,6 @@
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="fat-consumed" class="font-bold text-2xl" style="color: var(--color-golden-orange);">0г</span>
-                        <span class="label-text -mt-1">потреблено</span>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-golden-orange);">Жиры</p>
@@ -77,7 +74,7 @@
             </div>
             <!-- Углеводы -->
             <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-24 aspect-square neon-glow-muted-teal relative">
+                <div class="ring-container w-20 aspect-square neon-glow-muted-teal relative">
                     <svg id="carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
@@ -85,19 +82,11 @@
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="carbs-consumed" class="font-bold text-2xl" style="color: var(--color-muted-teal);">0г</span>
-                        <span class="label-text -mt-1">потреблено</span>
                     </div>
                 </div>
                 <p class="text-base font-semibold" style="color: var(--color-muted-teal);">Углеводы</p>
                 <p id="carbs-goal" class="macro-goal-value -mt-1.5">0г</p>
             </div>
-        </div>
-
-        <!-- 3. Главная кнопка с эффектом Bloom -->
-        <div class="w-full max-w-sm pt-4">
-            <button onclick="location.href='/analyze'" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" style="color: var(--color-pantone-gray);">
-                Анализ еды
-            </button>
         </div>
 
         <!-- 4. Информационные карточки -->
@@ -193,7 +182,7 @@
 
                     // Калории
                     document.getElementById('calories-consumed').textContent = Math.round(data.consumed_calories);
-                    document.getElementById('calorie-goal-info').textContent = `ЦЕЛЬ: ${Math.round(data.target_calories)}`;
+                    document.getElementById('calorie-goal-info').textContent = `ВСЕГО: ${Math.round(data.target_calories)}`;
                     updateRingWithOverflow('calorie-ring', data.consumed_calories, data.target_calories);
 
                     // Белки
