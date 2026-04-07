@@ -8,12 +8,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Элементы DOM ---
     const form = document.getElementById('profile-form');
     const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message');
+    const successMessage = document.getElementById('success-message'); // Исправлено на success-message
     const goalSelect = document.getElementById('goal');
     const intensityGroup = document.getElementById('goal-intensity-group');
     const intensitySlider = document.getElementById('goal_intensity');
     const intensityValue = document.getElementById('goal-intensity-value');
     const targetsDisplay = document.getElementById('calculated-targets');
+    const logoutButton = document.getElementById('logout-button'); // Добавлено
 
     // Элементы для выбора даты
     const daySelect = document.getElementById('date_of_birth_day');
@@ -46,20 +47,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Функции для выбора даты ---
     function populateDatePickers() {
         const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1; // JavaScript месяцы 0-индексированы
         const startYear = currentYear - 100;
 
         // Годы
+        yearSelect.innerHTML = '<option value="">Год</option>'; // Добавляем пустую опцию по умолчанию
         for (let i = currentYear; i >= startYear; i--) {
             yearSelect.add(new Option(i, i));
         }
 
         // Месяцы
+        monthSelect.innerHTML = '<option value="">Месяц</option>'; // Добавляем пустую опцию по умолчанию
         const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
         monthNames.forEach((name, index) => {
             monthSelect.add(new Option(name, index + 1));
         });
 
-        // Дни (изначально)
+        // Если значения года или месяца не были установлены из данных пользователя,
+        // устанавливаем текущий год и месяц по умолчанию.
+        // Это будет выполнено только если user.date_of_birth не был установлен ранее
+        if (!yearSelect.value) {
+            yearSelect.value = currentYear;
+        }
+        if (!monthSelect.value) {
+            monthSelect.value = currentMonth;
+        }
+
+        // Дни
         updateDaysInMonth();
     }
 
@@ -93,6 +107,57 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         }
         return null;
+    }
+
+    // --- Функция для преобразования значения интенсивности цели ---
+    function getDisplayIntensity(sliderValue) {
+        let displayValue;
+        if (sliderValue < 0) {
+            // Линейное отображение от [-1, 0) к [-2, 0)
+            displayValue = Math.round(sliderValue * 2);
+        } else if (sliderValue > 0) {
+            // Линейное отображение от (0, 1] к (0, +3]
+            displayValue = Math.round(sliderValue * 3);
+        } else { // sliderValue === 0
+            displayValue = 0;
+        }
+
+        if (displayValue > 0) {
+            return "+" + displayValue.toString();
+        }
+        return displayValue.toString();
+    }
+
+    // --- Функция для позиционирования значения интенсивности над ползунком ---
+    function updateIntensityValuePosition() {
+        const slider = intensitySlider;
+        const valueSpan = intensityValue;
+
+        // Проверяем, что элементы существуют и видимы
+        if (!slider || !valueSpan || slider.offsetWidth === 0) {
+            return;
+        }
+
+        const min = parseFloat(slider.min);
+        const max = parseFloat(slider.max);
+        const val = parseFloat(slider.value);
+
+        // Вычисляем процентное положение ползунка
+        const percentage = (val - min) / (max - min);
+
+        // Получаем ширину ползунка
+        const sliderWidth = slider.offsetWidth;
+
+        // Примерное смещение для центрирования над "кружком" ползунка
+        // Это значение может потребовать точной настройки в зависимости от стилей ползунка
+        // 12px - это половина ширины "thumb" ползунка по умолчанию в Chrome
+        const thumbOffset = 12;
+
+        // Вычисляем позицию для valueSpan
+        // Учитываем, что ползунок имеет отступы по краям
+        const position = percentage * (sliderWidth - 2 * thumbOffset) + thumbOffset;
+
+        valueSpan.style.left = `${position}px`;
     }
 
 
@@ -164,9 +229,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (user.height_cm) document.getElementById('height_cm').value = user.height_cm;
         if (user.activity_level) document.getElementById('activity_level').value = user.activity_level;
         if (user.goal) document.getElementById('goal').value = user.goal;
-        if (user.goal_intensity) {
+        if (user.goal_intensity !== undefined && user.goal_intensity !== null) { // Проверяем на undefined/null
             intensitySlider.value = user.goal_intensity;
-            intensityValue.textContent = parseFloat(user.goal_intensity).toFixed(1);
+            intensityValue.textContent = getDisplayIntensity(parseFloat(user.goal_intensity)); // Используем новую функцию
+            // Вызываем с задержкой, чтобы убедиться, что ползунок отрисован
+            setTimeout(updateIntensityValuePosition, 0);
         }
         if (user.metrics && user.metrics.length > 0) {
             const latestMetric = user.metrics[user.metrics.length - 1];
@@ -184,7 +251,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Слушатели событий ---
     function updateGoalIntensityUI() {
-        intensityGroup.style.display = (goalSelect.value === 'fat_loss' || goalSelect.value === 'mass_gain') ? 'block' : 'none';
+        const isGoalRelevant = (goalSelect.value === 'fat_loss' || goalSelect.value === 'mass_gain');
+        intensityGroup.style.display = isGoalRelevant ? 'block' : 'none';
+        if (isGoalRelevant) {
+            // Если группа становится видимой, обновляем позицию
+            setTimeout(updateIntensityValuePosition, 0);
+        }
     }
 
     form.addEventListener('input', (event) => {
@@ -196,7 +268,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     intensitySlider.addEventListener('input', () => {
-        intensityValue.textContent = parseFloat(intensitySlider.value).toFixed(1);
+        intensityValue.textContent = getDisplayIntensity(parseFloat(intensitySlider.value)); // Используем новую функцию
+        updateIntensityValuePosition(); // Вызываем при изменении ползунка
     });
 
     // --- Отправка формы ---
@@ -247,4 +320,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             errorMessage.textContent = error.message;
         }
     });
+
+    // --- Обработчик кнопки "Выйти" ---
+    if (logoutButton) {
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('accessToken');
+            window.location.href = '/'; // Перенаправление на страницу входа
+        });
+    }
 });

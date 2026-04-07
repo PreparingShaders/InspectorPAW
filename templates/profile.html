@@ -14,7 +14,7 @@
         <h1 class="text-3xl font-extrabold tracking-wider">Ваш профиль</h1>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24 overflow-y-auto">
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
         <div class="w-full">
             <form id="profile-form" class="space-y-4">
                 <div class="form-group">
@@ -137,16 +137,26 @@
                     </div>
                 </div>
 
-                <div class="form-group" id="goal-intensity-group" style="display: none;">
-                    <label for="goal_intensity">Интенсивность цели</label>
-                    <input type="range" id="goal_intensity" min="-1" max="1" step="0.1" value="0" class="styled-slider">
-                    <span id="goal-intensity-value" class="text-center block mt-2">0.0</span>
+                <div class="form-group relative" id="goal-intensity-group" style="display: none;">
+                    <label for="goal_intensity" class="text-center block">Интенсивность цели</label>
+                    <!-- Значение ползунка, позиционируется JS -->
+                    <span id="goal-intensity-value" class="absolute block text-center font-bold" style="top: 2.5rem; transform: translateX(-50%);">0</span>
+
+                    <input type="range" id="goal_intensity" min="-1" max="1" step="0.1" value="0" class="styled-slider w-full mt-10">
+
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-sm text-gray-400">Медленнее</span>
+                        <span class="text-sm text-gray-400">Быстрее</span>
+                    </div>
                 </div>
 
-                <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4">
+                <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-8">
                     Сохранить профиль
                 </button>
             </form>
+            <button type="button" id="logout-button" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4">
+                Выйти
+            </button>
             <p id="error-message" class="text-red-500 text-center mt-4"></p>
             <p id="success-message" class="text-green-500 text-center mt-4"></p>
         </div>
