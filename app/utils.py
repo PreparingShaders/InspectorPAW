@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Optional, Dict, Any, List
-
+import math
 from . import models
 
 def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float], latest_body_fat_percentage: Optional[float]):
@@ -78,66 +78,62 @@ def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float],
 
 def calculate_daily_score(target: Dict[str, float], actual: Dict[str, float]) -> Dict[str, Any]:
     """
-    Рассчитывает ежедневный Индекс Дисциплины (Score) на основе целевых и фактических КБЖУ.
-
-    Args:
-        target: Словарь с целевыми значениями КБЖУ (kcal, protein, fat, carb).
-                Пример: {'kcal': 2000, 'protein': 150, 'fat': 70, 'carb': 200}
-        actual: Словарь с фактическими значениями КБЖУ (kcal, protein, fat, carb).
-                Пример: {'kcal': 2050, 'protein': 160, 'fat': 75, 'carb': 190}
-
-    Returns:
-        Словарь, содержащий daily_score, status_color, y_axis_pos и achievements.
+    Рассчитывает ежедневный Индекс Дисциплины (Score) на основе целевых и фактических КБЖУ
+    с постепенным ростом в течение дня.
     """
     
-    score = 100.0
+    total_score = 0
     achievements: List[str] = []
 
-    # --- Вспомогательная функция для расчета процентного отклонения ---
-    def get_deviation_percent(actual_val: float, target_val: float) -> float:
-        if target_val == 0:
-            # Для КБЖУ предполагается, что цели всегда > 0.
-            # Если target_val может быть 0, и actual_val > 0, это будет бесконечное отклонение.
-            # В данном контексте, если target_val == 0, и actual_val > 0,
-            # это скорее ошибка в данных или логике.
-            # Для безопасности, если target_val == 0, возвращаем 0, чтобы избежать деления на ноль.
-            # В реальном приложении, возможно, стоит бросить ошибку или применить максимальный штраф.
-            return 0.0 
+    # --- Вспомогательная функция для безопасного расчета процента выполнения ---
+    def get_completion_ratio(actual_val: float, target_val: float) -> float:
+        if target_val <= 0:
+            return 0.0
+        return actual_val / target_val
 
-        return (abs(actual_val - target_val) / target_val) * 100
+    # --- Калории (Максимум 40 очков) ---
+    kcal_ratio = get_completion_ratio(actual['calories'], target['calories'])
+    if kcal_ratio <= 1.0: # Недобор или точное попадание
+        # Параболическая функция: медленный старт, быстрый рост в середине, замедление у цели
+        kcal_score = 40 * (1 - (1 - kcal_ratio)**2)
+    else: # Перебор
+        # Штраф за перебор свыше 5%
+        overage_ratio = kcal_ratio - 1.0
+        penalty = max(0, overage_ratio - 0.05) * 200 # Усиленный штраф
+        kcal_score = 40 - penalty
+    total_score += kcal_score
 
-    # --- Калории (Вес: 40%) ---
-    kcal_deviation_percent = get_deviation_percent(actual['kcal'], target['kcal'])
-    if kcal_deviation_percent > 5:
-        penalty_kcal = (kcal_deviation_percent - 5) * 0.8
-        score -= penalty_kcal
+    # --- Белки (Максимум 30 очков + 10 бонусных) ---
+    protein_ratio = get_completion_ratio(actual['protein'], target['protein'])
+    protein_score = 0
+    if protein_ratio <= 1.0:
+        protein_score = 30 * protein_ratio
+    else: # Перебор (бонус)
+        protein_score = 30
+        # Бонус до 10 очков за перебор до 50% сверх нормы, если калории в норме
+        if kcal_ratio <= 1.05:
+            bonus_ratio = min((protein_ratio - 1.0) * 2, 1.0) # Бонус до 50% сверх нормы
+            protein_bonus = 10 * bonus_ratio
+            protein_score += protein_bonus
+            if protein_bonus > 0:
+                achievements.append("Protein Bonus Active")
+    total_score += protein_score
 
-    # --- Белки (Вес: 30%) ---
-    if actual['protein'] < target['protein']:
-        protein_deviation_percent = (target['protein'] - actual['protein']) / target['protein'] * 100 if target['protein'] != 0 else 0
-        penalty_prot = protein_deviation_percent * 0.6
-        score -= penalty_prot
-    
-    # Бонус (Overdrive) для Белков
-    # Если фактический белок >= (целевой белок + 15г)
-    # И фактические калории <= (целевые калории * 1.05)
-    if actual['protein'] >= (target['protein'] + 15) and actual['kcal'] <= (target['kcal'] * 1.05):
-        score += 7
-        achievements.append("Protein Bonus Active")
-
-    # --- Жиры и Углеводы (Вес по 15% каждый) ---
-    for macro in ['fat', 'carb']:
-        macro_deviation_percent = get_deviation_percent(actual[macro], target[macro])
-        if macro_deviation_percent > 15:
-            penalty_macro = (macro_deviation_percent - 15) * 0.2
-            score -= penalty_macro
+    # --- Жиры и Углеводы (Максимум по 15 очков) ---
+    for macro, weight in [('fat', 15), ('carbohydrates', 15)]:
+        macro_ratio = get_completion_ratio(actual[macro], target[macro])
+        macro_score = 0
+        if macro_ratio <= 1.0:
+            macro_score = weight * macro_ratio
+        else: # Перебор
+            # Штраф за перебор свыше 20%
+            overage_ratio = macro_ratio - 1.0
+            penalty = max(0, overage_ratio - 0.20) * 100
+            macro_score = weight - penalty
+        total_score += macro_score
 
     # --- Граничные условия ---
-    score = max(0.0, score)  # Минимальный Score: 0
-    score = min(120.0, score) # Максимальный Score: 120
-
-    # Округляем итоговый Score до целого числа
-    final_score = round(score)
+    final_score = round(max(0, min(total_score, 120)))
 
     # --- Определение визуального статуса ---
     status_color: str
@@ -154,6 +150,6 @@ def calculate_daily_score(target: Dict[str, float], actual: Dict[str, float]) ->
     return {
         "daily_score": final_score,
         "status_color": status_color,
-        "y_axis_pos": final_score, # y_axis_pos равен daily_score для рендеринга
+        "y_axis_pos": final_score,
         "achievements": achievements
     }
