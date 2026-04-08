@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Optional, Dict, Any, List
 import math
+import datetime
 from . import models
 
 def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float], latest_body_fat_percentage: Optional[float]):
@@ -76,80 +77,137 @@ def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float],
     }
 
 
-def calculate_daily_score(target: Dict[str, float], actual: Dict[str, float]) -> Dict[str, Any]:
+def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None) -> Dict[str, Any]:
     """
-    Рассчитывает ежедневный Индекс Дисциплины (Score) на основе целевых и фактических КБЖУ
-    с постепенным ростом в течение дня.
+    Рассчитывает динамический Индекс Дисциплины (Score) для ProgressLab.
+    Учитывает время (05:00 - 23:00) и баланс нутриентов.
     """
-    
-    total_score = 0
-    achievements: List[str] = []
 
-    # --- Вспомогательная функция для безопасного расчета процента выполнения ---
-    def get_completion_ratio(actual_val: float, target_val: float) -> float:
-        if target_val <= 0:
-            return 0.0
-        return actual_val / target_val
+    # 1. Настройка временного окна (18 часов мониторинга)
+    now = current_dt if current_dt else datetime.datetime.now()
+    current_time = now.hour + now.minute / 60
+    start_h, end_h = 5.0, 23.0
 
-    # --- Калории (Максимум 40 очков) ---
-    kcal_ratio = get_completion_ratio(actual['calories'], target['calories'])
-    if kcal_ratio <= 1.0: # Недобор или точное попадание
-        # Параболическая функция: медленный старт, быстрый рост в середине, замедление у цели
-        kcal_score = 40 * (1 - (1 - kcal_ratio)**2)
-    else: # Перебор
-        # Штраф за перебор свыше 5%
-        overage_ratio = kcal_ratio - 1.0
-        penalty = max(0, overage_ratio - 0.05) * 200 # Усиленный штраф
-        kcal_score = 40 - penalty
-    total_score += kcal_score
+    if current_time <= start_h:
+        time_factor = 0.05  # Минимальный порог
+    elif current_time >= end_h:
+        time_factor = 1.0
+    else:
+        time_factor = (current_time - start_h) / (end_h - start_h)
 
-    # --- Белки (Максимум 30 очков + 10 бонусных) ---
-    protein_ratio = get_completion_ratio(actual['protein'], target['protein'])
-    protein_score = 0
-    if protein_ratio <= 1.0:
-        protein_score = 30 * protein_ratio
-    else: # Перебор (бонус)
-        protein_score = 30
-        # Бонус до 10 очков за перебор до 50% сверх нормы, если калории в норме
-        if kcal_ratio <= 1.05:
-            bonus_ratio = min((protein_ratio - 1.0) * 2, 1.0) # Бонус до 50% сверх нормы
-            protein_bonus = 10 * bonus_ratio
-            protein_score += protein_bonus
-            if protein_bonus > 0:
-                achievements.append("Protein Bonus Active")
-    total_score += protein_score
+    # 2. Параметры и веса
+    total_score = 0.0
+    weights = {
+        'calories': 40,
+        'protein': 30,
+        'fat': 15,
+        'carbohydrates': 15
+    }
 
-    # --- Жиры и Углеводы (Максимум по 15 очков) ---
-    for macro, weight in [('fat', 15), ('carbohydrates', 15)]:
-        macro_ratio = get_completion_ratio(actual[macro], target[macro])
-        macro_score = 0
-        if macro_ratio <= 1.0:
-            macro_score = weight * macro_ratio
-        else: # Перебор
-            # Штраф за перебор свыше 20%
-            overage_ratio = macro_ratio - 1.0
-            penalty = max(0, overage_ratio - 0.20) * 100
-            macro_score = weight - penalty
-        total_score += macro_score
+    # Буфер лояльности: разрешаем съесть до 30% нормы в любое время без штрафа за скорость
+    tolerance_threshold = 0.3
 
-    # --- Граничные условия ---
+    status_notes = []
+    recommendations = [] # Список для сбора рекомендаций
+
+    for param, max_weight in weights.items():
+        t_val = target[param]
+        a_val = actual[param]
+
+        # Ожидание с учетом "смягчения" для завтрака
+        expected_now = t_val * max(time_factor, tolerance_threshold)
+
+        # Текущее соотношение относительно времени
+        ratio = a_val / expected_now if expected_now > 0 else 1.0
+        
+        # Соотношение относительно дневной цели
+        day_ratio = a_val / t_val if t_val > 0 else 0
+
+        # Логика начисления баллов
+        if ratio <= 1.2:
+            # Идем в графике или чуть впереди (коридор нормы)
+            # Если сильно отстаем от времени (ratio < 0.8), балл снижается пропорционально
+            param_score = max_weight if ratio >= 0.8 else max_weight * (a_val / (t_val * time_factor + 1e-6))
+            
+            # Добавляем рекомендации для недобора
+            if ratio < 0.8 and time_factor > 0.1: # Недобор, если уже не самое начало дня
+                if param == 'calories':
+                    recommendations.append("Недобор калорий. Пора перекусить!")
+                elif param == 'protein':
+                    recommendations.append("Недобор белка. Уделите внимание белковой пище.")
+                elif param == 'fat':
+                    recommendations.append("Недобор жиров. Добавьте полезные жиры.")
+                elif param == 'carbohydrates':
+                    recommendations.append("Недобор углеводов. Добавьте сложные углеводы.")
+        else:
+            # Штраф за агрессивный перебор относительно времени (жизнь в долг)
+            overage = ratio - 1.2
+            param_score = max(0, max_weight - (overage * 30))  # Смягченный коэфф. штрафа
+            
+            # Добавляем рекомендации для перебора
+            if overage > 0.2: # Значительный перебор относительно графика
+                if param == 'calories':
+                    recommendations.append("Перебор калорий по графику. Сократите порции.")
+                elif param == 'protein':
+                    recommendations.append("Перебор белка по графику. Распределите приемы.")
+                elif param == 'fat':
+                    recommendations.append("Перебор жиров по графику. Будьте внимательнее.")
+                elif param == 'carbohydrates':
+                    recommendations.append("Перебор углеводов по графику. Выбирайте сложные.")
+
+
+        # Глобальный штраф за превышение 100% дневного лимита
+        if a_val > t_val:
+            day_over_ratio = (a_val / t_val) - 1.0
+            param_score -= day_over_ratio * 100
+            if day_over_ratio > 0.05: # Если превышение дневной цели более чем на 5%
+                if param == 'calories':
+                    recommendations.append("Дневной лимит калорий превышен!")
+                elif param == 'protein':
+                    recommendations.append("Дневной лимит белка превышен!")
+                elif param == 'fat':
+                    recommendations.append("Дневной лимит жиров превышен!")
+                elif param == 'carbohydrates':
+                    recommendations.append("Дневной лимит углеводов превышен!")
+
+
+        total_score += max(0, param_score)
+
+    # 3. Бонус Белка (Overdrive)
+    # Даем до +20 баллов, если белок > 100%, а калории в норме
+    if actual['protein'] > target['protein'] and actual['calories'] <= target['calories'] * 1.05:
+        protein_extra = min((actual['protein'] / target['protein'] - 1.0) * 20, 20)
+        total_score += protein_extra
+
+    # Финализация значения (0 - 120)
     final_score = round(max(0, min(total_score, 120)))
 
-    # --- Определение визуального статуса ---
-    status_color: str
-    if final_score > 105:
-        status_color = "green"
-    elif 95 <= final_score <= 105:
-        status_color = "white"
-    elif 80 <= final_score <= 94:
-        status_color = "orange"
-    else: # final_score < 80
-        status_color = "red"
+    # 4. Цветовая палитра и Статус-сообщения
+    color = "#e11d48" # Default to red (Fail)
+    status_text = "Требуется корректировка плана." # Default Fail message
 
-    # --- Формирование выходных данных ---
+    if final_score > 105:
+        color, status_text = "#10b981", "Overdrive: Максимальная эффективность"
+    elif 95 <= final_score <= 105:
+        color, status_text = "#ffffff", "Golden Standard: Идеальный темп"
+    elif 80 <= final_score <= 94:
+        color, status_text = "#f59e0b", "Warning: Есть отклонения от графика"
+    else: # final_score < 80
+        # Если есть конкретные рекомендации, используем их
+        if recommendations:
+            status_text = " ".join(list(set(recommendations))) # Удаляем дубликаты и объединяем
+        else:
+            status_text = "Fail: Требуется корректировка плана." # Fallback если нет конкретных рекомендаций
+
+    # Специфическая подсказка для утреннего перебора
+    if time_factor < 0.4 and final_score < 80 and not recommendations: # Если нет других конкретных рекомендаций
+        status_text = "Плотный старт! Score выровняется сам, если не перекусывать до обеда."
+        color = "#f59e0b" # Устанавливаем оранжевый цвет для этого предупреждения
+
     return {
         "daily_score": final_score,
-        "status_color": status_color,
-        "y_axis_pos": final_score,
-        "achievements": achievements
+        "status_color": color,
+        "status_message": status_text,
+        "y_axis_pos": final_score,  # Координата для круга на графике
+        "time_progress": round(time_factor * 100, 1)
     }

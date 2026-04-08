@@ -88,10 +88,38 @@
                 <p id="carbs-goal" class="macro-goal-value -mt-1.5">0г</p>
             </div>
         </div>
+
+        <!-- 3. Индекс дисциплины (The Score Graph) -->
+        <div class="w-full px-4 mt-6">
+            <h2 class="text-sm text-gray-400 font-semibold mb-3 text-center">Индекс дисциплины</h2>
+            <div class="relative h-32 w-full bg-gray-900/30 rounded-lg flex items-end justify-around pb-2 pt-2">
+                <!-- Golden Standard Line -->
+                <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-gray-800/50 -translate-y-1/2"></div>
+
+                <!-- Day Columns and Score Circles -->
+                <div id="score-graph-container" class="flex justify-around w-full h-full relative z-10">
+                    <!-- Circles will be dynamically added here by JS -->
+                </div>
+            </div>
+            <!-- Status Message -->
+            <p id="score-status-message" class="text-center text-xs mt-2 font-medium" style="color: #ffffff;"></p>
+        </div>
+
     </main>
 
     {% set active_page = 'dashboard' %}
     {% include 'includes/bottom_nav.html' %}
+
+    <!-- Tooltip for Score Graph -->
+    <div id="score-tooltip" class="absolute z-50 p-3 rounded-lg shadow-lg text-xs bg-gray-800 text-white opacity-0 transition-opacity duration-200 pointer-events-none" style="min-width: 150px;">
+        <p class="font-bold text-sm mb-1" id="tooltip-date"></p>
+        <p>Score: <span id="tooltip-score"></span></p>
+        <p>Ккал: <span id="tooltip-calories"></span> / <span id="tooltip-target-calories"></span></p>
+        <p>Белки: <span id="tooltip-protein"></span>г / <span id="tooltip-target-protein"></span>г</p>
+        <p>Жиры: <span id="tooltip-fat"></span>г / <span id="tooltip-target-fat"></span>г</p>
+        <p>Углеводы: <span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</p>
+        <p class="mt-2 text-gray-400" id="tooltip-message"></p>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -101,6 +129,18 @@
                 fat:       { glowClass: 'overflow-glow-red'   },
                 carbs:     { glowClass: 'overflow-glow-red'   },
             };
+
+            // Mapping for neon glow classes
+            const NEON_GLOW_CLASSES = {
+                '#10b981': 'neon-glow-emerald',
+                '#ffffff': 'neon-glow-white',
+                '#f59e0b': 'neon-glow-amber-score',
+                '#e11d48': 'neon-glow-rose'
+            };
+
+            function getNeonGlowClass(hexColor) {
+                return NEON_GLOW_CLASSES[hexColor] || ''; // Return empty string if no match
+            }
 
             function getMacroType(ringId) {
                 if (ringId.includes('protein'))   return 'protein';
@@ -193,7 +233,159 @@
                 }
             }
 
+            async function fetchWeeklySummaryData() {
+                try {
+                    const response = await fetch('/users/me/stats/weekly-summary', {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 401) window.location.href = '/';
+                        throw new Error('Failed to fetch weekly summary data');
+                    }
+
+                    const data = await response.json();
+                    renderScoreGraph(data.daily_breakdown);
+
+                } catch (error) {
+                    console.error('Error fetching weekly summary data:', error);
+                }
+            }
+
+            let tooltipTimeout;
+            const scoreTooltip = document.getElementById('score-tooltip');
+
+            function showTooltip(element, dayData) {
+                clearTimeout(tooltipTimeout); // Clear any existing timeout
+
+                document.getElementById('tooltip-date').textContent = new Date(dayData.date).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+                document.getElementById('tooltip-score').textContent = dayData.daily_score;
+                document.getElementById('tooltip-calories').textContent = Math.round(dayData.consumed_calories);
+                document.getElementById('tooltip-target-calories').textContent = Math.round(dayData.target_calories);
+                document.getElementById('tooltip-protein').textContent = Math.round(dayData.consumed_protein);
+                document.getElementById('tooltip-target-protein').textContent = Math.round(dayData.target_protein);
+                document.getElementById('tooltip-fat').textContent = Math.round(dayData.consumed_fat);
+                document.getElementById('tooltip-target-fat').textContent = Math.round(dayData.target_fat);
+                document.getElementById('tooltip-carbs').textContent = Math.round(dayData.consumed_carbohydrates);
+                document.getElementById('tooltip-target-carbs').textContent = Math.round(dayData.target_carbohydrates);
+                document.getElementById('tooltip-message').textContent = dayData.status_message || '';
+
+                // Position the tooltip
+                const rect = element.getBoundingClientRect();
+                const mainRect = document.querySelector('main').getBoundingClientRect(); // Get main for relative positioning
+
+                // Calculate position relative to the main content area
+                let top = rect.top - mainRect.top - scoreTooltip.offsetHeight - 10; // Above the circle, with some padding
+                let left = rect.left - mainRect.left + (rect.width / 2) - (scoreTooltip.offsetWidth / 2);
+
+                // Ensure tooltip stays within screen bounds
+                if (top < 0) { // If it goes above, place it below
+                    top = rect.bottom - mainRect.top + 10;
+                }
+                if (left < 0) { // If it goes off left, align to left edge
+                    left = 0;
+                }
+                if (left + scoreTooltip.offsetWidth > mainRect.width) { // If it goes off right, align to right edge
+                    left = mainRect.width - scoreTooltip.offsetWidth;
+                }
+
+                scoreTooltip.style.top = `${top}px`;
+                scoreTooltip.style.left = `${left}px`;
+                scoreTooltip.classList.remove('opacity-0', 'pointer-events-none');
+                scoreTooltip.classList.add('opacity-100', 'pointer-events-auto');
+
+                // Hide after 5 seconds
+                tooltipTimeout = setTimeout(() => {
+                    hideTooltip();
+                }, 5000);
+            }
+
+            function hideTooltip() {
+                scoreTooltip.classList.remove('opacity-100', 'pointer-events-auto');
+                scoreTooltip.classList.add('opacity-0', 'pointer-events-none');
+            }
+
+            // Hide tooltip if clicked anywhere else on the document
+            document.addEventListener('click', (event) => {
+                if (!scoreTooltip.contains(event.target) && !event.target.closest('.score-circle')) {
+                    hideTooltip();
+                }
+            });
+
+
+            function renderScoreGraph(dailyBreakdown) {
+                const graphContainer = document.getElementById('score-graph-container');
+                const statusMessageElement = document.getElementById('score-status-message');
+                graphContainer.innerHTML = ''; // Clear previous content
+
+                // Дни недели, начиная с понедельника
+                const orderedDayNamesShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+                // Сортируем данные по дате, чтобы они отображались в правильном порядке (от старых к новым)
+                dailyBreakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                dailyBreakdown.forEach((dayData) => {
+                    const dayOfWeek = new Date(dayData.date).getDay(); // 0: Вс, 1: Пн, ..., 6: Сб
+                    const displayDayName = orderedDayNamesShort[dayOfWeek === 0 ? 6 : dayOfWeek - 1]; // Корректируем, чтобы Пн был первым
+
+                    const isToday = new Date(dayData.date).toDateString() === new Date().toDateString();
+
+                    const score = dayData.daily_score !== null ? dayData.daily_score : 0;
+                    const color = dayData.status_color || '#ffffff';
+                    const yPos = dayData.y_axis_pos !== null ? dayData.y_axis_pos : 0; // 0-120
+
+                    // Вычисляем вертикальную позицию (0 - низ, 120 - верх)
+                    // Контейнер графика h-32 (128px). Используем 120 как максимальный score.
+                    // top: (120 - score) / 120 * 100%
+                    const topPosition = ((120 - yPos) / 120) * 100; // Процент от верха
+
+                    const circleClasses = [
+                        'absolute', 'w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center', 'text-xs', 'font-bold',
+                        'transition-all', 'duration-300', 'ease-out', getNeonGlowClass(color), 'score-circle' // Добавляем класс для идентификации
+                    ];
+                    let circleStyle = `top: ${topPosition}%; transform: translateY(-50%);`;
+
+                    if (isToday) {
+                        circleClasses.push('border-2', 'animate-pulse');
+                        circleStyle += `border-color: ${color}; color: ${color}; background-color: transparent;`;
+                        // Обновляем статусное сообщение для сегодняшнего дня
+                        const message = dayData.status_message || '';
+                        statusMessageElement.textContent = message;
+                        statusMessageElement.style.color = dayData.status_color || '#ffffff';
+                        statusMessageElement.style.display = message ? 'block' : 'none'; // Скрываем, если сообщение пустое
+                    } else {
+                        circleClasses.push('text-white'); // Цвет текста для залитых кругов
+                        circleStyle += `background-color: ${color};`;
+                    }
+
+                    const dayColumn = document.createElement('div');
+                    dayColumn.className = 'flex flex-col items-center justify-end h-full flex-1 relative';
+
+                    const circleElement = document.createElement('div');
+                    circleElement.className = circleClasses.join(' ');
+                    circleElement.style = circleStyle;
+                    circleElement.textContent = score;
+                    circleElement.dataset.details = JSON.stringify(dayData); // Сохраняем данные для тултипа
+
+                    circleElement.addEventListener('click', (event) => {
+                        event.stopPropagation(); // Prevent document click from immediately hiding it
+                        showTooltip(circleElement, dayData);
+                    });
+
+                    const dayLabel = document.createElement('p');
+                    dayLabel.className = 'text-xs text-gray-500 mt-1';
+                    dayLabel.textContent = displayDayName;
+
+                    // Добавляем круг в колонку
+                    dayColumn.appendChild(circleElement);
+                    dayColumn.appendChild(dayLabel);
+                    graphContainer.appendChild(dayColumn);
+                });
+            }
+
+            // Вызываем обе функции при загрузке страницы
             fetchDashboardData();
+            fetchWeeklySummaryData();
         });
     </script>
 

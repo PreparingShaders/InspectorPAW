@@ -265,8 +265,13 @@ async def analyze_meal(
         raise HTTPException(status_code=500, detail="AI model returned an empty response.")
 
     try:
-        # Пытаемся распарсить ответ как JSON
-        ai_data = json.loads(raw_ai_response)
+        # Используем регулярное выражение для извлечения JSON-объекта
+        json_match = re.search(r'{.*}', raw_ai_response, re.DOTALL)
+        if not json_match:
+            raise HTTPException(status_code=500, detail="AI model did not return a valid JSON object. Response: " + raw_ai_response)
+        
+        json_string = json_match.group(0)
+        ai_data = json.loads(json_string)
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="AI model returned invalid JSON. Response: " + raw_ai_response)
 
@@ -407,29 +412,36 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
 
     for i in range(7):
         current_date = end_date - timedelta(days=i)
-        # Преобразуем current_date в строку для поиска в карте
+        
         consumed = consumption_map.get(str(current_date))
 
-        if consumed:
-            days_with_data += 1
-            consumed_calories = consumed["total_calories"]
-            consumed_protein = consumed["total_protein"]
-            consumed_fat = consumed["total_fat"]
-            consumed_carbohydrates = consumed["total_carbohydrates"]
+        consumed_calories = consumed["total_calories"] if consumed else 0
+        consumed_protein = consumed["total_protein"] if consumed else 0
+        consumed_fat = consumed["total_fat"] if consumed else 0
+        consumed_carbohydrates = consumed["total_carbohydrates"] if consumed else 0
 
-            total_consumed["calories"] += consumed_calories
-            total_consumed["protein"] += consumed_protein
-            total_consumed["fat"] += consumed_fat
-            total_consumed["carbohydrates"] += consumed_carbohydrates
+        # Определяем target и actual для calculate_progress_lab_score
+        target_macros = {
+            "calories": target_calories,
+            "protein": target_protein,
+            "fat": target_fat,
+            "carbohydrates": target_carbohydrates
+        }
+        actual_macros = {
+            "calories": consumed_calories,
+            "protein": consumed_protein,
+            "fat": consumed_fat,
+            "carbohydrates": consumed_carbohydrates
+        }
 
-            if abs(consumed_calories - target_calories) < (target_calories * 0.1):
-                status = "completed"
-            elif consumed_calories > target_calories:
-                status = "over_limit"
-            else:
-                status = "under_limit"
+        score_result = {}
+        if current_date == date.today():
+            # Для сегодняшнего дня - динамический расчет
+            score_result = utils.calculate_progress_lab_score(target_macros, actual_macros)
         else:
-            status = "no_data" # Ensure status is set even if no consumption
+            # Для прошедших дней - расчет на конец дня (23:00)
+            end_of_day_dt = datetime.combine(current_date, datetime.min.time().replace(hour=23))
+            score_result = utils.calculate_progress_lab_score(target_macros, actual_macros, current_dt=end_of_day_dt)
 
         daily_breakdown.append(schemas.DailyStatDetail(
             date=current_date,
@@ -438,8 +450,24 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
             consumed_fat=consumed_fat,
             consumed_carbohydrates=consumed_carbohydrates,
             target_calories=target_calories,
-            status=status
+            target_protein=target_protein,  # Добавлено
+            target_fat=target_fat,          # Добавлено
+            target_carbohydrates=target_carbohydrates, # Добавлено
+            status="calculated", # Статус теперь будет определяться score_result
+            daily_score=score_result.get("daily_score"),
+            status_color=score_result.get("status_color"),
+            status_message=score_result.get("status_message"),
+            y_axis_pos=score_result.get("y_axis_pos"),
+            time_progress=score_result.get("time_progress")
         ))
+        
+        if consumed: # Только если были данные за день, учитываем их в средних значениях
+            days_with_data += 1
+            total_consumed["calories"] += consumed_calories
+            total_consumed["protein"] += consumed_protein
+            total_consumed["fat"] += consumed_fat
+            total_consumed["carbohydrates"] += consumed_carbohydrates
+
 
     avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0

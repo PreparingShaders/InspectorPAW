@@ -31,11 +31,18 @@ class TokenData(BaseModel):
 class DailyStatDetail(BaseModel):
     date: date
     consumed_calories: float
-    consumed_protein: float = 0  # Добавлено
-    consumed_fat: float = 0      # Добавлено
-    consumed_carbohydrates: float = 0 # Добавлено
+    consumed_protein: float = 0
+    consumed_fat: float = 0
+    consumed_carbohydrates: float = 0
     target_calories: float
     status: str
+    # Новые поля для ProgressLab Score
+    daily_score: Optional[int] = None
+    status_color: Optional[str] = None
+    status_message: Optional[str] = None
+    y_axis_pos: Optional[int] = None
+    time_progress: Optional[float] = None
+
 
 class AverageSummary(BaseModel):
     avg_calories: float
@@ -94,7 +101,7 @@ class DashboardStats(BaseModel):
 
 # --- Meal Totals Schema (для передачи КБЖУ) ---
 class MealTotals(BaseModel):
-    food_name: Optional[str] = None # Добавлено
+    food_name: Optional[str] = None
     total_calories: float = 0
     total_protein: float = 0
     total_fat: float = 0
@@ -103,12 +110,12 @@ class MealTotals(BaseModel):
 # --- Analysis Schemas ---
 class AnalysisResponse(BaseModel):
     suggested_totals: MealTotals
-    ai_response_text: str # Это поле будет содержать только короткое описание блюда
+    ai_response_text: str
 
 # --- Meal Schemas ---
 class MealBase(BaseModel):
     meal_type: Optional[str] = None
-    food_name: Optional[str] = None # Добавлено
+    food_name: Optional[str] = None
 
 class MealCreate(MealBase, MealTotals):
     pass

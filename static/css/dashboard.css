@@ -27,7 +27,7 @@
 
 /* --- Общие стили макета --- */
 body {
-    background-color: #0F0F10;
+    background-color: #121212; /* Сделал фон чуть светлее */
     color: white;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     overflow-y: auto;
@@ -47,6 +47,12 @@ body {
 @keyframes neon-pulse-red { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-red); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-red); } }
 @keyframes neon-pulse-green-overflow { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-green), 0 0 20px 2px rgba(80,200,120,0.3); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-green), 0 0 30px 3px rgba(80,200,120,0.4); } }
 @keyframes neon-pulse-red-overflow { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-red), 0 0 20px 2px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-red), 0 0 30px 3px rgba(255,107,107,0.4); } }
+
+/* Новые классы для неонового свечения кругов Score */
+.neon-glow-emerald { box-shadow: 0 0 8px 1px #10b981, 0 0 15px 2px rgba(16, 185, 129, 0.4); }
+.neon-glow-white { box-shadow: 0 0 8px 1px #ffffff, 0 0 15px 2px rgba(255, 255, 255, 0.4); }
+.neon-glow-amber-score { box-shadow: 0 0 8px 1px #f59e0b, 0 0 15px 2px rgba(245, 158, 11, 0.4); }
+.neon-glow-rose { box-shadow: 0 0 8px 1px #e11d48, 0 0 15px 2px rgba(225, 29, 72, 0.4); }
 
 
 /* --- Glassmorphism и Neon Glow --- */
@@ -239,7 +245,7 @@ input[type=range].styled-slider::-moz-range-thumb {
     margin-left: .5em;
 }
 .date-divider span {
-    background-color: #0F0F10;
+    background-color: #121212; /* Обновляем фон для соответствия новому body */
     padding: 0 10px;
     font-weight: 600;
 }
