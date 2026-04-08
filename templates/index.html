@@ -91,7 +91,7 @@
 
         <!-- 3. Индекс дисциплины (The Score Graph) -->
         <div class="w-full px-4 mt-6">
-            <h2 class="text-sm text-gray-400 font-semibold mb-3 text-center">Индекс дисциплины</h2>
+            <h2 class="text-sm text-gray-400 font-semibold mb-3 text-center">Индекс дисциплины питания</h2>
             <div class="relative h-32 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
                 <!-- Golden Standard Line -->
                 <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-gray-800/50 -translate-y-1/2"></div>
@@ -101,8 +101,6 @@
                     <!-- Circles will be dynamically added here by JS -->
                 </div>
             </div>
-            <!-- Status Message -->
-            <p id="score-status-message" class="text-center text-xs mt-2 font-medium" style="color: #ffffff;"></p>
         </div>
 
     </main>
@@ -111,14 +109,31 @@
     {% include 'includes/bottom_nav.html' %}
 
     <!-- Tooltip for Score Graph -->
-    <div id="score-tooltip" class="absolute z-50 p-3 rounded-lg shadow-lg text-xs bg-gray-800 text-white opacity-0 transition-opacity duration-200 pointer-events-none" style="min-width: 150px;">
-        <p class="font-bold text-sm mb-1" id="tooltip-date"></p>
-        <p>Score: <span id="tooltip-score"></span></p>
-        <p>Ккал: <span id="tooltip-calories"></span> / <span id="tooltip-target-calories"></span></p>
-        <p>Белки: <span id="tooltip-protein"></span>г / <span id="tooltip-target-protein"></span>г</p>
-        <p>Жиры: <span id="tooltip-fat"></span>г / <span id="tooltip-target-fat"></span>г</p>
-        <p>Углеводы: <span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</p>
-        <p class="mt-2 text-gray-400" id="tooltip-message"></p>
+    <div id="score-tooltip" class="absolute z-50 p-3 rounded-2xl glassmorphism neon-glow-pantone-gray text-white opacity-0 transition-all duration-300 pointer-events-none shadow-2xl" style="min-width: 140px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transform: scale(0.75);">
+        <p class="font-black text-sm mb-1.5 tracking-wide border-b border-white/10 pb-1" id="tooltip-date"></p>
+        <div class="space-y-1 text-xs">
+            <div class="flex justify-between items-center">
+                <span class="text-gray-400">Score:</span>
+                <span id="tooltip-score" class="font-bold text-base"></span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span style="color: var(--color-amber);">Ккал:</span>
+                <span class="font-medium"><span id="tooltip-calories"></span> / <span id="tooltip-target-calories"></span></span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span style="color: var(--color-protein-white);">Белки:</span>
+                <span class="font-medium"><span id="tooltip-protein"></span>г / <span id="tooltip-target-protein"></span>г</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span style="color: var(--color-golden-orange);">Жиры:</span>
+                <span class="font-medium"><span id="tooltip-fat"></span>г / <span id="tooltip-target-fat"></span>г</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span style="color: var(--color-muted-teal);">Углеводы:</span>
+                <span class="font-medium"><span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</span>
+            </div>
+        </div>
+        <p class="mt-2 text-[10px] italic font-medium leading-tight opacity-90" id="tooltip-message"></p>
     </div>
 
     <script>
@@ -256,7 +271,7 @@
             const scoreTooltip = document.getElementById('score-tooltip');
 
             function showTooltip(element, dayData) {
-                clearTimeout(tooltipTimeout); // Clear any existing timeout
+                clearTimeout(tooltipTimeout);
 
                 document.getElementById('tooltip-date').textContent = new Date(dayData.date).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
                 document.getElementById('tooltip-score').textContent = dayData.daily_score;
@@ -272,36 +287,35 @@
 
                 // Position the tooltip
                 const rect = element.getBoundingClientRect();
-                const mainRect = document.querySelector('main').getBoundingClientRect(); // Get main for relative positioning
+                const scrollX = window.scrollX || window.pageXOffset;
+                const scrollY = window.scrollY || window.pageYOffset;
 
-                // Calculate position relative to the main content area
-                let top = rect.top - mainRect.top - scoreTooltip.offsetHeight - 10; // Above the circle, with some padding
-                let left = rect.left - mainRect.left + (rect.width / 2) - (scoreTooltip.offsetWidth / 2);
+                // Сначала делаем видимым, чтобы рассчитать размеры
+                scoreTooltip.classList.remove('opacity-0', 'pointer-events-none');
+                scoreTooltip.classList.add('opacity-100');
 
-                // Ensure tooltip stays within screen bounds
-                if (top < 0) { // If it goes above, place it below
-                    top = rect.bottom - mainRect.top + 10;
+                let top = rect.top + scrollY - scoreTooltip.offsetHeight - 15;
+                let left = rect.left + scrollX + (rect.width / 2) - (scoreTooltip.offsetWidth / 2);
+
+                // Ограничение по экрану
+                if (top < scrollY + 10) {
+                    top = rect.bottom + scrollY + 15;
                 }
-                if (left < 0) { // If it goes off left, align to left edge
-                    left = 0;
-                }
-                if (left + scoreTooltip.offsetWidth > mainRect.width) { // If it goes off right, align to right edge
-                    left = mainRect.width - scoreTooltip.offsetWidth;
+                if (left < 10) left = 10;
+                if (left + scoreTooltip.offsetWidth > window.innerWidth - 10) {
+                    left = window.innerWidth - scoreTooltip.offsetWidth - 10;
                 }
 
                 scoreTooltip.style.top = `${top}px`;
                 scoreTooltip.style.left = `${left}px`;
-                scoreTooltip.classList.remove('opacity-0', 'pointer-events-none');
-                scoreTooltip.classList.add('opacity-100', 'pointer-events-auto');
+                scoreTooltip.style.transform = 'scale(0.75)';
 
-                // Hide after 5 seconds
-                tooltipTimeout = setTimeout(() => {
-                    hideTooltip();
-                }, 5000);
+                tooltipTimeout = setTimeout(hideTooltip, 6000);
             }
 
             function hideTooltip() {
-                scoreTooltip.classList.remove('opacity-100', 'pointer-events-auto');
+                scoreTooltip.style.transform = 'scale(0.7)';
+                scoreTooltip.classList.remove('opacity-100');
                 scoreTooltip.classList.add('opacity-0', 'pointer-events-none');
             }
 
@@ -348,11 +362,6 @@
                     if (isToday) {
                         circleClasses.push('border-2', 'animate-pulse');
                         circleStyle += `border-color: ${color}; color: ${color}; background-color: transparent;`;
-                        // Обновляем статусное сообщение для сегодняшнего дня
-                        const message = dayData.status_message || '';
-                        statusMessageElement.textContent = message;
-                        statusMessageElement.style.color = dayData.status_color || '#ffffff';
-                        statusMessageElement.style.display = message ? 'block' : 'none'; // Скрываем, если сообщение пустое
                     } else {
                         circleClasses.push('text-white'); // Цвет текста для залитых кругов
                         circleStyle += `background-color: ${color};`;

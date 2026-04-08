@@ -35,6 +35,9 @@ class DailyStatDetail(BaseModel):
     consumed_fat: float = 0
     consumed_carbohydrates: float = 0
     target_calories: float
+    target_protein: float = 0
+    target_fat: float = 0
+    target_carbohydrates: float = 0
     status: str
     # Новые поля для ProgressLab Score
     daily_score: Optional[int] = None
