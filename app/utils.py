@@ -86,156 +86,130 @@ def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float],
     }
 
 
+def _get_hierarchical_status_message(target: Dict, actual: Dict, time_factor: float, final_score: int) -> str:
+    """
+    Определяет ОДНО наиболее важное, конкретное сообщение для пользователя на основе иерархии правил.
+    Версия 3.0: Приоритет на выполненную норму калорий.
+    """
+    # Рассчитываем ключевые соотношения для анализа
+    day_calorie_ratio = actual['calories'] / target['calories'] if target['calories'] > 0 else 0
+    calorie_pace_ratio = (actual['calories'] / (target['calories'] * time_factor)) if (target['calories'] * time_factor) > 0 else 0
+    day_protein_ratio = actual['protein'] / target['protein'] if target['protein'] > 0 else 0
+    day_fat_ratio = actual['fat'] / target['fat'] if target['fat'] > 0 else 0
+    day_carbs_ratio = actual['carbohydrates'] / target['carbohydrates'] if target['carbohydrates'] > 0 else 0
+
+    # 1. ГЛАВНЫЙ ПРИОРИТЕТ: Если дневная норма калорий выполнена.
+    if day_calorie_ratio >= 0.98:
+        # Составляем сообщение на основе дисбаланса макросов
+        fat_over = day_fat_ratio > 1.15 # Перебор жиров более чем на 15%
+        carbs_under = day_carbs_ratio < 0.85 # Недобор углеводов более чем на 15%
+        
+        if fat_over and carbs_under:
+            return "Норма калорий выполнена! Есть перебор по жирам и недобор углеводов."
+        elif fat_over:
+            return "Норма калорий выполнена, но есть небольшой перебор по жирам."
+        elif carbs_under:
+            return "Норма калорий выполнена, но не хватает углеводов."
+        else:
+            return "Отличная работа! Дневная норма калорий выполнена."
+
+    # 2. Позитивные сообщения для высоких Score (если норма еще не выполнена)
+    if final_score > 105: return "Overdrive: Максимальная эффективность! Продолжайте в том же духе."
+    if final_score >= 95: return "Golden Standard: Идеальный темп! Отличная работа."
+
+    # 3. Критический недобор калорий к концу дня
+    if day_calorie_ratio < 0.6 and time_factor > 0.7:
+        return "Критический недобор калорий. Необходимо срочно полноценно поесть."
+
+    # 4. Значительное отклонение от ТЕМПА питания
+    if calorie_pace_ratio < 0.7 and time_factor > 0.4:
+        return "Вы отстаете от графика питания. Пора перекусить, чтобы догнать план."
+    if calorie_pace_ratio > 1.6: # Немного увеличили порог
+        return "Слишком быстрый темп питания. Распределите приемы пищи равномернее."
+
+    # 5. Конкретные рекомендации по макронутриентам (дефицит к вечеру)
+    if day_protein_ratio < 0.8 and time_factor > 0.6: return "Недобор белка. Добавьте белковой пищи в ближайший прием."
+    if day_carbs_ratio < 0.7 and time_factor > 0.6: return "Недобор углеводов. Включите сложные углеводы в рацион."
+    if day_fat_ratio < 0.7 and time_factor > 0.6: return "Недобор жиров. Добавьте полезные жиры."
+
+    # 6. Конкретные рекомендации по макронутриентам (избыток, кроме белка)
+    if day_fat_ratio > 1.3: return "Значительный перебор жиров. Постарайтесь сократить их потребление."
+    if day_carbs_ratio > 1.3: return "Значительный перебор углеводов. Отдавайте предпочтение белку и овощам."
+
+    # 7. Общее сообщение, если нет явных проблем, но и не "Golden Standard"
+    if final_score >= 80: return "Все идет по плану. Продолжайте следить за балансом."
+
+    # 8. Дефолтное сообщение для низкого Score
+    return "Требуется корректировка плана питания."
+
+
 def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None) -> Dict[str, Any]:
     """
     Рассчитывает динамический Индекс Дисциплины (Score) для ProgressLab.
-    Учитывает время (05:00 - 23:00) и баланс нутриентов.
+    Версия 3.0: Приоритет на выполненную норму калорий.
     """
-
-    # 1. Настройка временного окна (18 часов мониторинга) / Setup time window (18 hours of monitoring)
+    # 1. Настройка временного окна
     now = current_dt if current_dt else datetime.datetime.now()
     current_time = now.hour + now.minute / 60
-    start_h, end_h = 5.0, 23.0  # Monitoring window from 5 AM to 11 PM.
+    start_h, end_h = 5.0, 23.0
+    time_factor = max(0.05, min(1.0, (current_time - start_h) / (end_h - start_h)))
 
-    # Calculate the fraction of the monitoring window that has passed.
-    if current_time <= start_h:
-        time_factor = 0.05  # Before the window starts, use a small minimum to avoid zero division.
-    elif current_time >= end_h:
-        time_factor = 1.0   # After the window ends, it's considered fully complete.
-    else:
-        # Linearly interpolate the time progress within the window.
-        time_factor = (current_time - start_h) / (end_h - start_h)
-
-    # If there is no consumption data for the day, return a default "no data" state.
     if not any(actual.values()):
-        return {
-            "daily_score": 0,
-            "status_color": "#000000",
-            "status_message": "Нет данных за сегодня",
-            "y_axis_pos": 0,
-            "time_progress": round(time_factor * 100, 1)
-        }
+        return {"daily_score": 0, "status_color": "#5A6978", "status_message": "Нет данных за сегодня", "y_axis_pos": 0, "time_progress": round(time_factor * 100, 1)}
 
-    # 2. Параметры и веса (Parameters and Weights)
+    # 2. Расчет Score на основе темпа
     total_score = 0.0
-    # Define the weight of each macronutrient in the final score calculation.
-    weights = {
-        'calories': 40,
-        'protein': 30,
-        'fat': 15,
-        'carbohydrates': 15
-    }
-
-    # A tolerance threshold allows consuming up to 30% of the daily target at any time
-    # without being penalized for being "ahead of schedule". This accommodates for breakfast.
+    weights = {'calories': 40, 'protein': 30, 'fat': 15, 'carbohydrates': 15}
     tolerance_threshold = 0.3
 
-    status_notes = []  # Not used in the current implementation.
-    recommendations = []  # A list to collect dynamic feedback for the user.
-
-    # Iterate over each nutrient to calculate its contribution to the total score.
     for param, max_weight in weights.items():
-        t_val = target[param]  # Target value for the nutrient.
-        a_val = actual[param]  # Actual consumed value for the nutrient.
+        t_val = target.get(param, 0)
+        a_val = actual.get(param, 0)
+        if t_val == 0: continue
 
-        # Calculate the expected consumption at the current time of day.
-        # It's the higher of the time-based expectation or the 30% tolerance threshold.
         expected_now = t_val * max(time_factor, tolerance_threshold)
-
-        # Ratio of actual consumption to the expected consumption at this time.
         ratio = a_val / expected_now if expected_now > 0 else 1.0
         
-        # Ratio of actual consumption to the total daily target.
-        day_ratio = a_val / t_val if t_val > 0 else 0
+        param_score = max_weight
+        if ratio < 0.8: param_score *= (a_val / (t_val * time_factor + 1e-6))
+        elif ratio > 1.2: param_score -= (ratio - 1.2) * 30
 
-        # --- Scoring Logic ---
-        if ratio <= 1.2:
-            # On track or slightly ahead (within a 20% buffer).
-            # If falling significantly behind (ratio < 0.8), the score is reduced proportionally.
-            param_score = max_weight if ratio >= 0.8 else max_weight * (a_val / (t_val * time_factor + 1e-6))
-            
-            # Add recommendations if user is falling behind schedule.
-            if ratio < 0.8 and time_factor > 0.1:  # Check for under-consumption after the day has started.
-                if param == 'calories':
-                    recommendations.append("Недобор калорий. Пора перекусить!")
-                elif param == 'protein':
-                    recommendations.append("Недобор белка. Уделите внимание белковой пище.")
-                elif param == 'fat':
-                    recommendations.append("Недобор жиров. Добавьте полезные жиры.")
-                elif param == 'carbohydrates':
-                    recommendations.append("Недобор углеводов. Добавьте сложные углеводы.")
-        else:
-            # Penalty for being too far ahead of schedule (aggressive over-consumption).
-            overage = ratio - 1.2
-            param_score = max(0, max_weight - (overage * 30))  # Apply a softened penalty.
-            
-            # Add recommendations if user is significantly over-consuming relative to the time.
-            if overage > 0.2:
-                if param == 'calories':
-                    recommendations.append("Перебор калорий по графику. Сократите порции.")
-                elif param == 'protein':
-                    recommendations.append("Перебор белка по графику. Распределите приемы.")
-                elif param == 'fat':
-                    recommendations.append("Перебор жиров по графику. Будьте внимательнее.")
-                elif param == 'carbohydrates':
-                    recommendations.append("Перебор углеводов по графику. Выбирайте сложные.")
-
-
-        # Global penalty for exceeding the total 100% daily limit for any nutrient.
-        if a_val > t_val:
-            day_over_ratio = (a_val / t_val) - 1.0
-            param_score -= day_over_ratio * 100  # Heavy penalty for going over the daily target.
-            if day_over_ratio > 0.05:  # If daily target is exceeded by more than 5%.
-                if param == 'calories':
-                    recommendations.append("Дневной лимит калорий превышен!")
-                elif param == 'protein':
-                    recommendations.append("Дневной лимит белка превышен!")
-                elif param == 'fat':
-                    recommendations.append("Дневной лимит жиров превышен!")
-                elif param == 'carbohydrates':
-                    recommendations.append("Дневной лимит углеводов превышен!")
-
+        if a_val > t_val and param != 'protein':
+            param_score -= ((a_val / t_val) - 1.0) * 100
 
         total_score += max(0, param_score)
 
-    # 3. Бонус Белка (Protein Overdrive Bonus)
-    # Award up to 20 bonus points for exceeding protein target while keeping calories in check.
-    # This incentivizes a high-protein diet, which is often beneficial.
-    if actual['protein'] > target['protein'] and actual['calories'] <= target['calories'] * 1.05:
-        protein_extra = min((actual['protein'] / target['protein'] - 1.0) * 20, 20)
-        total_score += protein_extra
+    # 3. Бонус Белка
+    if actual.get('protein', 0) > target.get('protein', 0) and actual.get('calories', 0) <= target.get('calories', 0) * 1.05:
+        total_score += min((actual['protein'] / target['protein'] - 1.0) * 20, 20)
 
-    # Finalize the score, clamping it between 0 and a max of 120 (to account for bonuses).
     final_score = round(max(0, min(total_score, 120)))
+    
+    # 4. ПЕРЕОПРЕДЕЛЕНИЕ SCORE, ЕСЛИ НОРМА КАЛОРИЙ ВЫПОЛНЕНА
+    day_calorie_ratio = actual['calories'] / target['calories'] if target['calories'] > 0 else 0
+    if day_calorie_ratio >= 0.98:
+        base_score = 100
+        day_fat_ratio = actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)
+        day_carbs_ratio = actual.get('carbohydrates', 0) / (target.get('carbohydrates', 1) + 1e-6)
+        
+        # Небольшие штрафы за дисбаланс
+        if day_fat_ratio > 1.15: base_score -= 10
+        if day_carbs_ratio < 0.85: base_score -= 5
+        
+        final_score = max(85, base_score) # Гарантируем, что score не упадет в "красную зону"
 
-    # 4. Цветовая палитра и Статус-сообщения (Color Palette and Status Messages)
-    color = "#e11d48"  # Default to red (Fail).
-    status_text = "Требуется корректировка плана."  # Default Fail message.
+    # 5. Определение цвета и финального сообщения
+    color = "#e11d48" # Fail
+    if final_score > 105: color = "#10b981" # Overdrive
+    elif 95 <= final_score <= 105: color = "#FFD700" # Golden Standard
+    elif 80 <= final_score <= 94: color = "#f59e0b" # Warning
 
-    # Determine status color and text based on the final score.
-    if final_score > 105:
-        color, status_text = "#10b981", "Overdrive: Максимальная эффективность"
-    elif 95 <= final_score <= 105:
-        color, status_text = "#FFD700", "Golden Standard: Идеальный темп"
-    elif 80 <= final_score <= 94:
-        color, status_text = "#f59e0b", "Warning: Есть отклонения от графика"
-    else:  # final_score < 80
-        # If specific recommendations were generated, use them as the status message.
-        if recommendations:
-            status_text = " ".join(list(set(recommendations)))  # Join unique recommendations.
-        else:
-            status_text = "Fail: Требуется корректировка плана."  # Fallback message.
-
-    # Special case for a "heavy start" in the morning.
-    # If the score is low early in the day, provide a more forgiving message.
-    if time_factor < 0.4 and final_score < 80 and not recommendations:
-        status_text = "Плотный старт! Score выровняется сам, если не перекусывать до обеда."
-        color = "#f59e0b"  # Use a warning color instead of fail red.
+    status_message = _get_hierarchical_status_message(target, actual, time_factor, final_score)
 
     return {
         "daily_score": final_score,
         "status_color": color,
-        "status_message": status_text,
-        "y_axis_pos": final_score,  # Y-coordinate for the circle on the graph.
+        "status_message": status_message,
+        "y_axis_pos": final_score,
         "time_progress": round(time_factor * 100, 1)
     }
