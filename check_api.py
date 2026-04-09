@@ -17,7 +17,8 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 print("=" * 50)
 print(f"ЗАПУСК ТЕСТОВ ЧЕРЕЗ ВОРКЕР: {WORKER_URL}")
 print("=" * 50)
-
+# Проверь первые и последние символы ключа
+print(f"DEBUG: Key starts with: {OR_KEY[:10]}... ends with: {OR_KEY[-5:]}")
 # --- ИНИЦИАЛИЗАЦИЯ КЛИЕНТОВ ЧЕРЕЗ ПРОКСИ ---
 
 # 1. Клиент OpenRouter (через воркер)
@@ -30,6 +31,7 @@ or_client = AsyncOpenAI(
         "X-Title": "InspectorAI_Debug"
     }
 )
+
 
 # 2. Клиент Gemini (через воркер)
 # SDK Gemini само формирует пути, поэтому передаем чистый URL воркера
@@ -46,24 +48,31 @@ async def test_openrouter():
     if not OR_KEY:
         print("❌ ОШИБКА: Ключ OpenRouter не найден в .env")
         return
+    # Используем максимально стабильную бесплатную модель Google через OpenRouter
+    models_priority = [
+        "minimax/minimax-m2.5",  # Топ-1. Очень быстрая, логика на уровне GPT-4o. Идеальна для функций.
+        "z-ai/glm-4.5-air:free",  # Отличная "адаптивная" модель, быстрая и человечная в ответах.
+        "arcee-ai/trinity-mini:free",  # Легкая, шустрая, хороша для простых команд и фаст-чата.
+        "openai/gpt-oss-20b:free",  # Сбалансированная база, неплохая логика, средняя скорость.
+        "nvidia/nemotron-3-nano-30b-a3b:free",
+        "arcee-ai/trinity-large-preview:free",  # Умнее mini, но требует больше времени на генерацию.
+        "openai/gpt-oss-120b:free"  # Очень умная (MoE), но для ТГ может быть слишком "задумчивой".
+    ]
 
     try:
-        # Используем максимально стабильную бесплатную модель Google через OpenRouter
-        model = "qwen/qwen3.6-plus-preview:free"
+        for model in models_priority:
+            response = await or_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": "Say 'OpenRouter via Worker OK'"}],
+                max_tokens=20,
+                timeout=20.0
+            )
 
-        response = await or_client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": "Say 'OpenRouter via Worker OK'"}],
-            max_tokens=20,
-            timeout=20.0
-        )
-
-        content = response.choices[0].message.content
-        if content:
-            print(f"✅ УСПЕХ! Ответ ({model}): {content.strip()}")
-        else:
-            print(f"⚠️ ТЕХНИЧЕСКИЙ УСПЕХ: Ключ принят, но модель вернула пустоту (None).")
-
+            content = response.choices[0].message.content
+            if content:
+                print(f"✅ УСПЕХ! Ответ ({model}): {content.strip()}")
+            else:
+                print(f"⚠️ ТЕХНИЧЕСКИЙ УСПЕХ: Ключ принят, но модель вернула пустоту (None).")
     except Exception as e:
         print(f"❌ ОШИБКА OpenRouter: {e}")
         if "401" in str(e):
@@ -91,7 +100,7 @@ async def test_gemini():
 async def main():
     # Запускаем тесты
     await test_openrouter()
-    await test_gemini()
+    #await test_gemini()
 
     print("\n" + "=" * 50)
     print("Диагностика через прокси завершена.")
