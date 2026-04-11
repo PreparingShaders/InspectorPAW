@@ -114,7 +114,9 @@ class MealTotals(BaseModel):
 class AnalysisResponse(BaseModel):
     suggested_totals: MealTotals
     ai_response_text: str
-    ai_coach_advice: Optional[str] = None # Новое поле для совета
+    ai_coach_advice: Optional[str] = None
+    nutrition_model_used: Optional[str] = None # Модель для анализа КБЖУ
+    coach_model_used: Optional[str] = None      # Модель для совета
 
 # --- Meal Schemas ---
 class MealBase(BaseModel):

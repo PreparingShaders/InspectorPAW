@@ -14,9 +14,10 @@ async def get_ai_coach_advice(
     consumed_today: Dict,
     analyzed_meal: Dict,
     current_time: datetime.datetime
-) -> str:
+) -> (str, str):
     """
     Генерирует персональный совет от AI-коуча на основе текущей диеты и нового приема пищи.
+    Возвращает кортеж (совет, использованная_модель).
     """
     # Выбираем лучшую доступную модель из динамического списка
     model_id_to_use = settings.AI_CHAT_MODELS[0] if settings.AI_CHAT_MODELS else "google/gemini-flash-1.5"
@@ -77,10 +78,10 @@ async def get_ai_coach_advice(
             ],
             max_tokens=250,
         )
-        return chat_completion.choices[0].message.content
+        return chat_completion.choices[0].message.content, model_id_to_use
     except Exception as e:
         print(f"AI Coach Error using model {model_id_to_use}: {e}")
-        return "Не удалось получить совет от AI. Попробуйте позже."
+        return "Не удалось получить совет от AI. Попробуйте позже.", model_id_to_use
 
 
 def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float], latest_body_fat_percentage: Optional[float]):

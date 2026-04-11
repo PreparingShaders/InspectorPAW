@@ -47,7 +47,6 @@ def update_ai_chat_models_if_needed():
 
         models_data = response.json().get('data', [])
         
-        # Фильтруем по цене и по наличию 'instruct' или 'chat' в ID
         chat_keywords = ['instruct', 'chat', 'it']
         free_model_ids = [
             model.get('id') for model in models_data 
@@ -66,7 +65,6 @@ def update_ai_chat_models_if_needed():
             if model_id not in settings.AI_COACH_PRIORITY_MODELS
         ]
         
-        # Правильно обновляем ClassVar
         Settings.AI_CHAT_MODELS = (available_best_models + other_free_models)[:10]
         LAST_MODEL_UPDATE_DATE = today
         print(f"--- Список моделей AI-коуча обновлен: {Settings.AI_CHAT_MODELS} ---")
@@ -120,7 +118,7 @@ async def read_analyze_page(request: Request):
 
 
 # --- AI Логика ---
-async def call_ai_model(file_content: Optional[bytes], description: Optional[str]) -> str:
+async def call_ai_model(file_content: Optional[bytes], description: Optional[str]) -> (str, str):
     prompt = """
     Ты — эксперт-нутрициолог с математическим уклоном. 
     Твоя задача — проанализировать еду (фото или описание) и рассчитать КБЖУ.
@@ -159,7 +157,7 @@ async def call_ai_model(file_content: Optional[bytes], description: Optional[str
                 content_parts.append(full_prompt)
                 
                 response = await asyncio.to_thread(gemini_client.models.generate_content, model=model_name, contents=content_parts)
-                return response.text
+                return response.text, model_name
 
             elif model_name in settings.OPEN_ROUTER_MODELS:
                 messages = [{"role": "system", "content": prompt}]
@@ -181,7 +179,7 @@ async def call_ai_model(file_content: Optional[bytes], description: Optional[str
                     messages=messages,
                     max_tokens=300,
                 )
-                return chat_completion.choices[0].message.content
+                return chat_completion.choices[0].message.content, model_name
             
             else:
                 print(f"Model {model_name} not found in any API list, skipping.")
@@ -291,7 +289,6 @@ async def analyze_meal(
         db: Session = Depends(get_db),
         current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Обновляем список моделей раз в сутки
     update_ai_chat_models_if_needed()
 
     if not file and not description:
@@ -300,7 +297,7 @@ async def analyze_meal(
     file_content = await file.read() if file else None
 
     try:
-        raw_ai_response = await call_ai_model(file_content=file_content, description=description)
+        raw_ai_response, nutrition_model_used = await call_ai_model(file_content=file_content, description=description)
     except HTTPException as e:
         raise e
 
@@ -333,7 +330,6 @@ async def analyze_meal(
         "total_carbohydrates": carbs_g
     }
 
-    # --- AI Coach Logic ---
     latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
     user_targets = utils.calculate_user_targets(
         current_user,
@@ -349,18 +345,19 @@ async def analyze_meal(
         "carbohydrates": today_stats.total_carbohydrates or 0
     }
 
-    ai_advice = await utils.get_ai_coach_advice(
+    ai_advice, coach_model_used = await utils.get_ai_coach_advice(
         user_targets=user_targets,
         consumed_today=consumed_today,
         analyzed_meal=analyzed_meal_totals,
         current_time=datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=3)))
     )
-    # --- End AI Coach Logic ---
 
     return schemas.AnalysisResponse(
         suggested_totals=schemas.MealTotals(**analyzed_meal_totals),
         ai_response_text=food_name,
-        ai_coach_advice=ai_advice
+        ai_coach_advice=ai_advice,
+        nutrition_model_used=nutrition_model_used,
+        coach_model_used=coach_model_used
     )
 
 
