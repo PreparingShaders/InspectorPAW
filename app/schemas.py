@@ -42,7 +42,7 @@ class DailyStatDetail(BaseModel):
     # Новые поля для ProgressLab Score
     daily_score: Optional[int] = None
     status_color: Optional[str] = None
-    status_message: Optional[Dict[str, Any]] = None # ИЗМЕНЕНО: str -> Dict[str, Any]
+    status_message: Optional[Dict[str, Any]] = None
     y_axis_pos: Optional[int] = None
     time_progress: Optional[float] = None
 
@@ -114,6 +114,7 @@ class MealTotals(BaseModel):
 class AnalysisResponse(BaseModel):
     suggested_totals: MealTotals
     ai_response_text: str
+    ai_coach_advice: Optional[str] = None # Новое поле для совета
 
 # --- Meal Schemas ---
 class MealBase(BaseModel):

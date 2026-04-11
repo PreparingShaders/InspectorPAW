@@ -4,23 +4,76 @@ import re
 import io
 import base64
 import asyncio
+import requests
+from contextlib import asynccontextmanager
 import google.genai as genai
 from openai import AsyncOpenAI
 from PIL import Image
-import json # Добавляем импорт для работы с JSON
+import json
 
 from datetime import timedelta, date, datetime, timezone
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session, joinedload # Добавляем импорт joinedload
+from sqlalchemy.orm import Session, joinedload
 
 from . import crud, models, schemas, auth, utils
 from .database import SessionLocal, engine
-from .config import settings
+from .config import settings, Settings
 
 models.Base.metadata.create_all(bind=engine)
+
+# --- Глобальная переменная для отслеживания даты обновления моделей ---
+LAST_MODEL_UPDATE_DATE = None
+
+def update_ai_chat_models_if_needed():
+    """
+    Проверяет, нужно ли обновлять список моделей, и если да, то обновляет.
+    """
+    global LAST_MODEL_UPDATE_DATE
+    today = date.today()
+    
+    if LAST_MODEL_UPDATE_DATE == today and settings.AI_CHAT_MODELS:
+        print("--- Список моделей AI-коуча уже актуален. ---")
+        return
+
+    print("--- Обновление списка бесплатных моделей AI-коуча... ---")
+    try:
+        response = requests.get("https://openrouter.ai/api/v1/models")
+        if response.status_code != 200:
+            print("Ошибка при получении моделей от OpenRouter.")
+            return
+
+        models_data = response.json().get('data', [])
+        
+        # Фильтруем по цене и по наличию 'instruct' или 'chat' в ID
+        chat_keywords = ['instruct', 'chat', 'it']
+        free_model_ids = [
+            model.get('id') for model in models_data 
+            if model.get('pricing', {}).get('prompt') == "0" 
+            and model.get('pricing', {}).get('completion') == "0"
+            and any(keyword in model.get('id', '').lower() for keyword in chat_keywords)
+        ]
+        
+        available_best_models = [
+            model_id for model_id in settings.AI_COACH_PRIORITY_MODELS 
+            if model_id in free_model_ids
+        ]
+        
+        other_free_models = [
+            model_id for model_id in free_model_ids 
+            if model_id not in settings.AI_COACH_PRIORITY_MODELS
+        ]
+        
+        # Правильно обновляем ClassVar
+        Settings.AI_CHAT_MODELS = (available_best_models + other_free_models)[:10]
+        LAST_MODEL_UPDATE_DATE = today
+        print(f"--- Список моделей AI-коуча обновлен: {Settings.AI_CHAT_MODELS} ---")
+
+    except Exception as e:
+        print(f"Не удалось обновить список моделей: {e}")
+
 
 app = FastAPI(title="InspectorPAW API")
 
@@ -31,12 +84,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # --- API Клиенты ---
-
-# 1. Конфигурируем нативный API Gemini
-# Возвращаем к исходному способу инициализации клиента
 gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-
-# 2. Конфигурируем клиент для OpenRouter
 open_router_client = AsyncOpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=settings.OPEN_ROUTER_API_KEY,
@@ -99,12 +147,10 @@ async def call_ai_model(file_content: Optional[bytes], description: Optional[str
     
     for model_name in settings.NUTRITION_MODELS:
         try:
-            print(f"Attempting to use model: {model_name}")
+            print(f"Attempting to use model for nutrition analysis: {model_name}")
             
-            # --- Логика для нативных моделей Gemini ---
             if model_name in settings.NATIVE_GEMINI_MODELS:
                 content_parts = []
-                # Убедимся, что full_prompt определен до использования
                 full_prompt = f"{prompt}\nДополнительное описание: {description}" if description else prompt
                 
                 if file_content:
@@ -112,11 +158,9 @@ async def call_ai_model(file_content: Optional[bytes], description: Optional[str
                     content_parts.append(img)
                 content_parts.append(full_prompt)
                 
-                # Возвращаем к исходному способу вызова модели
                 response = await asyncio.to_thread(gemini_client.models.generate_content, model=model_name, contents=content_parts)
                 return response.text
 
-            # --- Логика для OpenRouter ---
             elif model_name in settings.OPEN_ROUTER_MODELS:
                 messages = [{"role": "system", "content": prompt}]
                 content_parts = []
@@ -171,7 +215,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/users/me/", response_model=schemas.UserWithTargets)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    # Fetch the user again within the current session, eagerly loading relationships
     user_from_db = db.query(models.User).options(
         joinedload(models.User.meals),
         joinedload(models.User.metrics)
@@ -181,12 +224,11 @@ async def read_users_me(current_user: models.User = Depends(auth.get_current_use
         raise HTTPException(status_code=404, detail="User not found in current session")
 
     latest_metric = crud.get_latest_user_metric(db, user_id=user_from_db.id)
-
     user_with_targets = schemas.UserWithTargets.from_orm(user_from_db)
 
     if latest_metric and user_from_db.date_of_birth and user_from_db.gender and user_from_db.height_cm:
         targets = utils.calculate_user_targets(
-            user_from_db, # Use user_from_db here
+            user_from_db,
             latest_metric.weight_kg,
             latest_metric.body_fat_percentage
         )
@@ -197,7 +239,6 @@ async def read_users_me(current_user: models.User = Depends(auth.get_current_use
 
 @app.post("/users/me/calculate-targets", response_model=schemas.CalculatedTargets)
 async def calculate_targets(request: schemas.TargetCalculationRequest):
-    # Более надежная и явная проверка на наличие всех необходимых полей
     if any([
         request.date_of_birth is None,
         request.gender is None or request.gender == "",
@@ -209,7 +250,6 @@ async def calculate_targets(request: schemas.TargetCalculationRequest):
     ]):
         return schemas.CalculatedTargets(target_calories=0, target_protein=0, target_fat=0, target_carbohydrates=0)
 
-    # Создаем временный объект User для передачи в функцию расчета
     temp_user = models.User(
         date_of_birth=request.date_of_birth,
         gender=request.gender,
@@ -248,8 +288,12 @@ def create_metric_for_current_user(
 async def analyze_meal(
         description: Optional[str] = Form(None),
         file: Optional[UploadFile] = File(None),
+        db: Session = Depends(get_db),
         current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Обновляем список моделей раз в сутки
+    update_ai_chat_models_if_needed()
+
     if not file and not description:
         raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
     
@@ -260,12 +304,10 @@ async def analyze_meal(
     except HTTPException as e:
         raise e
 
-    # Проверяем, что ответ не пустой
     if not raw_ai_response:
         raise HTTPException(status_code=500, detail="AI model returned an empty response.")
 
     try:
-        # Используем регулярное выражение для извлечения JSON-объекта
         json_match = re.search(r'{.*}', raw_ai_response, re.DOTALL)
         if not json_match:
             raise HTTPException(status_code=500, detail="AI model did not return a valid JSON object. Response: " + raw_ai_response)
@@ -275,29 +317,50 @@ async def analyze_meal(
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="AI model returned invalid JSON. Response: " + raw_ai_response)
 
-    # Извлекаем данные из JSON
     food_name = ai_data.get("food_name", "Неизвестное блюдо")
-    # weight_g = round(float(ai_data.get("weight_g", 0))) # Пока не используем weight_g
     proteins_g = round(float(ai_data.get("proteins_g", 0)))
     fats_g = round(float(ai_data.get("fats_g", 0)))
     carbs_g = round(float(ai_data.get("carbs_g", 0)))
     
-    # Пересчитываем калории строго по формуле
     calculated_calories = (proteins_g * 4) + (fats_g * 9) + (carbs_g * 4)
     calories = round(calculated_calories)
 
-    suggested_totals = schemas.MealTotals(
-        food_name=food_name,
-        total_calories=calories,
-        total_protein=proteins_g,
-        total_fat=fats_g,
-        total_carbohydrates=carbs_g
+    analyzed_meal_totals = {
+        "food_name": food_name,
+        "total_calories": calories,
+        "total_protein": proteins_g,
+        "total_fat": fats_g,
+        "total_carbohydrates": carbs_g
+    }
+
+    # --- AI Coach Logic ---
+    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
+    user_targets = utils.calculate_user_targets(
+        current_user,
+        latest_metric.weight_kg if latest_metric else None,
+        latest_metric.body_fat_percentage if latest_metric else None
     )
-    
-    # ai_response_text теперь будет содержать только food_name
+
+    today_stats = crud.get_user_stats_by_period(db, user_id=current_user.id, start_date=date.today(), end_date=date.today())
+    consumed_today = {
+        "calories": today_stats.total_calories or 0,
+        "protein": today_stats.total_protein or 0,
+        "fat": today_stats.total_fat or 0,
+        "carbohydrates": today_stats.total_carbohydrates or 0
+    }
+
+    ai_advice = await utils.get_ai_coach_advice(
+        user_targets=user_targets,
+        consumed_today=consumed_today,
+        analyzed_meal=analyzed_meal_totals,
+        current_time=datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=3)))
+    )
+    # --- End AI Coach Logic ---
+
     return schemas.AnalysisResponse(
-        suggested_totals=suggested_totals,
-        ai_response_text=food_name # Возвращаем только название блюда для отображения
+        suggested_totals=schemas.MealTotals(**analyzed_meal_totals),
+        ai_response_text=food_name,
+        ai_coach_advice=ai_advice
     )
 
 
@@ -396,15 +459,10 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
     end_date = date.today()
     start_date = end_date - timedelta(days=6)
 
-    print(f"DEBUG: get_weekly_summary - start_date: {start_date}, end_date: {end_date}")  # LOG
     daily_consumptions = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=start_date,
                                                          end_date=end_date)
-    print(f"DEBUG: get_weekly_summary - daily_consumptions from CRUD: {daily_consumptions}")  # LOG
-
-    # Преобразуем ключи в consumption_map в строки для согласованности
+    
     consumption_map = {str(item["date"]): item for item in daily_consumptions}
-
-    print(f"DEBUG: get_weekly_summary - consumption_map (with string keys): {consumption_map}")  # LOG
 
     daily_breakdown = []
     total_consumed = {"calories": 0, "protein": 0, "fat": 0, "carbohydrates": 0}
@@ -420,7 +478,6 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
         consumed_fat = consumed["total_fat"] if consumed else 0
         consumed_carbohydrates = consumed["total_carbohydrates"] if consumed else 0
 
-        # Определяем target и actual для calculate_progress_lab_score
         target_macros = {
             "calories": target_calories,
             "protein": target_protein,
@@ -436,10 +493,8 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
 
         score_result = {}
         if current_date == date.today():
-            # Для сегодняшнего дня - динамический расчет
             score_result = utils.calculate_progress_lab_score(target_macros, actual_macros)
         else:
-            # Для прошедших дней - расчет на конец дня (23:00)
             end_of_day_dt = datetime.combine(current_date, datetime.min.time().replace(hour=23))
             score_result = utils.calculate_progress_lab_score(target_macros, actual_macros, current_dt=end_of_day_dt)
 
@@ -450,10 +505,10 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
             consumed_fat=consumed_fat,
             consumed_carbohydrates=consumed_carbohydrates,
             target_calories=target_calories,
-            target_protein=target_protein,  # Добавлено
-            target_fat=target_fat,          # Добавлено
-            target_carbohydrates=target_carbohydrates, # Добавлено
-            status="calculated", # Статус теперь будет определяться score_result
+            target_protein=target_protein,
+            target_fat=target_fat,
+            target_carbohydrates=target_carbohydrates,
+            status="calculated",
             daily_score=score_result.get("daily_score"),
             status_color=score_result.get("status_color"),
             status_message=score_result.get("status_message"),
@@ -461,13 +516,12 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
             time_progress=score_result.get("time_progress")
         ))
         
-        if consumed: # Только если были данные за день, учитываем их в средних значениях
+        if consumed:
             days_with_data += 1
             total_consumed["calories"] += consumed_calories
             total_consumed["protein"] += consumed_protein
             total_consumed["fat"] += consumed_fat
             total_consumed["carbohydrates"] += consumed_carbohydrates
-
 
     avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0
@@ -487,28 +541,19 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
         period_summary=period_summary
     )
 
-# ... existing code ...
-
 @app.get("/users/me/dashboard-stats", response_model=schemas.DashboardStats)
 async def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # 1. Устанавливаем часовой пояс МСК (UTC+3)
     msk_tz = timezone(timedelta(hours=3))
     now_msk = datetime.now(msk_tz)
 
-    # 2. Границы сегодняшнего дня по МСК в UTC для запроса к БД
     start_msk = now_msk.replace(hour=0, minute=0, second=0, microsecond=0)
     end_msk = start_msk + timedelta(days=1)
     start_utc = start_msk.astimezone(timezone.utc)
     end_utc = end_msk.astimezone(timezone.utc)
 
-    today_msk_str = now_msk.strftime("%Y-%m-%d")
-    print(f"\n[DEBUG] Текущее время по МСК: {now_msk}")
-    print(f"[DEBUG] Ищем записи между (UTC): {start_utc} и {end_utc}")
-
-    # 3. Запрос к базе с явным диапазоном timestamp
     meals = (
         db.query(models.Meal)
         .filter(
@@ -519,19 +564,11 @@ async def get_dashboard_stats(
         .all()
     )
 
-    print(f"[DEBUG] Найдено записей в базе: {len(meals)}")
-    if meals:
-        print(f"[DEBUG] Пример timestamp: {meals[0].timestamp} | калории: {meals[0].total_calories}")
-
-    # 4. Считаем суммы
     consumed_calories = sum(m.total_calories or 0 for m in meals)
     consumed_protein = sum(m.total_protein or 0 for m in meals)
     consumed_fat = sum(m.total_fat or 0 for m in meals)
     consumed_carbohydrates = sum(m.total_carbohydrates or 0 for m in meals)
 
-    print(f"[DEBUG] Суммируем: calories={consumed_calories}, protein={consumed_protein}")
-
-    # 5. Таргеты
     latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
     latest_weight = latest_metric.weight_kg if latest_metric else None
     latest_body_fat = latest_metric.body_fat_percentage if latest_metric else None
