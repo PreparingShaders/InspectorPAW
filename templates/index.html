@@ -94,10 +94,12 @@
             <h2 class="text-sm text-gray-400 font-semibold mb-3 text-center">Индекс дисциплины питания</h2>
             <div class="relative h-32 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
                 <!-- Golden Standard Line -->
-                <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-gray-800/50 -translate-y-1/2"></div>
+                <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-[#F0F0F0]/80 -translate-y-1/2"></div>
+                <!-- Average Score Label -->
+                <span id="average-score-label" class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-[#F0F0F0] hidden px-2" style="background-color: #1a202c; text-shadow: 0 0 8px #F0F0F0;"></span>
 
                 <!-- Day Columns and Score Circles -->
-                <div id="score-graph-container" class="flex justify-around w-full h-full relative z-10">
+                <div id="score-graph-container" class="flex justify-around w-full h-full relative z-10 pl-8">
                     <!-- Circles will be dynamically added here by JS -->
                 </div>
             </div>
@@ -147,8 +149,8 @@
 
             // Mapping for neon glow classes
             const NEON_GLOW_CLASSES = {
-                '#10b981': 'neon-glow-emerald',
-                '#ffffff': 'neon-glow-white',
+                '#FFD700': 'neon-glow-emerald', // Золотой
+                '#F0F0F0': 'neon-glow-white',   // Белый
                 '#f59e0b': 'neon-glow-amber-score',
                 '#e11d48': 'neon-glow-rose'
             };
@@ -347,33 +349,35 @@
 
             function renderScoreGraph(dailyBreakdown) {
                 const graphContainer = document.getElementById('score-graph-container');
-                const statusMessageElement = document.getElementById('score-status-message');
                 graphContainer.innerHTML = ''; // Clear previous content
 
-                // Дни недели, начиная с понедельника
                 const orderedDayNamesShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
-                // Сортируем данные по дате, чтобы они отображались в правильном порядке (от старых к новым)
                 dailyBreakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                dailyBreakdown.forEach((dayData) => {
-                    const dayOfWeek = new Date(dayData.date).getDay(); // 0: Вс, 1: Пн, ..., 6: Сб
-                    const displayDayName = orderedDayNamesShort[dayOfWeek === 0 ? 6 : dayOfWeek - 1]; // Корректируем, чтобы Пн был первым
+                // --- Расчет и отображение среднего балла ---
+                const scores = dailyBreakdown.map(d => d.daily_score).filter(s => s !== null);
+                if (scores.length > 0) {
+                    const averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+                    const avgLabel = document.getElementById('average-score-label');
+                    avgLabel.textContent = averageScore;
+                    avgLabel.classList.remove('hidden');
+                }
+                // --- Конец расчета ---
 
+                dailyBreakdown.forEach((dayData) => {
+                    const dayOfWeek = new Date(dayData.date).getDay();
+                    const displayDayName = orderedDayNamesShort[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
                     const isToday = new Date(dayData.date).toDateString() === new Date().toDateString();
 
                     const score = dayData.daily_score !== null ? dayData.daily_score : 0;
-                    const color = dayData.status_color || '#ffffff';
-                    const yPos = dayData.y_axis_pos !== null ? dayData.y_axis_pos : 0; // 0-120
+                    const color = dayData.status_color || '#F0F0F0';
+                    const yPos = dayData.y_axis_pos !== null ? dayData.y_axis_pos : 0;
 
-                    // Вычисляем вертикальную позицию (0 - низ, 120 - верх)
-                    // Контейнер графика h-32 (128px). Используем 120 как максимальный score.
-                    // top: (120 - score) / 120 * 100%
-                    const topPosition = ((120 - yPos) / 120) * 100; // Процент от верха
+                    const topPosition = ((120 - yPos) / 120) * 100;
 
                     const circleClasses = [
                         'absolute', 'w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center', 'text-xs', 'font-bold',
-                        'transition-all', 'duration-300', 'ease-out', getNeonGlowClass(color), 'score-circle' // Добавляем класс для идентификации
+                        'transition-all', 'duration-300', 'ease-out', getNeonGlowClass(color), 'score-circle'
                     ];
                     let circleStyle = `top: ${topPosition}%; transform: translateY(-50%);`;
 
@@ -381,7 +385,12 @@
                         circleClasses.push('border-2', 'animate-pulse');
                         circleStyle += `border-color: ${color}; color: ${color}; background-color: transparent;`;
                     } else {
-                        circleClasses.push('text-white'); // Цвет текста для залитых кругов
+                        // Логика для цвета текста
+                        if (color === '#F0F0F0') {
+                            circleClasses.push('text-black'); // Черный текст на белом фоне
+                        } else {
+                            circleClasses.push('text-white'); // Белый текст на остальных фонах
+                        }
                         circleStyle += `background-color: ${color};`;
                     }
 
@@ -392,19 +401,16 @@
                     circleElement.className = circleClasses.join(' ');
                     circleElement.style = circleStyle;
                     circleElement.textContent = score;
-                    circleElement.dataset.details = JSON.stringify(dayData); // Сохраняем данные для тултипа
+                    circleElement.dataset.details = JSON.stringify(dayData);
 
                     circleElement.addEventListener('click', (event) => {
-                        event.stopPropagation(); // Prevent document click from immediately hiding it
-
+                        event.stopPropagation();
                         const isVisible = scoreTooltip.classList.contains('opacity-100');
-                        // Use the date as a unique identifier for the tooltip's content
                         const isForThisElement = scoreTooltip.dataset.identifier === dayData.date;
 
                         if (isVisible && isForThisElement) {
                             hideTooltip();
                         } else {
-                            // Tag the tooltip with the identifier of the current circle
                             scoreTooltip.dataset.identifier = dayData.date;
                             showTooltip(circleElement, dayData);
                         }
@@ -414,14 +420,12 @@
                     dayLabel.className = 'text-xs text-gray-500 mt-1';
                     dayLabel.textContent = displayDayName;
 
-                    // Добавляем круг в колонку
                     dayColumn.appendChild(circleElement);
                     dayColumn.appendChild(dayLabel);
                     graphContainer.appendChild(dayColumn);
                 });
             }
 
-            // Вызываем обе функции при загрузке страницы
             fetchDashboardData();
             fetchWeeklySummaryData();
         });
