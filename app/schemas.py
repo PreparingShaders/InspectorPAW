@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
 # --- Target Calculation Schemas ---
@@ -42,7 +42,7 @@ class DailyStatDetail(BaseModel):
     # Новые поля для ProgressLab Score
     daily_score: Optional[int] = None
     status_color: Optional[str] = None
-    status_message: Optional[str] = None
+    status_message: Optional[Dict[str, Any]] = None # ИЗМЕНЕНО: str -> Dict[str, Any]
     y_axis_pos: Optional[int] = None
     time_progress: Optional[float] = None
 

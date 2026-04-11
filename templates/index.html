@@ -133,7 +133,7 @@
                 <span class="font-medium"><span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</span>
             </div>
         </div>
-        <p class="mt-2 text-xs italic font-medium leading-tight opacity-90" id="tooltip-message"></p>
+        <div class="mt-2 text-xs italic font-medium leading-tight opacity-90" id="tooltip-message"></div>
     </div>
 
     <script>
@@ -283,7 +283,22 @@
                 document.getElementById('tooltip-target-fat').textContent = Math.round(dayData.target_fat);
                 document.getElementById('tooltip-carbs').textContent = Math.round(dayData.consumed_carbohydrates);
                 document.getElementById('tooltip-target-carbs').textContent = Math.round(dayData.target_carbohydrates);
-                document.getElementById('tooltip-message').textContent = dayData.status_message || '';
+
+                const messageContainer = document.getElementById('tooltip-message');
+                const tooltips = dayData.status_message;
+
+                if (typeof tooltips === 'object' && tooltips !== null) {
+                    // Если это наш новый объект, форматируем его
+                    messageContainer.innerHTML = `
+                        <p>${tooltips.calories}</p>
+                        <p>${tooltips.protein}</p>
+                        <p>${tooltips.fat}</p>
+                        <p>${tooltips.carbohydrates}</p>
+                    `;
+                } else {
+                    // Если это старая строка (для обратной совместимости), просто показываем ее
+                    messageContainer.textContent = tooltips || '';
+                }
 
                 // Position the tooltip
                 const rect = element.getBoundingClientRect();
