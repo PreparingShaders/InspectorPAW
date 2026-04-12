@@ -17,7 +17,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const uploadButtonLabel = document.querySelector('.upload-button-label');
     const mealLogsContainer = document.getElementById('meal-logs-container');
     const aiCoachSection = document.getElementById('ai-coach-section');
+    const aiCoachTitle = document.getElementById('ai-coach-title');
     const aiCoachAdvice = document.getElementById('ai-coach-advice');
+    const nutritionModelInfo = document.getElementById('nutrition-model-info');
+
+    let currentFoodName = '';
 
     // --- Управление состоянием формы анализа ---
     const analysisStateKey = 'analysisInProgress';
@@ -35,6 +39,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.removeItem(analysisStateKey);
     }
 
+    function resetAnalysisUI() {
+        // Не скрываем resultsSection, а сбрасываем его содержимое
+        aiResponseTextDiv.innerHTML = '';
+
+        const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
+        fields.forEach(field => {
+            const slider = document.getElementById(`${field}-slider`);
+            const input = document.getElementById(field);
+            slider.value = 0;
+            input.value = 0;
+        });
+
+        // Скрываем только AI коуча, так как он относится к конкретному анализу
+        aiCoachSection.style.display = 'none';
+        localStorage.removeItem('lastAiAdvice');
+        localStorage.removeItem('lastCoachModel');
+
+        clearAnalysisState();
+    }
+
     function populateResultsFromState(state) {
         if (!state) return;
 
@@ -49,11 +73,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const input = document.getElementById(field);
             const value = state.values[field] || 0;
 
-            // Установка значений
             slider.value = value;
             input.value = value;
 
-            // Корректировка диапазона слайдера
             const config = { minBuffer: field === 'calories' ? 500 : 30, step: field === 'calories' ? 10 : 1 };
             const buffer = Math.max(value * 0.5, config.minBuffer);
             const minValue = Math.max(0, Math.floor((value - buffer) / config.step) * config.step);
@@ -65,64 +87,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsSection.style.display = 'block';
     }
 
-
-    // --- Конфигурация цветов overflow по типу макронутриента ---
-    const OVERFLOW_STYLES = {
-        calories:  { glowClass: 'overflow-glow-red'   },
-        protein:   { glowClass: 'overflow-glow-green' },
-        fat:       { glowClass: 'overflow-glow-red'   },
-        carbs:     { glowClass: 'overflow-glow-red'   },
-    };
-
-    function getMacroType(ringId) {
-        if (ringId.includes('protein'))   return 'protein';
-        if (ringId.includes('fat'))       return 'fat';
-        if (ringId.includes('carbs') || ringId.includes('carbohydrates')) return 'carbs';
-        return 'calories';
-    }
-
     function updateRingWithOverflow(ringId, value, maxValue) {
         const ring = document.getElementById(ringId);
         if (!ring) return;
-
-        const type = getMacroType(ringId);
-        const style = OVERFLOW_STYLES[type];
         const bar = ring.querySelector('.progress-ring-bar');
-        const overflowBar = ring.querySelector('.progress-ring-overflow');
-        const container = ring.closest('.ring-container');
         const radius = bar.r.baseVal.value;
         const circumference = 2 * Math.PI * radius;
-
         bar.style.strokeDasharray = `${circumference} ${circumference}`;
-        if (overflowBar) overflowBar.style.strokeDasharray = `${circumference} ${circumference}`;
-
-        if (container) container.classList.remove('overflow-glow-red', 'overflow-glow-green');
-        if (overflowBar) overflowBar.classList.remove('overflow-red', 'overflow-green');
-
         if (maxValue === 0) {
             bar.style.strokeDashoffset = circumference;
-            if (overflowBar) overflowBar.style.strokeDashoffset = circumference;
             return;
         }
-
-        const percentage = value / maxValue;
-        const mainPercentage = Math.min(percentage, 1);
-        const mainOffset = circumference - (mainPercentage * circumference);
-        bar.style.strokeDashoffset = mainOffset;
-
-        if (overflowBar) {
-            if (percentage > 1) {
-                const overflowColorClass = type === 'protein' ? 'overflow-green' : 'overflow-red';
-                overflowBar.classList.add(overflowColorClass);
-                if (container) container.classList.add(style.glowClass);
-                const overflowPercentage = Math.min(percentage - 1, 1);
-                const overflowOffset = circumference - (overflowPercentage * circumference);
-                overflowBar.style.strokeDashoffset = overflowOffset;
-            } else {
-                overflowBar.style.strokeDashoffset = circumference;
-            }
-        }
-
+        const percentage = Math.min(value / maxValue, 1);
+        const offset = circumference - (percentage * circumference);
+        bar.style.strokeDashoffset = offset;
         const valueElementId = ringId.replace('-ring', '-value');
         const valueElement = document.getElementById(valueElementId);
         if (valueElement) {
@@ -185,30 +163,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="text-sm text-gray-400 -mt-1 mb-3">${meal.food_name || 'Блюдо'}</p>
                         </div>
                         <div class="flex justify-center w-full space-x-2">
-                            <div class="text-center flex flex-col items-center space-y-1">
-                                <div class="ring-container w-12 aspect-square neon-glow-amber relative">
-                                    <svg id="log-${mealId}-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);"/><circle class="progress-ring-overflow" cx="60" cy="60" r="54"/></svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-calories-value" class="font-bold text-sm" style="color: var(--color-amber);">0</span><span class="label-text text-xs -mt-1">ккал</span></div>
-                                </div>
-                            </div>
-                            <div class="text-center flex flex-col items-center space-y-1">
-                                <div class="ring-container w-12 aspect-square neon-glow-protein-white relative">
-                                    <svg id="log-${mealId}-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);"/><circle class="progress-ring-overflow" cx="60" cy="60" r="54"/></svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-protein-value" class="font-bold text-sm" style="color: var(--color-protein-white);">0</span><span class="label-text text-xs -mt-1">г</span></div>
-                                </div>
-                            </div>
-                            <div class="text-center flex flex-col items-center space-y-1">
-                                <div class="ring-container w-12 aspect-square neon-glow-golden-orange relative">
-                                    <svg id="log-${mealId}-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);"/><circle class="progress-ring-overflow" cx="60" cy="60" r="54"/></svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-fat-value" class="font-bold text-sm" style="color: var(--color-golden-orange);">0</span><span class="label-text text-xs -mt-1">г</span></div>
-                                </div>
-                            </div>
-                            <div class="text-center flex flex-col items-center space-y-1">
-                                <div class="ring-container w-12 aspect-square neon-glow-muted-teal relative">
-                                    <svg id="log-${mealId}-carbohydrates-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);"/><circle class="progress-ring-overflow" cx="60" cy="60" r="54"/></svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-carbohydrates-value" class="font-bold text-sm" style="color: var(--color-muted-teal);">0</span><span class="label-text text-xs -mt-1">г</span></div>
-                                </div>
-                            </div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-amber relative"><svg id="log-${mealId}-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);"/></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-calories-value" class="font-bold text-sm" style="color: var(--color-amber);">0</span><span class="label-text text-xs -mt-1">ккал</span></div></div></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-protein-white relative"><svg id="log-${mealId}-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);"/></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-protein-value" class="font-bold text-sm" style="color: var(--color-protein-white);">0</span><span class="label-text text-xs -mt-1">г</span></div></div></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-golden-orange relative"><svg id="log-${mealId}-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);"/></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-fat-value" class="font-bold text-sm" style="color: var(--color-golden-orange);">0</span><span class="label-text text-xs -mt-1">г</span></div></div></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-muted-teal relative"><svg id="log-${mealId}-carbohydrates-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);"/></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="log-${mealId}-carbohydrates-value" class="font-bold text-sm" style="color: var(--color-muted-teal);">0</span><span class="label-text text-xs -mt-1">г</span></div></div></div>
                         </div>
                     `;
                     mealLogsContainer.appendChild(card);
@@ -229,8 +187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     mealImageInput.addEventListener('change', () => {
-        const file = mealImageInput.files[0];
-        if (file) {
+        if (mealImageInput.files[0]) {
             uploadButtonLabel.classList.add('has-image');
             uploadButtonLabel.textContent = 'Фото добавлено!';
         }
@@ -270,14 +227,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (isMacro) updateCaloriesFromMacros();
                 saveCurrentAnalysis();
             };
-            slider.addEventListener('input', (event) => {
-                input.value = event.target.value;
-                updateAndSave();
-            });
-            input.addEventListener('change', (event) => {
-                slider.value = event.target.value;
-                updateAndSave();
-            });
+            slider.addEventListener('input', (event) => { input.value = event.target.value; updateAndSave(); });
+            input.addEventListener('change', (event) => { slider.value = event.target.value; updateAndSave(); });
         }
     }
     setupSliderSync('calories-slider', 'calories');
@@ -305,19 +256,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
+                let width = img.width; let height = img.height;
                 if (width > maxSize || height > maxSize) {
-                    if (width > height) {
-                        height = Math.round((height * maxSize) / width);
-                        width = maxSize;
-                    } else {
-                        width = Math.round((width * maxSize) / height);
-                        height = maxSize;
-                    }
+                    if (width > height) { height = Math.round((height * maxSize) / width); width = maxSize; }
+                    else { width = Math.round((width * maxSize) / height); height = maxSize; }
                 }
-                canvas.width = width;
-                canvas.height = height;
+                canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
                 canvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', quality);
@@ -345,7 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         analyzeButton.disabled = true;
         analyzeButton.textContent = 'Ждите...';
         aiCoachSection.style.display = 'none';
-        aiCoachSection.classList.remove('loading');
+        nutritionModelInfo.textContent = '';
 
         const formData = new FormData();
         if (mealImageInput.files.length > 0) {
@@ -371,7 +315,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         aiCoachSection.style.display = 'block';
         aiCoachSection.classList.add('loading');
-        aiCoachAdvice.textContent = 'AI-коуч анализирует ваш выбор...';
+        aiCoachTitle.textContent = 'AI-коуч анализирует ваш выбор...';
+        aiCoachAdvice.textContent = '';
 
         try {
             const response = await fetch('/analyze-meal/', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
@@ -384,8 +329,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const advice = result.ai_coach_advice || 'Не удалось получить совет.';
             aiCoachSection.classList.remove('loading');
+            aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'модель не указана'})`;
             aiCoachAdvice.textContent = advice;
             localStorage.setItem('lastAiAdvice', advice);
+            localStorage.setItem('lastCoachModel', result.coach_model_used);
+
+            nutritionModelInfo.textContent = `Проанализировано с помощью: ${result.nutrition_model_used || 'модель не указана'}`;
 
             currentFoodName = result.ai_response_text;
             const initialState = {
@@ -442,11 +391,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error(errorData.detail || 'Ошибка добавления приема пищи.');
             }
 
-            resultsSection.style.display = 'none';
+            resetAnalysisUI();
             analyzeForm.reset();
             uploadButtonLabel.classList.remove('has-image');
             uploadButtonLabel.textContent = 'Добавить фото';
-            clearAnalysisState();
 
             errorMessageDiv.style.color = '#50C878';
             errorMessageDiv.textContent = 'Прием пищи успешно добавлен!';
@@ -464,8 +412,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Инициализация страницы ---
     const lastAdvice = localStorage.getItem('lastAiAdvice');
+    const lastCoachModel = localStorage.getItem('lastCoachModel');
     if (lastAdvice) {
         aiCoachSection.style.display = 'block';
+        aiCoachTitle.textContent = `Совет от AI (${lastCoachModel || 'модель не указана'})`;
         aiCoachAdvice.textContent = lastAdvice;
     }
 

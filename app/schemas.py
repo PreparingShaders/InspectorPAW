@@ -124,7 +124,7 @@ class MealBase(BaseModel):
     food_name: Optional[str] = None
 
 class MealCreate(MealBase, MealTotals):
-    pass
+    ai_coach_advice: Optional[str] = None
 
 class Meal(MealBase, MealTotals):
     id: int

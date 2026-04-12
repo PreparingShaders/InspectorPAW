@@ -367,6 +367,9 @@ def confirm_and_create_meal(
         db: Session = Depends(get_db),
         current_user: models.User = Depends(auth.get_current_user)
 ):
+    if meal_data.ai_coach_advice:
+        meal_data.food_name = f"{meal_data.food_name}\n\n{meal_data.ai_coach_advice}"
+
     return crud.create_meal(db=db, meal=meal_data, user_id=current_user.id)
 
 

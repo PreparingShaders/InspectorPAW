@@ -24,45 +24,28 @@ async def get_ai_coach_advice(
     print(f"--- AI Coach использует модель: {model_id_to_use} ---")
 
     time_str = current_time.strftime("%H:%M")
-    
-    deltas = {}
-    for key in user_targets:
-        target = user_targets.get(key, 0)
-        consumed = consumed_today.get(key, 0)
-        meal_val = analyzed_meal.get(f"total_{key}", 0)
-        
-        start_h, end_h = 5.0, 23.0
-        time_factor = max(0.05, min(1.0, (current_time.hour + current_time.minute / 60 - start_h) / (end_h - start_h)))
-        expected_now = target * time_factor
-        
-        future_consumed = consumed + meal_val
-        delta = future_consumed - expected_now
-        
-        status = "в норме"
-        if delta > target * 0.15: status = f"перебор на {round(delta)} ед."
-        elif delta < -target * 0.15: status = f"недобор в {round(abs(delta))} ед."
-        
-        deltas[key] = status
 
     prompt = f"""
-    Ты — дружелюбный и мотивирующий фитнес-коуч. Твоя задача — дать пользователю короткий (2-3 предложения) и полезный совет.
-    
+    Ты — эксперт-нутрициолог с математическим уклоном и немного дерзким характером. Твоя задача — дать пользователю четкий, основанный на цифрах совет. Говори прямо, как есть.
+
     ### Контекст:
     - Сейчас {time_str}.
-    - Пользователь собирается съесть: **{analyzed_meal.get('food_name', 'неизвестное блюдо')}** (Калории: {analyzed_meal.get('total_calories', 0)}, Белки: {analyzed_meal.get('total_protein', 0)}г, Жиры: {analyzed_meal.get('total_fat', 0)}г, Углеводы: {analyzed_meal.get('total_carbohydrates', 0)}г).
-    - Его дневные цели: Калории: {user_targets.get('calories', 0)}, Белки: {user_targets.get('protein', 0)}г, Жиры: {user_targets.get('fat', 0)}г, Углеводы: {user_targets.get('carbohydrates', 0)}г.
-    - С учетом этого блюда, его прогресс относительно текущего времени будет:
-        - Калории: {deltas.get('calories', 'в норме')}
-        - Белки: {deltas.get('protein', 'в норме')}
-        - Жиры: {deltas.get('fat', 'в норме')}
-        - Углеводы: {deltas.get('carbohydrates', 'в норме')}
+    - Дневные цели пользователя:
+        - Калории: {user_targets.get('calories', 0)}
+        - Белки (P): {user_targets.get('protein', 0)} г
+        - Жиры (F): {user_targets.get('fat', 0)} г
+        - Углеводы (C): {user_targets.get('carbohydrates', 0)} г
+    - Пользователь собирается съесть: **{analyzed_meal.get('food_name', 'неизвестное блюдо')}** (P: {analyzed_meal.get('total_protein', 0)}г, F: {analyzed_meal.get('total_fat', 0)}г, C: {analyzed_meal.get('total_carbohydrates', 0)}г).
+    - Сегодня уже съедено: P: {round(consumed_today.get('protein', 0))}г, F: {round(consumed_today.get('fat', 0))}г, C: {round(consumed_today.get('carbohydrates', 0))}г.
 
-    ### Твоя задача:
-    1.  Проанализируй, как это блюдо повлияет на дневной план пользователя.
-    2.  Если блюдо помогает закрыть дефицит (например, много белка при его недоборе) — похвали выбор.
-    3.  Если блюдо создает сильный перебор (например, много жиров при их избытке) — мягко предупреди и посоветуй, как это скомпенсировать в течение дня (например, "постарайся в следующий раз выбрать что-то менее жирное").
-    4.  Дай один главный, самый важный совет, на чем сфокусироваться дальше.
-    5.  Твой ответ должен быть в 2-3 предложения, на естественном русском языке, как будто ты пишешь другу в мессенджер.
+    ### Твоя задача (отвечай в стиле "ты"):
+    1.  **Проанализируй тайминг и график.** Сравни текущее потребление с ожидаемым на {time_str}. Объясни, идет ли пользователь с опережением или отставанием по макронутриентам.
+        - *Пример: "Сейчас только {time_str}, а ты уже съел {round(consumed_today.get('fat', 0) + analyzed_meal.get('total_fat', 0))} грамм жиров из твоих {user_targets.get('fat', 0)}. Ты идешь с опережением графика."*
+    2.  **Дай прямой совет по следующему шагу.** Если есть перебор по одному макросу (например, жирам), а по другому недобор (белки), дай конкретную рекомендацию.
+        - *Пример: "У тебя осталось всего {round(user_targets.get('fat', 0) - (consumed_today.get('fat', 0) + analyzed_meal.get('total_fat', 0)))} грамм жиров, но тебе еще надо {round(user_targets.get('protein', 0) - (consumed_today.get('protein', 0) + analyzed_meal.get('total_protein', 0)))} грамм белка. Выбери нежирное мясо или творог, иначе провал миссии, бро."*
+    3.  **Добавь важное напоминание.** Если ты видишь, что в рационе нет овощей или фруктов, напомни о важности клетчатки.
+        - *Пример: "Я заметил у тебя отсутствие клетчатки в течение дня. Если хочешь нормально какать, советую ее добавить."*
+    4.  **Будь кратким (3-4 предложения) и мотивирующим, но строгим.**
     """
 
     try:
@@ -73,7 +56,7 @@ async def get_ai_coach_advice(
         chat_completion = await open_router_client.chat.completions.create(
             model=model_id_to_use,
             messages=[
-                {"role": "system", "content": "Ты — дружелюбный и мотивирующий фитнес-коуч."},
+                {"role": "system", "content": "Ты — эксперт-нутрициолог с математическим уклоном и немного дерзким характером. Отвечай в стиле 'ты'."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=250,
