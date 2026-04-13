@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
+    <title>AI HUB - ProgressLab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/ai_hub.css">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        .iridescent-text {
+            background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff, #ffff00);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: iridescent-flow 4s linear infinite;
+        }
+        @keyframes iridescent-flow {
+            to {
+                background-position: 200% center;
+            }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col">
+
+    <header class="text-center pb-2" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
+        <h1 class="text-3xl font-extrabold tracking-wider iridescent-text">ProgressLab AI</h1>
+        <p class="text-xs text-gray-500">Beta 0.1</p>
+    </header>
+
+    <main class="flex-grow flex flex-col p-4 pb-24">
+        <div id="chat-history" class="flex-grow space-y-4 overflow-y-auto">
+            <!-- Сообщения чата будут здесь -->
+        </div>
+    </main>
+
+    <footer class="fixed bottom-0 left-0 right-0 p-4" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+        <div class="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Опишите чат с ИИ...">
+            <button id="send-button">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                </svg>
+            </button>
+        </div>
+    </footer>
+
+    {% set active_page = 'ai_hub' %}
+    {% include 'includes/bottom_nav.html' %}
+
+    <script src="/static/js/ai_hub.js"></script>
+</body>
+</html>

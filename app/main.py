@@ -117,6 +117,11 @@ async def read_analyze_page(request: Request):
     return templates.TemplateResponse(name="analyze.html", request=request)
 
 
+@app.get("/ai-hub")
+async def read_ai_hub_page(request: Request):
+    return templates.TemplateResponse(name="ai_hub.html", request=request)
+
+
 # --- AI Логика ---
 async def call_ai_model(file_content: Optional[bytes], description: Optional[str]) -> (str, str):
     prompt = """

@@ -8,6 +8,19 @@
     .nav-link:hover .nav-icon-svg, .nav-link-active .nav-icon-svg {
         filter: drop-shadow(0 0 5px rgba(0, 242, 255, 1));
     }
+
+    /* Стиль для активной кнопки AI HUB */
+    .ai-hub-active .ai-hub-icon {
+        animation: iridescent-glow 2s infinite linear;
+    }
+
+    @keyframes iridescent-glow {
+        0% { filter: drop-shadow(0 0 4px #ff00ff); }
+        25% { filter: drop-shadow(0 0 6px #00ffff); }
+        50% { filter: drop-shadow(0 0 4px #ff00ff); }
+        75% { filter: drop-shadow(0 0 6px #ffff00); }
+        100% { filter: drop-shadow(0 0 4px #ff00ff); }
+    }
 </style>
 
 <nav class="glassmorphism fixed left-1/2 -translate-x-1/2 w-[95%] max-w-lg h-16 flex justify-around items-center rounded-2xl neon-glow-pantone-gray" style="bottom: 16px; z-index: 50;">
@@ -24,6 +37,14 @@
             <path d="M7 12h10M4 7h1v10H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM20 7h-1v10h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/>
         </svg>
         <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">Тренировки</span>
+    </a>
+
+    <a href="/ai-hub" class="nav-link text-center {% if active_page == 'ai_hub' %}ai-hub-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'ai_hub' %}#fff{% else %}var(--color-inactive-icon){% endif %};">
+        <svg class="w-8 h-8 mx-auto ai-hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 18.5c-1.8 0-3.4-1.1-4-2.7M15.5 18.5c1.8 0 3.4-1.1 4-2.7M12 21v-2m-7-4H3m18 0h-2M12 3v2m-3.5 1.5L6 5m8.5 1.5L18 5M12 6a6 6 0 00-6 6c0 2.2.9 4.2 2.4 5.6" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 12l-1-1-1-1m2 2l1-1 1-1m-2 2l-1 1 1 1m1-1l1 1" />
+        </svg>
+        <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">AI HUB</span>
     </a>
 
     <a href="/analyze" class="nav-link text-center {% if active_page == 'nutrition' %}nav-link-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'nutrition' %}var(--color-amber){% else %}var(--color-inactive-icon){% endif %};">
