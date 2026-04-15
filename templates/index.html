@@ -22,88 +22,97 @@
 </head>
 <body class="h-full flex flex-col">
 
-    <header class="text-center pb-2" style="padding-top: calc(2.5rem + env(safe-area-inset-top));">
-        <h1 class="text-3xl font-extrabold tracking-wider">ProgressLab</h1>
+    <!-- Шапка возвращена, но сделана более компактной -->
+    <header class="text-center" style="padding-top: calc(0.5rem + env(safe-area-inset-top)); padding-bottom: 0.5rem;">
+        <h1 class="text-2xl font-bold tracking-wider">ProgressLab</h1>
         <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-4 pb-24">
 
-        <!-- 1. Центральное кольцо калорий (SVG) -->
-        <div class="ring-container w-1/2 max-w-xs aspect-square neon-glow-amber relative">
+        <!-- 1. Центральное кольцо калорий (Уменьшено) -->
+        <div class="ring-container w-1/3 max-w-xs aspect-square neon-glow-amber relative">
             <svg id="calorie-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                 <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                 <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
                 <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span class="calorie-label">КАЛОРИИ</span>
-                <span id="calories-consumed" class="text-5xl font-extrabold" style="color: var(--color-amber);">0</span>
-                <span class="calorie-goal-text" id="calorie-goal-info" style="font-size: 0.935rem;">ВСЕГО:</span>
+                <span class="calorie-label text-xs">КАЛОРИИ</span>
+                <span id="calories-consumed" class="text-4xl font-extrabold" style="color: var(--color-amber);">0</span>
+                <span class="calorie-goal-text" id="calorie-goal-info" style="font-size: 0.75rem;">ВСЕГО:</span>
             </div>
         </div>
 
-        <!-- 2. Сетка макронутриентов (SVG) -->
+        <!-- 2. Сетка макронутриентов (Уменьшено) -->
         <div class="flex justify-around w-full max-w-lg space-x-4">
             <!-- Белки -->
-            <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-20 aspect-square neon-glow-protein-white relative">
+            <div class="text-center flex flex-col items-center space-y-1">
+                <div class="ring-container w-16 aspect-square neon-glow-protein-white relative">
                     <svg id="protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
                         <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="protein-consumed" class="font-bold text-2xl" style="color: var(--color-protein-white);">0г</span>
+                        <span id="protein-consumed" class="font-bold text-xl" style="color: var(--color-protein-white);">0г</span>
                     </div>
                 </div>
-                <p class="text-base font-semibold" style="color: var(--color-protein-white);">Белки</p>
-                <p id="protein-goal" class="macro-goal-value -mt-1.5">0г</p>
+                <p class="text-sm font-semibold" style="color: var(--color-protein-white);">Белки</p>
+                <p id="protein-goal" class="macro-goal-value text-xs -mt-1">0г</p>
             </div>
             <!-- Жиры -->
-            <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-20 aspect-square neon-glow-golden-orange relative">
+            <div class="text-center flex flex-col items-center space-y-1">
+                <div class="ring-container w-16 aspect-square neon-glow-golden-orange relative">
                     <svg id="fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
                         <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="fat-consumed" class="font-bold text-2xl" style="color: var(--color-golden-orange);">0г</span>
+                        <span id="fat-consumed" class="font-bold text-xl" style="color: var(--color-golden-orange);">0г</span>
                     </div>
                 </div>
-                <p class="text-base font-semibold" style="color: var(--color-golden-orange);">Жиры</p>
-                <p id="fat-goal" class="macro-goal-value -mt-1.5">0г</p>
+                <p class="text-sm font-semibold" style="color: var(--color-golden-orange);">Жиры</p>
+                <p id="fat-goal" class="macro-goal-value text-xs -mt-1">0г</p>
             </div>
             <!-- Углеводы -->
-            <div class="text-center flex flex-col items-center space-y-2">
-                <div class="ring-container w-20 aspect-square neon-glow-muted-teal relative">
+            <div class="text-center flex flex-col items-center space-y-1">
+                <div class="ring-container w-16 aspect-square neon-glow-muted-teal relative">
                     <svg id="carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                         <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                         <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
                         <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="carbs-consumed" class="font-bold text-2xl" style="color: var(--color-muted-teal);">0г</span>
+                        <span id="carbs-consumed" class="font-bold text-xl" style="color: var(--color-muted-teal);">0г</span>
                     </div>
                 </div>
-                <p class="text-base font-semibold" style="color: var(--color-muted-teal);">Углеводы</p>
-                <p id="carbs-goal" class="macro-goal-value -mt-1.5">0г</p>
+                <p class="text-sm font-semibold" style="color: var(--color-muted-teal);">Углеводы</p>
+                <p id="carbs-goal" class="macro-goal-value text-xs -mt-1">0г</p>
             </div>
         </div>
 
-        <!-- 3. Индекс дисциплины (The Score Graph) -->
-        <div class="w-full px-4 mt-6">
-            <h2 class="text-sm text-gray-400 font-semibold mb-3 text-center">Индекс дисциплины питания</h2>
-            <div class="relative h-32 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
-                <!-- Golden Standard Line -->
+        <!-- 3. Индекс дисциплины питания -->
+        <div class="w-full px-4 mt-4">
+            <h2 class="text-sm text-gray-400 font-semibold mb-2 text-center">Индекс дисциплины питания</h2>
+            <div class="relative h-28 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
                 <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-[#F0F0F0]/80 -translate-y-1/2"></div>
-                <!-- Average Score Label -->
                 <span id="average-score-label" class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-[#F0F0F0] hidden px-2" style="background-color: #1a202c; text-shadow: 0 0 8px #F0F0F0;"></span>
-
-                <!-- Day Columns and Score Circles -->
                 <div id="score-graph-container" class="flex justify-around w-full h-full relative z-10 pl-8">
                     <!-- Circles will be dynamically added here by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Индекс дисциплины тренировок -->
+        <div class="w-full px-4 mt-4">
+            <h2 class="text-sm text-gray-400 font-semibold mb-2 text-center">Индекс дисциплины тренировок</h2>
+            <div class="relative h-28 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
+                <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-[#F0F0F0]/80 -translate-y-1/2"></div>
+                <span id="training-average-score-label" class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-[#F0F0F0] hidden px-2" style="background-color: #1a202c; text-shadow: 0 0 8px #F0F0F0;"></span>
+                <div id="training-score-graph-container" class="flex justify-around w-full h-full relative z-10 pl-8">
+                    <!-- Circles for training score will be dynamically added here by a different JS function -->
                 </div>
             </div>
         </div>
