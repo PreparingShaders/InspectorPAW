@@ -600,14 +600,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const oneMonthBtn = document.getElementById('one-month-btn');
     const threeMonthsBtn = document.getElementById('three-months-btn');
 
-    function setActivePeriodButton(button) {
-        oneMonthBtn.classList.remove('bg-gray-700', 'text-white');
-        oneMonthBtn.classList.add('bg-gray-800', 'text-gray-400');
-        threeMonthsBtn.classList.remove('bg-gray-700', 'text-white');
-        threeMonthsBtn.classList.add('bg-gray-800', 'text-gray-400');
-
-        button.classList.remove('bg-gray-800', 'text-gray-400');
-        button.classList.add('bg-gray-700', 'text-white');
+    function setActivePeriodButton(activeBtn) {
+        [oneMonthBtn, threeMonthsBtn].forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('text-gray-400');
+        });
+        activeBtn.classList.add('active');
+        activeBtn.classList.remove('text-gray-400');
     }
 
     oneMonthBtn.addEventListener('click', () => {

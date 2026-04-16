@@ -3,37 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
-    <title>Анализ еды - ProgressLab</title>
+    <title>Питание - ProgressLab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <style>
         .ai-coach-container {
-            border-radius: 1.5rem; /* 24px */
-            padding: 1rem; /* 16px */
-            position: relative;
-            overflow: hidden;
-            background: rgba(41, 41, 56, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            border-radius: 1.5rem; padding: 1rem; position: relative; overflow: hidden;
+            background: rgba(41, 41, 56, 0.6); border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
         .ai-coach-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border-radius: 1.5rem;
-            padding: 1px; /* Thickness of the border */
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: 1.5rem; padding: 1px;
             background: linear-gradient(90deg, #8A2BE2, #4169E1, #00BFFF, #32CD32, #FFD700, #FF4500, #8A2BE2);
             background-size: 400% 100%;
-            -webkit-mask:
-                linear-gradient(#fff 0 0) content-box,
-                linear-gradient(#fff 0 0);
-            -webkit-mask-composite: destination-out;
-            mask-composite: exclude;
-            animation: running-border 15s linear infinite; /* Замедленная анимация */
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out; mask-composite: exclude;
+            animation: running-border 15s linear infinite;
+        }
+        .period-btn { transition: all 0.3s ease-in-out; }
+        .period-btn.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            color: #fff;
         }
     </style>
 </head>
@@ -44,87 +36,103 @@
         <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
-        <!-- Индекс дисциплины питания -->
-        <div class="w-full px-4 mt-4">
-            <h2 class="text-sm text-gray-400 font-semibold mb-2 text-center">Индекс дисциплины питания</h2>
-            <div class="flex justify-center mb-4">
-                <button id="one-month-btn" class="px-4 py-2 text-sm font-semibold rounded-l-lg bg-gray-700 text-white">1 месяц</button>
-                <button id="three-months-btn" class="px-4 py-2 text-sm font-semibold rounded-r-lg bg-gray-800 text-gray-400">3 месяца</button>
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-8 pb-24">
+
+        <!-- 1. Индекс дисциплины питания (Главный элемент) -->
+        <div class="w-full space-y-3">
+            <div class="w-full flex justify-center">
+                <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
+                    <button id="one-month-btn" class="period-btn active w-1/2 rounded-full py-1 text-sm font-semibold">1 месяц</button>
+                    <button id="three-months-btn" class="period-btn w-1/2 rounded-full py-1 text-sm font-semibold text-gray-400">3 месяца</button>
+                </div>
             </div>
-            <div class="relative h-28 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
+            <div class="relative h-40 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
                 <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-[#F0F0F0]/80 -translate-y-1/2"></div>
                 <span id="average-score-label" class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-[#F0F0F0] hidden px-2" style="background-color: #1a202c; text-shadow: 0 0 8px #F0F0F0;"></span>
-                <div id="score-graph-container" class="flex justify-around w-full h-full relative z-10 pl-8">
+                <div id="score-graph-container" class="flex justify-around w-full h-full items-center relative z-10">
                     <!-- Circles will be dynamically added here by JS -->
                 </div>
             </div>
         </div>
 
-        <!-- Блок со средними показателями -->
+        <!-- 2. Блок со средними показателями (уменьшенный) -->
         <div class="w-full">
             <div id="average-stats" class="pt-4">
-                <h3 class="text-lg font-semibold text-center mb-4">Средние данные</h3>
-                <div class="flex justify-center w-full space-x-2">
+                <div class="flex justify-center w-full space-x-4">
                     <!-- Калории -->
                     <div class="text-center flex flex-col items-center space-y-1">
-                        <div class="ring-container w-16 aspect-square neon-glow-amber relative">
+                        <div class="ring-container w-12 aspect-square neon-glow-amber relative">
                             <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                                 <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                                 <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
-                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                             </svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="avg-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
-                                <span class="label-text text-xs -mt-1">ккал</span>
+                                <span id="avg-calories-value" class="font-bold text-base" style="color: var(--color-amber);">0</span>
                             </div>
                         </div>
+                        <p class="text-xs font-semibold text-gray-400 mt-1">Ккал</p>
                     </div>
                     <!-- Белки -->
                     <div class="text-center flex flex-col items-center space-y-1">
-                        <div class="ring-container w-16 aspect-square neon-glow-protein-white relative">
+                        <div class="ring-container w-12 aspect-square neon-glow-protein-white relative">
                             <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                                 <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                                 <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
-                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                             </svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="avg-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
-                                <span class="label-text text-xs -mt-1">г</span>
+                                <span id="avg-protein-value" class="font-bold text-base" style="color: var(--color-protein-white);">0</span>
                             </div>
                         </div>
+                        <p class="text-xs font-semibold text-gray-400 mt-1">Б</p>
                     </div>
                     <!-- Жиры -->
                     <div class="text-center flex flex-col items-center space-y-1">
-                        <div class="ring-container w-16 aspect-square neon-glow-golden-orange relative">
+                        <div class="ring-container w-12 aspect-square neon-glow-golden-orange relative">
                             <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                                 <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                                 <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
-                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                             </svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="avg-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
-                                <span class="label-text text-xs -mt-1">г</span>
+                                <span id="avg-fat-value" class="font-bold text-base" style="color: var(--color-golden-orange);">0</span>
                             </div>
                         </div>
+                        <p class="text-xs font-semibold text-gray-400 mt-1">Ж</p>
                     </div>
                     <!-- Углеводы -->
                     <div class="text-center flex flex-col items-center space-y-1">
-                        <div class="ring-container w-16 aspect-square neon-glow-muted-teal relative">
+                        <div class="ring-container w-12 aspect-square neon-glow-muted-teal relative">
                             <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                                 <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                                 <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
-                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
                             </svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="avg-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
-                                <span class="label-text text-xs -mt-1">г</span>
+                                <span id="avg-carbs-value" class="font-bold text-base" style="color: var(--color-muted-teal);">0</span>
                             </div>
                         </div>
+                        <p class="text-xs font-semibold text-gray-400 mt-1">У</p>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- 3. Форма для анализа -->
+        <section class="ai-section w-full">
+            <form id="analyze-form">
+                <div>
+                    <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">Добавить фото</label>
+                    <input type="file" id="meal-image" accept="image/*" class="upload-input">
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label for="meal-description">Описание еды (необязательно)</label>
+                        <textarea id="meal-description" rows="4" placeholder="Например: 'Большая порция гречки с куриной грудкой и овощным салатом'"></textarea>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button">Анализировать</button>
+                </div>
+                <p id="nutrition-model-info" class="text-xs text-gray-600 text-center mt-2"></p>
+                <div id="analysis-status" class="analysis-status"></div>
+            </form>
+        </section>
 
         <!-- AI Coach Section -->
         <div id="ai-coach-section" class="w-full ai-coach-container" style="display: none;">
@@ -132,85 +140,22 @@
             <p id="ai-coach-advice" class="text-white text-center text-sm"></p>
         </div>
 
-        <!-- Форма для анализа -->
-        <section class="ai-section w-full">
-            <form id="analyze-form">
-                <div>
-                    <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">
-                        Добавить фото
-                    </label>
-                    <input type="file" id="meal-image" accept="image/*" class="upload-input">
-
-                    <div class="form-group" style="margin-top: 20px;">
-                        <label for="meal-description">Описание еды (необязательно)</label>
-                        <textarea id="meal-description" rows="4" placeholder="Например: 'Большая порция гречки с куриной грудкой и овощным салатом'"></textarea>
-                    </div>
-                </div>
-
-                <div class="mt-4">
-                    <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button">
-                        Анализировать
-                    </button>
-                </div>
-                <p id="nutrition-model-info" class="text-xs text-gray-600 text-center mt-2"></p>
-                <div id="analysis-status" class="analysis-status"></div>
-            </form>
-        </section>
-
         <!-- Секция с результатами (изначально скрыта) -->
         <section id="results-section" class="ai-section w-full" style="display: none;">
             <h3 class="section-title">Результаты анализа</h3>
             <div id="ai-response-text" class="p-4 rounded-xl my-4 glassmorphism neon-glow-pantone-gray"></div>
-
             <form id="confirm-form">
-                <div class="form-group">
-                    <label for="meal-type">Тип приема пищи</label>
-                    <select id="meal-type">
-                        <option value="breakfast">Завтрак</option>
-                        <option value="lunch">Обед</option>
-                        <option value="dinner">Ужин</option>
-                        <option value="snack">Перекус</option>
-                    </select>
-                </div>
-
-                <div class="slider-group">
-                    <label for="calories">Калории</label>
-                    <div class="slider-wrapper">
-                        <input type="range" id="calories-slider" min="0" max="2000" step="10" class="styled-slider">
-                        <input type="number" id="calories" class="slider-value" min="0">
-                    </div>
-                </div>
-                <div class="slider-group">
-                    <label for="protein">Белки (г)</label>
-                    <div class="slider-wrapper">
-                        <input type="range" id="protein-slider" min="0" max="200" step="1" class="styled-slider">
-                        <input type="number" id="protein" class="slider-value" min="0">
-                    </div>
-                </div>
-                <div class="slider-group">
-                    <label for="fat">Жиры (г)</label>
-                    <div class="slider-wrapper">
-                        <input type="range" id="fat-slider" min="0" max="200" step="1" class="styled-slider">
-                        <input type="number" id="fat" class="slider-value" min="0">
-                    </div>
-                </div>
-                <div class="slider-group">
-                    <label for="carbohydrates">Углеводы (г)</label>
-                    <div class="slider-wrapper">
-                        <input type="range" id="carbohydrates-slider" min="0" max="300" step="1" class="styled-slider">
-                        <input type="number" id="carbohydrates" class="slider-value" min="0">
-                    </div>
-                </div>
-
+                <div class="form-group"><label for="meal-type">Тип приема пищи</label><select id="meal-type"><option value="breakfast">Завтрак</option><option value="lunch">Обед</option><option value="dinner">Ужин</option><option value="snack">Перекус</option></select></div>
+                <div class="slider-group"><label for="calories">Калории</label><div class="slider-wrapper"><input type="range" id="calories-slider" min="0" max="2000" step="10" class="styled-slider"><input type="number" id="calories" class="slider-value" min="0"></div></div>
+                <div class="slider-group"><label for="protein">Белки (г)</label><div class="slider-wrapper"><input type="range" id="protein-slider" min="0" max="200" step="1" class="styled-slider"><input type="number" id="protein" class="slider-value" min="0"></div></div>
+                <div class="slider-group"><label for="fat">Жиры (г)</label><div class="slider-wrapper"><input type="range" id="fat-slider" min="0" max="200" step="1" class="styled-slider"><input type="number" id="fat" class="slider-value" min="0"></div></div>
+                <div class="slider-group"><label for="carbohydrates">Углеводы (г)</label><div class="slider-wrapper"><input type="range" id="carbohydrates-slider" min="0" max="300" step="1" class="styled-slider"><input type="number" id="carbohydrates" class="slider-value" min="0"></div></div>
                 <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4" id="confirm-button">Сохранить</button>
             </form>
         </section>
 
         <!-- Контейнер для логов приемов пищи -->
-        <div id="meal-logs-container" class="w-full space-y-4">
-            <!-- Сюда будут добавляться логи -->
-        </div>
-
+        <div id="meal-logs-container" class="w-full space-y-4"></div>
         <div id="error-message" class="text-red-500 text-center mt-4"></div>
     </main>
 
@@ -221,26 +166,11 @@
     <div id="score-tooltip" class="absolute z-50 p-3 rounded-2xl glassmorphism neon-glow-pantone-gray text-white opacity-0 transition-all duration-300 pointer-events-none shadow-2xl" style="min-width: 180px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transform: scale(0.9);">
         <p class="font-black text-base mb-1.5 tracking-wide border-b border-white/10 pb-1" id="tooltip-date"></p>
         <div class="space-y-1 text-sm">
-            <div class="flex justify-between items-center">
-                <span class="text-gray-400">Score:</span>
-                <span id="tooltip-score" class="font-bold text-lg"></span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span style="color: var(--color-amber);">Ккал:</span>
-                <span class="font-medium"><span id="tooltip-calories"></span> / <span id="tooltip-target-calories"></span></span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span style="color: var(--color-protein-white);">Белки:</span>
-                <span class="font-medium"><span id="tooltip-protein"></span>г / <span id="tooltip-target-protein"></span>г</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span style="color: var(--color-golden-orange);">Жиры:</span>
-                <span class="font-medium"><span id="tooltip-fat"></span>г / <span id="tooltip-target-fat"></span>г</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span style="color: var(--color-muted-teal);">Углеводы:</span>
-                <span class="font-medium"><span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</span>
-            </div>
+            <div class="flex justify-between items-center"><span class="text-gray-400">Score:</span><span id="tooltip-score" class="font-bold text-lg"></span></div>
+            <div class="flex justify-between items-center"><span style="color: var(--color-amber);">Ккал:</span><span class="font-medium"><span id="tooltip-calories"></span> / <span id="tooltip-target-calories"></span></span></div>
+            <div class="flex justify-between items-center"><span style="color: var(--color-protein-white);">Белки:</span><span class="font-medium"><span id="tooltip-protein"></span>г / <span id="tooltip-target-protein"></span>г</span></div>
+            <div class="flex justify-between items-center"><span style="color: var(--color-golden-orange);">Жиры:</span><span class="font-medium"><span id="tooltip-fat"></span>г / <span id="tooltip-target-fat"></span>г</span></div>
+            <div class="flex justify-between items-center"><span style="color: var(--color-muted-teal);">Углеводы:</span><span class="font-medium"><span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</span></div>
         </div>
         <div class="mt-2 text-xs italic font-medium leading-tight opacity-90" id="tooltip-message"></div>
     </div>
