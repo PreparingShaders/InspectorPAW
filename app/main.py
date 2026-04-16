@@ -112,9 +112,9 @@ async def read_profile_page(request: Request):
     return templates.TemplateResponse(name="profile.html", request=request)
 
 
-@app.get("/analyze")
-async def read_analyze_page(request: Request):
-    return templates.TemplateResponse(name="analyze.html", request=request)
+@app.get("/nutrition")
+async def read_nutrition_page(request: Request):
+    return templates.TemplateResponse(name="nutrition.html", request=request)
 
 
 @app.get("/ai-hub")
@@ -450,6 +450,15 @@ def get_average_stats(db: Session = Depends(get_db), current_user: models.User =
 
 @app.get("/users/me/stats/weekly-summary", response_model=schemas.WeeklySummaryResponse)
 def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return get_summary_for_period(days=7, db=db, current_user=current_user)
+
+
+@app.get("/users/me/stats/summary-by-period", response_model=schemas.WeeklySummaryResponse)
+def get_summary_by_period(days: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return get_summary_for_period(days=days, db=db, current_user=current_user)
+
+
+def get_summary_for_period(days: int, db: Session, current_user: models.User):
     latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
 
     latest_weight = latest_metric.weight_kg if latest_metric else None
@@ -462,7 +471,7 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
     target_carbohydrates = targets["target_carbohydrates"]
 
     end_date = date.today()
-    start_date = end_date - timedelta(days=6)
+    start_date = end_date - timedelta(days=days - 1)
 
     daily_consumptions = crud.get_daily_stats_for_period(db, user_id=current_user.id, start_date=start_date,
                                                          end_date=end_date)
@@ -473,7 +482,7 @@ def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User 
     total_consumed = {"calories": 0, "protein": 0, "fat": 0, "carbohydrates": 0}
     days_with_data = 0
 
-    for i in range(7):
+    for i in range(days):
         current_date = end_date - timedelta(days=i)
         
         consumed = consumption_map.get(str(current_date))
