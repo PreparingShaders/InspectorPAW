@@ -68,6 +68,18 @@ nav.glassmorphism {
     border-radius: 20px;
 }
 
+<style>
+    /* Прячем все шаги по умолчанию */
+    .step {
+        display: none !important;
+    }
+    /* Показываем только активный */
+    .step.active {
+        display: flex !important;
+        flex-direction: column;
+    }
+</style>
+
 /* --- Твои оригинальные стили элементов (без изменений) --- */
 
 .container { width: 100%; max-width: 600px; background-color: var(--bg-secondary); padding: 20px 40px; border-radius: 10px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.2); border: 1px solid #3a4a5a; margin: 20px auto; }

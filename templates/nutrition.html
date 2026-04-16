@@ -119,56 +119,63 @@
         </div>
 
         <div id="analysis-wizard" class="w-full flex-grow flex flex-col min-h-[375px]">
-            <div id="step-1" class="step active ai-section w-full flex-grow flex flex-col">
-            <form id="analyze-form" class="flex-grow flex flex-col justify-between">
 
-                <div class="w-full">
-                    <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">Добавить фото</label>
-                    <input type="file" id="meal-image" accept="image/*" class="upload-input">
-
-                    <div class="form-group" style="margin-top: 20px;">
-                        <label for="meal-description">Описание еды (необязательно)</label>
-                        <textarea id="meal-description" rows="4" placeholder="Например: 'Большая порция гречки с куриной грудкой и овощным салатом'"></textarea>
+            <div id="step-1" class="step active ai-section w-full flex-grow">
+                <form id="analyze-form" class="flex flex-col h-full justify-between">
+                    <div class="w-full">
+                        <label for="meal-image" class="upload-button-label neon-glow-pantone-gray block w-full text-center py-4 cursor-pointer">Добавить фото</label>
+                        <input type="file" id="meal-image" accept="image/*" class="hidden">
+                        <div class="form-group mt-5">
+                            <label for="meal-description">Описание еды (необязательно)</label>
+                            <textarea id="meal-description" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white" rows="3" placeholder="Например: 'Гречка с курицей'"></textarea>
+                        </div>
                     </div>
-                </div>
-
-                <div class="flex-grow"></div>
-
-                <div class="mt-4 pb-2">
-                    <button type="submit" class="w-full py-4 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray transition-all active:scale-95" id="analyze-button" disabled>
-                        Анализировать
-                    </button>
-                </div>
-            </form>
+                    <button type="submit" class="w-full py-4 mt-4 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button" disabled>Анализировать</button>
+                </form>
             </div>
 
-            <!-- Шаг 2: Ожидание -->
-            <div id="step-2" class="step ai-section w-full text-center">
-                <p id="nutrition-model-info" class="text-xs text-gray-600 text-center mt-2"></p>
-                <div id="analysis-status" class="analysis-status visible"></div>
+            <div id="step-2" class="step ai-section w-full flex-grow items-center justify-center">
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_#A855F7]"></div>
+                    <p id="model-status" class="text-purple-400 font-bold animate-pulse mt-4 text-center">Анализ состава...</p>
+                    <div id="analysis-status" class="text-xs text-gray-500 mt-2 text-center"></div>
+                </div>
             </div>
 
-            <!-- Шаг 3: Результаты и подтверждение -->
-            <div id="step-3" class="step ai-section w-full">
+            <div id="step-3" class="step ai-section w-full flex-grow">
                 <div id="ai-coach-section" class="w-full ai-coach-container mb-4">
-                    <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center"></h4>
-                    <p id="ai-coach-advice" class="text-white text-center text-sm"></p>
+                    <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4>
+                    <p id="ai-coach-advice" class="text-white text-center text-sm leading-tight"></p>
                 </div>
-                <h3 class="section-title">Результаты анализа</h3>
-                <div id="ai-response-text" class="p-4 rounded-xl my-4 glassmorphism neon-glow-pantone-gray"></div>
-                <form id="confirm-form">
-                    <div class="form-group"><label for="meal-type">Тип приема пищи</label><select id="meal-type"><option value="breakfast">Завтрак</option><option value="lunch">Обед</option><option value="dinner">Ужин</option><option value="snack">Перекус</option></select></div>
-                    <div class="slider-group"><label for="calories">Калории</label><div class="slider-wrapper"><input type="range" id="calories-slider" min="0" max="2000" step="10" class="styled-slider"><input type="number" id="calories" class="slider-value" min="0"></div></div>
-                    <div class="slider-group"><label for="protein">Белки (г)</label><div class="slider-wrapper"><input type="range" id="protein-slider" min="0" max="200" step="1" class="styled-slider"><input type="number" id="protein" class="slider-value" min="0"></div></div>
-                    <div class="slider-group"><label for="fat">Жиры (г)</label><div class="slider-wrapper"><input type="range" id="fat-slider" min="0" max="200" step="1" class="styled-slider"><input type="number" id="fat" class="slider-value" min="0"></div></div>
-                    <div class="slider-group"><label for="carbohydrates">Углеводы (г)</label><div class="slider-wrapper"><input type="range" id="carbohydrates-slider" min="0" max="300" step="1" class="styled-slider"><input type="number" id="carbohydrates" class="slider-value" min="0"></div></div>
-                    <div class="flex space-x-4 mt-4">
-                        <button type="button" id="cancel-analysis-btn" class="w-1/2 py-3 text-lg font-semibold rounded-xl bg-red-800/50 text-white">Отмена</button>
-                        <button type="submit" class="w-1/2 py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="confirm-button">Сохранить</button>
+
+                <div id="ai-response-text" class="hidden"></div>
+
+                <form id="confirm-form" class="space-y-4">
+                    <div class="form-group">
+                        <label for="meal-type">Прием пищи</label>
+                        <select id="meal-type" class="w-full bg-white/5 border border-white/10 rounded-xl p-2 text-white">
+                            <option value="breakfast">Завтрак</option>
+                            <option value="lunch" selected>Обед</option>
+                            <option value="dinner">Ужин</option>
+                            <option value="snack">Перекус</option>
+                        </select>
+                    </div>
+
+                    <div id="interactive-rings-container" class="grid grid-cols-2 gap-3">
+                        <div class="flex flex-col"><label class="text-xs text-amber-500">Ккал</label><input type="number" id="calories" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div>
+                        <div class="flex flex-col"><label class="text-xs text-blue-300">Белки</label><input type="number" id="protein" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div>
+                        <div class="flex flex-col"><label class="text-xs text-orange-400">Жиры</label><input type="number" id="fat" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div>
+                        <div class="flex flex-col"><label class="text-xs text-teal-400">Углев.</label><input type="number" id="carbohydrates" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div>
+                    </div>
+
+                    <div class="flex space-x-3 pt-2">
+                        <button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button>
+                        <button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button>
                     </div>
                 </form>
             </div>
         </div>
+
 
         <!-- Контейнер для логов приемов пищи -->
         <div id="meal-logs-container" class="w-full space-y-4"></div>
