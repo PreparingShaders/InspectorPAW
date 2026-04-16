@@ -6,41 +6,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Элементы DOM ---
-    const analyzeForm = document.getElementById('analyze-form');
     const mealImageInput = document.getElementById('meal-image');
     const mealDescriptionInput = document.getElementById('meal-description');
     const analyzeButton = document.getElementById('analyze-button');
-    const resultsSection = document.getElementById('results-section');
-    const aiResponseTextDiv = document.getElementById('ai-response-text');
-    const confirmForm = document.getElementById('confirm-form');
-    const errorMessageDiv = document.getElementById('error-message');
     const uploadButtonLabel = document.querySelector('.upload-button-label');
     const mealLogsContainer = document.getElementById('meal-logs-container');
     const aiCoachSection = document.getElementById('ai-coach-section');
     const aiCoachTitle = document.getElementById('ai-coach-title');
     const aiCoachAdvice = document.getElementById('ai-coach-advice');
     const nutritionModelInfo = document.getElementById('nutrition-model-info');
+    const errorMessageDiv = document.getElementById('error-message');
+    const confirmForm = document.getElementById('confirm-form');
+    const analyzeForm = document.getElementById('analyze-form');
+    const cancelAnalysisBtn = document.getElementById('cancel-analysis-btn');
 
     let currentFoodName = '';
 
-    // Mapping for neon glow classes (copied from index.html)
-    const NEON_GLOW_CLASSES = {
-        '#FFD700': 'neon-glow-emerald', // Золотой
-        '#F0F0F0': 'neon-glow-white',   // Белый
-        '#f59e0b': 'neon-glow-amber-score',
-        '#e11d48': 'neon-glow-rose'
+    // --- Wizard Steps ---
+    const steps = {
+        1: document.getElementById('step-1'),
+        2: document.getElementById('step-2'),
+        3: document.getElementById('step-3'),
     };
 
-    function getNeonGlowClass(hexColor) {
-        return NEON_GLOW_CLASSES[hexColor] || ''; // Return empty string if no match
+    function goToStep(stepNumber) {
+        Object.values(steps).forEach(step => step.classList.remove('active'));
+        if (steps[stepNumber]) {
+            steps[stepNumber].classList.add('active');
+        }
     }
 
+    // --- Управление состоянием ---
+    const analysisStateKey = 'analysisInProgress';
+
+    function saveAnalysisState(state) {
+        localStorage.setItem(analysisStateKey, JSON.stringify(state));
+    }
+
+    function loadAnalysisState() {
+        const state = localStorage.getItem(analysisStateKey);
+        return state ? JSON.parse(state) : null;
+    }
+
+    function clearAnalysisState() {
+        localStorage.removeItem(analysisStateKey);
+        localStorage.removeItem('lastAiAdvice');
+        localStorage.removeItem('lastCoachModel');
+    }
+
+    function resetWizard() {
+        clearAnalysisState();
+        analyzeForm.reset();
+        confirmForm.reset();
+        uploadButtonLabel.classList.remove('has-image');
+        uploadButtonLabel.textContent = 'Добавить фото';
+        analyzeButton.disabled = true;
+        goToStep(1);
+    }
+
+    // --- Event Listeners ---
+    mealImageInput.addEventListener('change', () => {
+        if (mealImageInput.files[0]) {
+            uploadButtonLabel.classList.add('has-image');
+            uploadButtonLabel.textContent = 'Фото добавлено!';
+        }
+        analyzeButton.disabled = false;
+    });
+
+    mealDescriptionInput.addEventListener('input', () => {
+        analyzeButton.disabled = mealDescriptionInput.value.trim() === '' && mealImageInput.files.length === 0;
+    });
+
+    cancelAnalysisBtn.addEventListener('click', resetWizard);
+
+    // --- Функции для графика и тултипов ---
+    const NEON_GLOW_CLASSES = {
+        '#FFD700': 'neon-glow-emerald', '#F0F0F0': 'neon-glow-white',
+        '#f59e0b': 'neon-glow-amber-score', '#e11d48': 'neon-glow-rose'
+    };
+    function getNeonGlowClass(hexColor) { return NEON_GLOW_CLASSES[hexColor] || ''; }
     let tooltipTimeout;
-    const scoreTooltip = document.getElementById('score-tooltip'); // Assuming tooltip HTML is added to nutrition.html
+    const scoreTooltip = document.getElementById('score-tooltip');
 
     function showTooltip(element, dayData) {
         clearTimeout(tooltipTimeout);
-
         document.getElementById('tooltip-date').textContent = new Date(dayData.date).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
         document.getElementById('tooltip-score').textContent = dayData.daily_score;
         document.getElementById('tooltip-calories').textContent = Math.round(dayData.consumed_calories);
@@ -90,9 +139,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         tooltipTimeout = setTimeout(hideTooltip, 6000);
     }
-
     function hideTooltip() {
-        if (scoreTooltip) { // Check if scoreTooltip exists
+        if (scoreTooltip) {
             scoreTooltip.style.transform = 'scale(0.7)';
             scoreTooltip.classList.remove('opacity-100');
             scoreTooltip.classList.add('opacity-0', 'pointer-events-none');
@@ -100,7 +148,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             scoreTooltip.dataset.identifier = '';
         }
     }
-
     document.addEventListener('click', (event) => {
         if (scoreTooltip && !scoreTooltip.contains(event.target) && !event.target.closest('.score-circle')) {
             hideTooltip();
@@ -180,10 +227,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             graphContainer.appendChild(dayColumn);
         });
     }
-
     async function fetchScoreGraphData(periodDays) {
         try {
-            // Assuming a new endpoint or modification to an existing one to fetch data for a given number of days
             const response = await fetch(`/users/me/stats/summary-by-period?days=${periodDays}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -203,68 +248,149 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Управление состоянием формы анализа ---
-    const analysisStateKey = 'analysisInProgress';
+    // --- Логика анализа ---
+    const statusMessages = ['Загружаем фото...', 'Ищем еду на изображении...', 'Определяем размер порции...', 'Считаем КБЖУ...', 'Готовим совет от AI-коуча...'];
+    const analysisStatusDiv = document.getElementById('analysis-status');
+    let statusInterval;
 
-    function saveAnalysisState(state) {
-        localStorage.setItem(analysisStateKey, JSON.stringify(state));
+    function showAnalysisStatus(index) {
+        analysisStatusDiv.innerHTML = `<span class="spinner"></span>${statusMessages[index]}`;
     }
 
-    function loadAnalysisState() {
-        const state = localStorage.getItem(analysisStateKey);
-        return state ? JSON.parse(state) : null;
-    }
+    analyzeForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorMessageDiv.textContent = '';
+        goToStep(2);
 
-    function clearAnalysisState() {
-        localStorage.removeItem(analysisStateKey);
-    }
+        let statusIndex = 0;
+        showAnalysisStatus(statusIndex);
+        statusInterval = setInterval(() => {
+            statusIndex = (statusIndex + 1) % statusMessages.length;
+            showAnalysisStatus(statusIndex);
+        }, 3000);
 
-    function resetAnalysisUI() {
-        // Не скрываем resultsSection, а сбрасываем его содержимое
-        aiResponseTextDiv.innerHTML = '';
+        const formData = new FormData();
+        if (mealImageInput.files.length > 0) {
+            const originalFile = mealImageInput.files[0];
+            const compressedFile = await compressImage(originalFile);
+            formData.append('file', compressedFile, originalFile.name);
+        }
+        if (mealDescriptionInput.value.trim() !== '') {
+            formData.append('description', mealDescriptionInput.value.trim());
+        }
 
-        const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
-        fields.forEach(field => {
+        try {
+            const response = await fetch('/analyze-meal/', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Ошибка анализа блюда.');
+            }
+            const result = await response.json();
+            clearInterval(statusInterval);
+
+            // Показываем результаты
+            populateResults(result);
+            goToStep(3);
+
+        } catch (error) {
+            clearInterval(statusInterval);
+            errorMessageDiv.textContent = error.message;
+            resetWizard(); // Возвращаемся к первому шагу при ошибке
+        }
+    });
+
+    function populateResults(result) {
+        const advice = result.ai_coach_advice || 'Не удалось получить совет.';
+        aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'модель не указана'})`;
+        aiCoachAdvice.textContent = advice;
+
+        nutritionModelInfo.textContent = `Проанализировано с помощью: ${result.nutrition_model_used || 'модель не указана'}`;
+        currentFoodName = result.ai_response_text;
+        document.getElementById('ai-response-text').innerHTML = `<p>${currentFoodName}</p>`;
+
+        const fields = {
+            calories: result.suggested_totals.total_calories,
+            protein: result.suggested_totals.total_protein,
+            fat: result.suggested_totals.total_fat,
+            carbohydrates: result.suggested_totals.total_carbohydrates,
+        };
+
+        for (const [field, value] of Object.entries(fields)) {
             const slider = document.getElementById(`${field}-slider`);
             const input = document.getElementById(field);
-            slider.value = 0;
-            input.value = 0;
-        });
+            const roundedValue = Math.round(value || 0);
 
-        // Скрываем только AI коуча, так как он относится к конкретному анализу
-        aiCoachSection.style.display = 'none';
-        localStorage.removeItem('lastAiAdvice');
-        localStorage.removeItem('lastCoachModel');
-
-        clearAnalysisState();
-    }
-
-    function populateResultsFromState(state) {
-        if (!state) return;
-
-        currentFoodName = state.foodName;
-        aiResponseTextDiv.innerHTML = `<p>${currentFoodName}</p>`;
-
-        document.getElementById('meal-type').value = state.mealType;
-
-        const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
-        fields.forEach(field => {
-            const slider = document.getElementById(`${field}-slider`);
-            const input = document.getElementById(field);
-            const value = state.values[field] || 0;
-
-            slider.value = value;
-            input.value = value;
+            slider.value = roundedValue;
+            input.value = roundedValue;
 
             const config = { minBuffer: field === 'calories' ? 500 : 30, step: field === 'calories' ? 10 : 1 };
-            const buffer = Math.max(value * 0.5, config.minBuffer);
-            const minValue = Math.max(0, Math.floor((value - buffer) / config.step) * config.step);
-            const maxValue = Math.ceil((value + buffer) / config.step) * config.step;
-            slider.min = minValue;
-            slider.max = maxValue;
-        });
+            const buffer = Math.max(roundedValue * 0.5, config.minBuffer);
+            slider.min = Math.max(0, Math.floor((roundedValue - buffer) / config.step) * config.step);
+            slider.max = Math.ceil((roundedValue + buffer) / config.step) * config.step;
+        }
+    }
 
-        resultsSection.style.display = 'block';
+    confirmForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorMessageDiv.textContent = '';
+        const confirmButton = document.getElementById('confirm-button');
+        confirmButton.disabled = true;
+        confirmButton.textContent = 'Добавляем...';
+
+        const mealData = {
+            meal_type: document.getElementById('meal-type').value,
+            food_name: currentFoodName,
+            total_calories: parseFloat(document.getElementById('calories').value),
+            total_protein: parseFloat(document.getElementById('protein').value),
+            total_fat: parseFloat(document.getElementById('fat').value),
+            total_carbohydrates: parseFloat(document.getElementById('carbohydrates').value),
+            ai_coach_advice: aiCoachAdvice.textContent,
+        };
+
+        try {
+            const response = await fetch('/meals/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(mealData)
+            });
+            if (!response.ok) throw new Error('Ошибка добавления приема пищи.');
+
+            errorMessageDiv.style.color = '#50C878';
+            errorMessageDiv.textContent = 'Прием пищи успешно добавлен!';
+            setTimeout(() => { errorMessageDiv.textContent = ''; errorMessageDiv.style.color = ''; }, 3000);
+
+            resetWizard();
+            await fetchAndDisplayMealHistory();
+            await fetchAndDisplayAverageStats();
+            const activePeriodBtn = document.querySelector('.period-btn.active');
+            await fetchScoreGraphData(activePeriodBtn.id === 'one-month-btn' ? 30 : 90);
+
+        } catch (error) {
+            errorMessageDiv.textContent = error.message;
+        } finally {
+            confirmButton.disabled = false;
+            confirmButton.textContent = 'Сохранить';
+        }
+    });
+
+    // --- Вспомогательные функции ---
+    async function compressImage(file, maxSize = 1024, quality = 0.85) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width; let height = img.height;
+                if (width > maxSize || height > maxSize) {
+                    if (width > height) { height = Math.round((height * maxSize) / width); width = maxSize; }
+                    else { width = Math.round((width * maxSize) / height); height = maxSize; }
+                }
+                canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', quality);
+            };
+            img.src = URL.createObjectURL(file);
+        });
     }
 
     function updateRingWithOverflow(ringId, value, maxValue) {
@@ -366,276 +492,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    mealImageInput.addEventListener('change', () => {
-        if (mealImageInput.files[0]) {
-            uploadButtonLabel.classList.add('has-image');
-            uploadButtonLabel.textContent = 'Фото добавлено!';
-        }
-    });
-
-    function calculateCalories(protein, fat, carbs) {
-        return Math.round((protein * 4) + (fat * 9) + (carbs * 4));
-    }
-
-    function updateCaloriesFromMacros() {
-        const protein = parseFloat(document.getElementById('protein').value) || 0;
-        const fat = parseFloat(document.getElementById('fat').value) || 0;
-        const carbs = parseFloat(document.getElementById('carbohydrates').value) || 0;
-        const calculatedCalories = calculateCalories(protein, fat, carbs);
-        const caloriesInput = document.getElementById('calories');
-        const caloriesSlider = document.getElementById('calories-slider');
-        caloriesInput.value = calculatedCalories;
-        const currentMax = parseFloat(caloriesSlider.max);
-        const currentMin = parseFloat(caloriesSlider.min);
-        if (calculatedCalories > currentMax || calculatedCalories < currentMin) {
-            const config = { minBuffer: 500, step: 10 };
-            const buffer = Math.max(calculatedCalories * 0.5, config.minBuffer);
-            const minValue = Math.max(0, Math.floor((calculatedCalories - buffer) / config.step) * config.step);
-            const maxValue = Math.ceil((calculatedCalories + buffer) / config.step) * config.step;
-            caloriesSlider.min = minValue;
-            caloriesSlider.max = maxValue;
-        }
-        caloriesSlider.value = calculatedCalories;
-        saveCurrentAnalysis();
-    }
-
     function setupSliderSync(sliderId, inputId, isMacro = false) {
         const slider = document.getElementById(sliderId);
         const input = document.getElementById(inputId);
         if (slider && input) {
             const updateAndSave = () => {
                 if (isMacro) updateCaloriesFromMacros();
-                saveCurrentAnalysis();
             };
             slider.addEventListener('input', (event) => { input.value = event.target.value; updateAndSave(); });
             input.addEventListener('change', (event) => { slider.value = event.target.value; updateAndSave(); });
         }
     }
-    setupSliderSync('calories-slider', 'calories');
-    setupSliderSync('protein-slider', 'protein', true);
-    setupSliderSync('fat-slider', 'fat', true);
-    setupSliderSync('carbohydrates-slider', 'carbohydrates', true);
-    document.getElementById('meal-type').addEventListener('change', saveCurrentAnalysis);
 
-    function saveCurrentAnalysis() {
-        const state = {
-            foodName: currentFoodName,
-            mealType: document.getElementById('meal-type').value,
-            values: {
-                calories: document.getElementById('calories').value,
-                protein: document.getElementById('protein').value,
-                fat: document.getElementById('fat').value,
-                carbohydrates: document.getElementById('carbohydrates').value,
-            }
-        };
-        saveAnalysisState(state);
-    }
-
-    async function compressImage(file, maxSize = 1024, quality = 0.85) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width; let height = img.height;
-                if (width > maxSize || height > maxSize) {
-                    if (width > height) { height = Math.round((height * maxSize) / width); width = maxSize; }
-                    else { width = Math.round((width * maxSize) / height); height = maxSize; }
-                }
-                canvas.width = width; canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', quality);
-            };
-            img.src = URL.createObjectURL(file);
-        });
-    }
-
-    const statusMessages = ['Загружаем фото...', 'Ищем еду на изображении...', 'Определяем размер порции...', 'Считаем КБЖУ...', 'Готовим совет от AI-коуча...'];
-    function showAnalysisStatus(index) {
-        analysisStatus.innerHTML = `<span class="spinner"></span>${statusMessages[index]}`;
-        analysisStatus.classList.add('visible');
-    }
-    function hideAnalysisStatus() {
-        analysisStatus.classList.remove('visible');
-        if (statusInterval) clearInterval(statusInterval);
-    }
-
-    let statusInterval;
-    const analysisStatus = document.getElementById('analysis-status');
-
-    analyzeForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        errorMessageDiv.textContent = '';
-        analyzeButton.disabled = true;
-        analyzeButton.textContent = 'Ждите...';
-        aiCoachSection.style.display = 'none';
-        nutritionModelInfo.textContent = '';
-
-        const formData = new FormData();
-        if (mealImageInput.files.length > 0) {
-            const originalFile = mealImageInput.files[0];
-            analyzeButton.textContent = 'Подготовка фото...';
-            const compressedFile = await compressImage(originalFile);
-            formData.append('file', compressedFile, originalFile.name);
-        }
-        if (mealDescriptionInput.value.trim() !== '') formData.append('description', mealDescriptionInput.value.trim());
-        if (!mealImageInput.files.length && mealDescriptionInput.value.trim() === '') {
-            errorMessageDiv.textContent = 'Пожалуйста, загрузите фото или введите описание.';
-            analyzeButton.disabled = false;
-            analyzeButton.textContent = 'Анализировать';
-            return;
-        }
-
-        let statusIndex = 0;
-        showAnalysisStatus(statusIndex);
-        statusInterval = setInterval(() => {
-            statusIndex = (statusIndex + 1) % statusMessages.length;
-            showAnalysisStatus(statusIndex);
-        }, 3000);
-
-        aiCoachSection.style.display = 'block';
-        aiCoachSection.classList.add('loading');
-        aiCoachTitle.textContent = 'AI-коуч анализирует ваш выбор...';
-        aiCoachAdvice.textContent = '';
-
-        try {
-            const response = await fetch('/analyze-meal/', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Ошибка анализа блюда.');
-            }
-            clearInterval(statusInterval);
-            const result = await response.json();
-
-            const advice = result.ai_coach_advice || 'Не удалось получить совет.';
-            aiCoachSection.classList.remove('loading');
-            aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'модель не указана'})`;
-            aiCoachAdvice.textContent = advice;
-            localStorage.setItem('lastAiAdvice', advice);
-            localStorage.setItem('lastCoachModel', result.coach_model_used);
-
-            nutritionModelInfo.textContent = `Проанализировано с помощью: ${result.nutrition_model_used || 'модель не указана'}`;
-
-            currentFoodName = result.ai_response_text;
-            const initialState = {
-                foodName: currentFoodName,
-                mealType: document.getElementById('meal-type').value,
-                values: {
-                    calories: Math.round(result.suggested_totals.total_calories || 0),
-                    protein: Math.round(result.suggested_totals.total_protein || 0),
-                    fat: Math.round(result.suggested_totals.total_fat || 0),
-                    carbohydrates: Math.round(result.suggested_totals.total_carbohydrates || 0),
-                }
-            };
-            saveAnalysisState(initialState);
-            populateResultsFromState(initialState);
-
-            resultsSection.style.display = 'block';
-            analysisStatus.innerHTML = '<span style="color: #50C878;">✓ Анализ завершён!</span>';
-            setTimeout(hideAnalysisStatus, 2000);
-        } catch (error) {
-            clearInterval(statusInterval);
-            errorMessageDiv.textContent = error.message;
-            hideAnalysisStatus();
-            aiCoachSection.style.display = 'none';
-        } finally {
-            analyzeButton.disabled = false;
-            analyzeButton.textContent = 'Анализировать';
-        }
-    });
-
-    confirmForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        errorMessageDiv.textContent = '';
-        const confirmButton = document.getElementById('confirm-button');
-        confirmButton.disabled = true;
-        confirmButton.textContent = 'Добавляем...';
-
-        const mealData = {
-            meal_type: document.getElementById('meal-type').value,
-            food_name: currentFoodName,
-            total_calories: parseFloat(document.getElementById('calories').value),
-            total_protein: parseFloat(document.getElementById('protein').value),
-            total_fat: parseFloat(document.getElementById('fat').value),
-            total_carbohydrates: parseFloat(document.getElementById('carbohydrates').value),
-        };
-
-        try {
-            const response = await fetch('/meals/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(mealData)
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Ошибка добавления приема пищи.');
-            }
-
-            resetAnalysisUI();
-            analyzeForm.reset();
-            uploadButtonLabel.classList.remove('has-image');
-            uploadButtonLabel.textContent = 'Добавить фото';
-
-            errorMessageDiv.style.color = '#50C878';
-            errorMessageDiv.textContent = 'Прием пищи успешно добавлен!';
-            setTimeout(() => { errorMessageDiv.textContent = ''; errorMessageDiv.style.color = ''; }, 3000);
-
-            await fetchAndDisplayMealHistory();
-            await fetchAndDisplayAverageStats();
-            // Re-fetch score graph data after meal is added
-            const currentPeriodBtn = document.querySelector('.period-button.bg-gray-700');
-            if (currentPeriodBtn) {
-                const periodDays = currentPeriodBtn.id === 'one-month-btn' ? 30 : 90;
-                await fetchScoreGraphData(periodDays);
-            }
-        } catch (error) {
-            errorMessageDiv.textContent = error.message;
-        } finally {
-            confirmButton.disabled = false;
-            confirmButton.textContent = 'Добавить прием пищи';
-        }
-    });
-
-    // --- Кнопки выбора периода ---
+    // --- Инициализация ---
     const oneMonthBtn = document.getElementById('one-month-btn');
     const threeMonthsBtn = document.getElementById('three-months-btn');
 
     function setActivePeriodButton(activeBtn) {
-        [oneMonthBtn, threeMonthsBtn].forEach(btn => {
-            btn.classList.remove('active');
-            btn.classList.add('text-gray-400');
-        });
-        activeBtn.classList.add('active');
-        activeBtn.classList.remove('text-gray-400');
+        [oneMonthBtn, threeMonthsBtn].forEach(btn => btn.classList.remove('active', 'text-white'));
+        activeBtn.classList.add('active', 'text-white');
     }
 
-    oneMonthBtn.addEventListener('click', () => {
+    oneMonthBtn.addEventListener('click', () => { setActivePeriodButton(oneMonthBtn); fetchScoreGraphData(30); });
+    threeMonthsBtn.addEventListener('click', () => { setActivePeriodButton(threeMonthsBtn); fetchScoreGraphData(90); });
+
+    // Initial page load
+    (async () => {
+        setupSliderSync('calories-slider', 'calories');
+        setupSliderSync('protein-slider', 'protein', true);
+        setupSliderSync('fat-slider', 'fat', true);
+        setupSliderSync('carbohydrates-slider', 'carbohydrates', true);
+        goToStep(1);
+        await fetchAndDisplayAverageStats();
+        await fetchAndDisplayMealHistory();
         setActivePeriodButton(oneMonthBtn);
-        fetchScoreGraphData(30); // 1 month
-    });
-
-    threeMonthsBtn.addEventListener('click', () => {
-        setActivePeriodButton(threeMonthsBtn);
-        fetchScoreGraphData(90); // 3 months
-    });
-
-    // --- Инициализация страницы ---
-    const lastAdvice = localStorage.getItem('lastAiAdvice');
-    const lastCoachModel = localStorage.getItem('lastCoachModel');
-    if (lastAdvice) {
-        aiCoachSection.style.display = 'block';
-        aiCoachTitle.textContent = `Совет от AI (${lastCoachModel || 'модель не указана'})`;
-        aiCoachAdvice.textContent = lastAdvice;
-    }
-
-    const savedState = loadAnalysisState();
-    if (savedState) {
-        populateResultsFromState(savedState);
-    }
-
-    await fetchAndDisplayAverageStats();
-    await fetchAndDisplayMealHistory();
-    // Initial load for score graph (default to 1 month)
-    setActivePeriodButton(oneMonthBtn);
-    await fetchScoreGraphData(30);
+        await fetchScoreGraphData(30);
+    })();
 });

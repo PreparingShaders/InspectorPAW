@@ -27,6 +27,8 @@
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
             color: #fff;
         }
+        .step { display: none; }
+        .step.active { display: block; }
     </style>
 </head>
 <body class="h-full flex flex-col">
@@ -38,26 +40,10 @@
 
     <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-8 pb-24">
 
-        <!-- 1. Индекс дисциплины питания (Главный элемент) -->
-        <div class="w-full space-y-3">
-            <div class="w-full flex justify-center">
-                <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
-                    <button id="one-month-btn" class="period-btn active w-1/2 rounded-full py-1 text-sm font-semibold">1 месяц</button>
-                    <button id="three-months-btn" class="period-btn w-1/2 rounded-full py-1 text-sm font-semibold text-gray-400">3 месяца</button>
-                </div>
-            </div>
-            <div class="relative h-40 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
-                <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-[#F0F0F0]/80 -translate-y-1/2"></div>
-                <span id="average-score-label" class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-[#F0F0F0] hidden px-2" style="background-color: #1a202c; text-shadow: 0 0 8px #F0F0F0;"></span>
-                <div id="score-graph-container" class="flex justify-around w-full h-full items-center relative z-10">
-                    <!-- Circles will be dynamically added here by JS -->
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. Блок со средними показателями (уменьшенный) -->
+        <!-- 1. Блок со средними показателями -->
         <div class="w-full">
             <div id="average-stats" class="pt-4">
+                <h3 class="text-lg font-semibold text-center mb-4">Средние показатели</h3>
                 <div class="flex justify-center w-full space-x-4">
                     <!-- Калории -->
                     <div class="text-center flex flex-col items-center space-y-1">
@@ -115,44 +101,69 @@
             </div>
         </div>
 
-        <!-- 3. Форма для анализа -->
-        <section class="ai-section w-full">
-            <form id="analyze-form">
-                <div>
-                    <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">Добавить фото</label>
-                    <input type="file" id="meal-image" accept="image/*" class="upload-input">
-                    <div class="form-group" style="margin-top: 20px;">
-                        <label for="meal-description">Описание еды (необязательно)</label>
-                        <textarea id="meal-description" rows="4" placeholder="Например: 'Большая порция гречки с куриной грудкой и овощным салатом'"></textarea>
-                    </div>
+        <!-- 2. Индекс дисциплины питания -->
+        <div class="w-full space-y-3">
+            <div class="w-full flex justify-center">
+                <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
+                    <button id="one-month-btn" class="period-btn active w-1/2 rounded-full py-1 text-sm font-semibold">1 месяц</button>
+                    <button id="three-months-btn" class="period-btn w-1/2 rounded-full py-1 text-sm font-semibold text-gray-400">3 месяца</button>
                 </div>
-                <div class="mt-4">
-                    <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button">Анализировать</button>
+            </div>
+            <div class="relative h-40 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
+                <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-[#F0F0F0]/80 -translate-y-1/2"></div>
+                <span id="average-score-label" class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-[#F0F0F0] hidden px-2" style="background-color: #1a202c; text-shadow: 0 0 8px #F0F0F0;"></span>
+                <div id="score-graph-container" class="flex justify-around w-full h-full items-center relative z-10">
+                    <!-- Circles will be dynamically added here by JS -->
                 </div>
-                <p id="nutrition-model-info" class="text-xs text-gray-600 text-center mt-2"></p>
-                <div id="analysis-status" class="analysis-status"></div>
-            </form>
-        </section>
-
-        <!-- AI Coach Section -->
-        <div id="ai-coach-section" class="w-full ai-coach-container" style="display: none;">
-            <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center"></h4>
-            <p id="ai-coach-advice" class="text-white text-center text-sm"></p>
+            </div>
         </div>
 
-        <!-- Секция с результатами (изначально скрыта) -->
-        <section id="results-section" class="ai-section w-full" style="display: none;">
-            <h3 class="section-title">Результаты анализа</h3>
-            <div id="ai-response-text" class="p-4 rounded-xl my-4 glassmorphism neon-glow-pantone-gray"></div>
-            <form id="confirm-form">
-                <div class="form-group"><label for="meal-type">Тип приема пищи</label><select id="meal-type"><option value="breakfast">Завтрак</option><option value="lunch">Обед</option><option value="dinner">Ужин</option><option value="snack">Перекус</option></select></div>
-                <div class="slider-group"><label for="calories">Калории</label><div class="slider-wrapper"><input type="range" id="calories-slider" min="0" max="2000" step="10" class="styled-slider"><input type="number" id="calories" class="slider-value" min="0"></div></div>
-                <div class="slider-group"><label for="protein">Белки (г)</label><div class="slider-wrapper"><input type="range" id="protein-slider" min="0" max="200" step="1" class="styled-slider"><input type="number" id="protein" class="slider-value" min="0"></div></div>
-                <div class="slider-group"><label for="fat">Жиры (г)</label><div class="slider-wrapper"><input type="range" id="fat-slider" min="0" max="200" step="1" class="styled-slider"><input type="number" id="fat" class="slider-value" min="0"></div></div>
-                <div class="slider-group"><label for="carbohydrates">Углеводы (г)</label><div class="slider-wrapper"><input type="range" id="carbohydrates-slider" min="0" max="300" step="1" class="styled-slider"><input type="number" id="carbohydrates" class="slider-value" min="0"></div></div>
-                <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4" id="confirm-button">Сохранить</button>
-            </form>
-        </section>
+        <!-- 3. Пошаговая форма анализа -->
+        <div id="analysis-wizard" class="w-full">
+            <!-- Шаг 1: Ввод данных -->
+            <div id="step-1" class="step active ai-section w-full">
+                <form id="analyze-form">
+                    <div>
+                        <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">Добавить фото</label>
+                        <input type="file" id="meal-image" accept="image/*" class="upload-input">
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label for="meal-description">Описание еды (необязательно)</label>
+                            <textarea id="meal-description" rows="4" placeholder="Например: 'Большая порция гречки с куриной грудкой и овощным салатом'"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button" disabled>Анализировать</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Шаг 2: Ожидание -->
+            <div id="step-2" class="step ai-section w-full text-center">
+                <p id="nutrition-model-info" class="text-xs text-gray-600 text-center mt-2"></p>
+                <div id="analysis-status" class="analysis-status visible"></div>
+            </div>
+
+            <!-- Шаг 3: Результаты и подтверждение -->
+            <div id="step-3" class="step ai-section w-full">
+                <div id="ai-coach-section" class="w-full ai-coach-container mb-4">
+                    <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center"></h4>
+                    <p id="ai-coach-advice" class="text-white text-center text-sm"></p>
+                </div>
+                <h3 class="section-title">Результаты анализа</h3>
+                <div id="ai-response-text" class="p-4 rounded-xl my-4 glassmorphism neon-glow-pantone-gray"></div>
+                <form id="confirm-form">
+                    <div class="form-group"><label for="meal-type">Тип приема пищи</label><select id="meal-type"><option value="breakfast">Завтрак</option><option value="lunch">Обед</option><option value="dinner">Ужин</option><option value="snack">Перекус</option></select></div>
+                    <div class="slider-group"><label for="calories">Калории</label><div class="slider-wrapper"><input type="range" id="calories-slider" min="0" max="2000" step="10" class="styled-slider"><input type="number" id="calories" class="slider-value" min="0"></div></div>
+                    <div class="slider-group"><label for="protein">Белки (г)</label><div class="slider-wrapper"><input type="range" id="protein-slider" min="0" max="200" step="1" class="styled-slider"><input type="number" id="protein" class="slider-value" min="0"></div></div>
+                    <div class="slider-group"><label for="fat">Жиры (г)</label><div class="slider-wrapper"><input type="range" id="fat-slider" min="0" max="200" step="1" class="styled-slider"><input type="number" id="fat" class="slider-value" min="0"></div></div>
+                    <div class="slider-group"><label for="carbohydrates">Углеводы (г)</label><div class="slider-wrapper"><input type="range" id="carbohydrates-slider" min="0" max="300" step="1" class="styled-slider"><input type="number" id="carbohydrates" class="slider-value" min="0"></div></div>
+                    <div class="flex space-x-4 mt-4">
+                        <button type="button" id="cancel-analysis-btn" class="w-1/2 py-3 text-lg font-semibold rounded-xl bg-red-800/50 text-white">Отмена</button>
+                        <button type="submit" class="w-1/2 py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="confirm-button">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- Контейнер для логов приемов пищи -->
         <div id="meal-logs-container" class="w-full space-y-4"></div>
