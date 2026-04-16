@@ -33,17 +33,17 @@
 </head>
 <body class="h-full flex flex-col">
 
-    <header class="text-center pb-2" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
+    <header class="text-center pb-2" style="padding-top: calc(0.01rem + env(safe-area-inset-top));">
         <h1 class="text-3xl font-extrabold tracking-wider">ProgressLab</h1>
         <p class="text-xs text-gray-500">Beta 0.1</p>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-8 pb-24">
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-2 pb-16">
 
         <!-- 1. Блок со средними показателями -->
         <div class="w-full">
-            <div id="average-stats" class="pt-4">
-                <h3 class="text-lg font-semibold text-center mb-4">Средние показатели</h3>
+            <div id="average-stats" class="pt-0">
+                <h3 class="text-lg font-semibold text-center mb-2">Средние показатели</h3>
                 <div class="flex justify-center w-full space-x-4">
                     <!-- Калории -->
                     <div class="text-center flex flex-col items-center space-y-1">
@@ -118,23 +118,28 @@
             </div>
         </div>
 
-        <!-- 3. Пошаговая форма анализа -->
-        <div id="analysis-wizard" class="w-full">
-            <!-- Шаг 1: Ввод данных -->
-            <div id="step-1" class="step active ai-section w-full">
-                <form id="analyze-form">
-                    <div>
-                        <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">Добавить фото</label>
-                        <input type="file" id="meal-image" accept="image/*" class="upload-input">
-                        <div class="form-group" style="margin-top: 20px;">
-                            <label for="meal-description">Описание еды (необязательно)</label>
-                            <textarea id="meal-description" rows="4" placeholder="Например: 'Большая порция гречки с куриной грудкой и овощным салатом'"></textarea>
-                        </div>
+        <div id="analysis-wizard" class="w-full flex-grow flex flex-col min-h-[375px]">
+            <div id="step-1" class="step active ai-section w-full flex-grow flex flex-col">
+            <form id="analyze-form" class="flex-grow flex flex-col justify-between">
+
+                <div class="w-full">
+                    <label for="meal-image" class="upload-button-label neon-glow-pantone-gray">Добавить фото</label>
+                    <input type="file" id="meal-image" accept="image/*" class="upload-input">
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label for="meal-description">Описание еды (необязательно)</label>
+                        <textarea id="meal-description" rows="4" placeholder="Например: 'Большая порция гречки с куриной грудкой и овощным салатом'"></textarea>
                     </div>
-                    <div class="mt-4">
-                        <button type="submit" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button" disabled>Анализировать</button>
-                    </div>
-                </form>
+                </div>
+
+                <div class="flex-grow"></div>
+
+                <div class="mt-4 pb-2">
+                    <button type="submit" class="w-full py-4 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray transition-all active:scale-95" id="analyze-button" disabled>
+                        Анализировать
+                    </button>
+                </div>
+            </form>
             </div>
 
             <!-- Шаг 2: Ожидание -->
