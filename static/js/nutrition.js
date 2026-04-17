@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentFoodName = '';
 
+    // --- Tooltip Globals ---
+    let tooltipTimeout;
+    const scoreTooltip = document.getElementById('score-tooltip');
+
     const steps = { 1: document.getElementById('step-1'), 2: document.getElementById('step-2'), 3: document.getElementById('step-3') };
 
     function goToStep(stepNumber) {
@@ -131,6 +135,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div></div>`;
     }
 
+    // --- Tooltip Functions (IMPROVED) ---
+    function showTooltip(element, dayData) {
+        if (!scoreTooltip) return;
+        clearTimeout(tooltipTimeout);
+
+        // --- FIX 1: Handle [object Object] ---
+        const messageContainer = document.getElementById('tooltip-message');
+        const tooltips = dayData.status_message;
+        if (typeof tooltips === 'object' && tooltips !== null) {
+            // If it's an object, format it
+            messageContainer.innerHTML = Object.values(tooltips).map(msg => `<p>${msg}</p>`).join('');
+        } else {
+            // Otherwise, just show the string
+            messageContainer.textContent = tooltips || '';
+        }
+
+        document.getElementById('tooltip-date').textContent = new Date(dayData.date).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+        document.getElementById('tooltip-score').textContent = dayData.daily_score;
+        document.getElementById('tooltip-calories').textContent = Math.round(dayData.consumed_calories);
+        document.getElementById('tooltip-target-calories').textContent = Math.round(dayData.target_calories);
+        document.getElementById('tooltip-protein').textContent = Math.round(dayData.consumed_protein);
+        document.getElementById('tooltip-target-protein').textContent = Math.round(dayData.target_protein);
+        document.getElementById('tooltip-fat').textContent = Math.round(dayData.consumed_fat);
+        document.getElementById('tooltip-target-fat').textContent = Math.round(dayData.target_fat);
+        document.getElementById('tooltip-carbs').textContent = Math.round(dayData.consumed_carbohydrates);
+        document.getElementById('tooltip-target-carbs').textContent = Math.round(dayData.target_carbohydrates);
+
+        // --- FIX 2: Improved Positioning ---
+        const rect = element.getBoundingClientRect();
+        const scrollX = window.scrollX || window.pageXOffset;
+        const scrollY = window.scrollY || window.pageYOffset;
+
+        // Make it visible first to calculate its dimensions
+        scoreTooltip.classList.remove('opacity-0', 'pointer-events-none');
+        scoreTooltip.classList.add('opacity-100');
+        scoreTooltip.style.transform = 'scale(1)';
+
+        let top = rect.top + scrollY - scoreTooltip.offsetHeight - 15;
+        let left = rect.left + scrollX + (rect.width / 2) - (scoreTooltip.offsetWidth / 2);
+
+        // Boundary checks
+        if (top < scrollY + 10) { // If too close to the top, flip it below
+            top = rect.bottom + scrollY + 15;
+        }
+        if (left < 10) { // If too close to the left edge
+            left = 10;
+        }
+        if (left + scoreTooltip.offsetWidth > window.innerWidth - 10) { // If too close to the right edge
+            left = window.innerWidth - scoreTooltip.offsetWidth - 10;
+        }
+
+        scoreTooltip.style.top = `${top}px`;
+        scoreTooltip.style.left = `${left}px`;
+
+        tooltipTimeout = setTimeout(hideTooltip, 6000); // Increased timeout
+    }
+
+    function hideTooltip() {
+        if (!scoreTooltip) return;
+        scoreTooltip.style.transform = 'scale(0.9)';
+        scoreTooltip.classList.remove('opacity-100');
+        scoreTooltip.classList.add('opacity-0', 'pointer-events-none');
+        if(tooltipTimeout) clearTimeout(tooltipTimeout);
+    }
+
+    document.addEventListener('click', (event) => {
+        if (scoreTooltip && !scoreTooltip.contains(event.target) && !event.target.closest('.score-circle')) {
+            hideTooltip();
+        }
+    });
+
+
     async function fetchScoreGraphData(days) {
         try {
             const res = await fetch(`/users/me/stats/summary-by-period?days=${days}`, {
@@ -140,27 +216,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             const container = document.getElementById('score-graph-container');
             container.innerHTML = '';
 
-            // --- ВОТ ТУТ МАГИЯ ---
-            // Если сейчас график идет не туда, добавим .reverse()
-            // или уберем его, если он там был.
-            // Большинство API отдают данные от старых к новым.
             const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
-            // Если нужно, чтобы сегодня было СПРАВА, оставляем так.
-            // Если нужно, чтобы сегодня было СЛЕВА, добавь в конец .reverse()
 
             sortedData.forEach(day => {
                 const col = document.createElement('div');
                 col.className = 'flex-1 h-full relative flex justify-center';
 
-                // Расчет высоты (y_axis_pos): 0 - внизу, 120 - вверху
                 const yPos = day.y_axis_pos !== null ? ((120 - day.y_axis_pos) / 120) * 100 : 50;
 
                 const circle = document.createElement('div');
-                circle.className = 'absolute w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white score-circle';
+                circle.className = 'absolute w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white score-circle cursor-pointer';
                 circle.style.top = `${yPos}%`;
                 circle.style.backgroundColor = day.status_color || '#F0F0F0';
                 circle.style.boxShadow = `0 0 8px ${day.status_color}`;
                 circle.textContent = day.daily_score || 0;
+
+                circle.dataset.details = JSON.stringify(day);
+                circle.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const dayData = JSON.parse(event.currentTarget.dataset.details);
+                    const isVisible = scoreTooltip.classList.contains('opacity-100');
+                    const isForThisElement = scoreTooltip.dataset.identifier === dayData.date;
+
+                    if (isVisible && isForThisElement) {
+                        hideTooltip();
+                    } else {
+                        scoreTooltip.dataset.identifier = dayData.date;
+                        showTooltip(event.currentTarget, dayData);
+                    }
+                });
 
                 col.appendChild(circle);
                 container.appendChild(col);
