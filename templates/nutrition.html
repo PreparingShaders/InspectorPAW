@@ -120,19 +120,28 @@
 
         <div id="analysis-wizard" class="w-full flex-grow flex flex-col min-h-[375px]">
 
-            <div id="step-1" class="step active ai-section w-full flex-grow">
-                <form id="analyze-form" class="flex flex-col h-full justify-between">
-                    <div class="w-full">
-                        <label for="meal-image" class="upload-button-label neon-glow-pantone-gray block w-full text-center py-4 cursor-pointer">Добавить фото</label>
-                        <input type="file" id="meal-image" accept="image/*" class="hidden">
-                        <div class="form-group mt-5">
-                            <label for="meal-description">Описание еды (необязательно)</label>
-                            <textarea id="meal-description" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white" rows="3" placeholder="Например: 'Гречка с курицей'"></textarea>
-                        </div>
+        <div id="step-1" class="step active ai-section w-full flex-grow">
+            <div class="flex flex-col h-full justify-between">
+                <div class="w-full">
+                    <div class="bg-white/5 border border-dashed border-white/20 rounded-2xl p-4 text-center">
+                        <div class="text-3xl mb-3">📸</div>
+                        <h4 class="text-white font-bold mb-2">Анализ питания по фото</h4>
+                        <p class="text-sm text-gray-400 leading-relaxed">
+                            Просто добавьте фотографию вашего блюда. <br>
+                            Нейросеть автоматически определит состав, <br>
+                            вес порции и рассчитает КБЖУ.
+                        </p>
                     </div>
-                    <button type="submit" class="w-full py-4 mt-4 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray" id="analyze-button" disabled>Анализировать</button>
-                </form>
+                </div>
+
+                <div class="w-full pb-2">
+                    <label for="meal-image" class="upload-button-label neon-glow-pantone-gray block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95">
+                        Добавить фото
+                    </label>
+                    <input type="file" id="meal-image" accept="image/*" class="hidden">
+                </div>
             </div>
+        </div>
 
             <div id="step-2" class="step ai-section w-full flex-grow items-center justify-center">
                 <div class="flex flex-col items-center">
