@@ -262,4 +262,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchAndDisplayMealHistory();
     await fetchScoreGraphData(30);
     goToStep(1);
+
+    // --- Логика переключения периодов (1 месяц / 3 месяца) ---
+    const oneMonthBtn = document.getElementById('one-month-btn');
+    const threeMonthsBtn = document.getElementById('three-months-btn');
+
+    function updatePeriodButtons(activeBtn, inactiveBtn) {
+        // Визуальное переключение классов
+        activeBtn.classList.add('active');
+        activeBtn.classList.remove('text-gray-400');
+        inactiveBtn.classList.remove('active');
+        inactiveBtn.classList.add('text-gray-400');
+    }
+
+    if (oneMonthBtn && threeMonthsBtn) {
+        oneMonthBtn.addEventListener('click', async () => {
+            updatePeriodButtons(oneMonthBtn, threeMonthsBtn);
+            await fetchScoreGraphData(30); // Загружаем данные за 30 дней
+        });
+
+        threeMonthsBtn.addEventListener('click', async () => {
+            updatePeriodButtons(threeMonthsBtn, oneMonthBtn);
+            await fetchScoreGraphData(90); // Загружаем данные за 90 дней
+        });
+    }
 });
