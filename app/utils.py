@@ -161,18 +161,30 @@ def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float) -> Dic
     }
 
 def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+    # --- Existing initial calculations ---
     now = current_dt if current_dt else datetime.datetime.now()
     current_time = now.hour + now.minute / 60
     start_h, end_h = 5.0, 23.0
     time_factor = max(0.05, min(1.0, (current_time - start_h) / (end_h - start_h)))
 
+    # --- Handle empty data case ---
     if not any(actual.values()):
-        return {"daily_score": 0, "status_color": "#5A6978", "status_message": {"calories": "Нет данных", "protein": "Нет данных", "fat": "Нет данных", "carbohydrates": "Нет данных"}, "y_axis_pos": 0, "time_progress": round(time_factor * 100, 1)}
+        return {
+            "daily_score": 0, "status_color": "#5A6978",
+            "status_message": {"calories": "Нет данных", "protein": "Нет данных", "fat": "Нет данных", "carbohydrates": "Нет данных"},
+            "y_axis_pos": 0, "time_progress": round(time_factor * 100, 1),
+            "target_delta": {key: round(target.get(key, 0)) for key in ['calories', 'protein', 'fat', 'carbohydrates']},
+            "nutrient_statuses": {"calories": "OK", "protein": "OK", "fat": "OK", "carbohydrates": "OK"},
+            "probability_of_success": "ВЫСОКИЙ",
+            "danger_status": False,
+            "status_title": "Начните день",
+            "smart_advice": "Добавьте свой первый прием пищи, чтобы начать анализ."
+        }
 
+    # --- Existing score calculation logic ---
     total_score = 0.0
     weights = {'calories': 40, 'protein': 30, 'fat': 15, 'carbohydrates': 15}
     tolerance_threshold = 0.3
-
     for param, max_weight in weights.items():
         t_val = target.get(param, 0)
         a_val = actual.get(param, 0)
@@ -186,32 +198,103 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         total_score += max(0, param_score)
 
     final_score = total_score
-    day_calorie_ratio = actual['calories'] / target['calories'] if target['calories'] > 0 else 0
+    day_calorie_ratio = actual.get('calories', 0) / target.get('calories', 1)
     if day_calorie_ratio >= 0.98:
         base_score = 100
-        day_fat_ratio = actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)
-        day_carbs_ratio = actual.get('carbohydrates', 0) / (target.get('carbohydrates', 1) + 1e-6)
+        day_fat_ratio = actual.get('fat', 0) / target.get('fat', 1)
+        day_carbs_ratio = actual.get('carbohydrates', 0) / target.get('carbohydrates', 1)
         if day_fat_ratio > 1.15: base_score -= 10
         if day_carbs_ratio < 0.85: base_score -= 5
         final_score = max(85, base_score)
 
-    if actual.get('protein', 0) > target.get('protein', 0) and actual.get('calories', 0) <= target.get('calories', 0) * 1.05:
-        bonus = (actual['protein'] / target['protein'] - 1.0) * 50
+    if actual.get('protein', 0) > target.get('protein', 0) and actual.get('calories', 0) <= target.get('calories', 1) * 1.05:
+        bonus = (actual.get('protein', 0) / target.get('protein', 1) - 1.0) * 50
         final_score += min(bonus, 20)
 
     final_score = round(max(0, min(final_score, 120)))
-
     color = "#e11d48"
     if final_score > 105: color = "#FFD700"
     elif 95 <= final_score <= 105: color = "#F0F0F0"
     elif 80 <= final_score <= 94: color = "#f59e0b"
-
     tooltips = get_nutrient_tooltips(target, actual, time_factor)
 
+    # --- NEW LOGIC STARTS HERE ---
+
+    # 1. Reverse Engineering
+    target_delta = {
+        key: max(0, round(target.get(key, 0) - actual.get(key, 0)))
+        for key in ['calories', 'protein', 'fat', 'carbohydrates']
+    }
+
+    nutrient_statuses = {}
+    for key in ['calories', 'protein', 'fat', 'carbohydrates']:
+        t_val = target.get(key, 0)
+        a_val = actual.get(key, 0)
+        if t_val == 0:
+            nutrient_statuses[key] = "OK"
+            continue
+        ratio = a_val / t_val
+        if ratio > 1.05 and key != 'protein':
+            nutrient_statuses[key] = "CRITICAL_LIMIT"
+        elif ratio > 0.95 and key != 'protein':
+            nutrient_statuses[key] = "WARNING"
+        else:
+            nutrient_statuses[key] = "OK"
+
+    # 2. Predictive Analysis
+    danger_status = False
+    if nutrient_statuses['fat'] == "CRITICAL_LIMIT" or nutrient_statuses['calories'] == "CRITICAL_LIMIT":
+        danger_status = True
+    if current_time < 12.0 and (actual.get('fat', 0) / (target.get('fat', 1))) > 0.8:
+        danger_status = True
+    if current_time < 18.0 and (actual.get('calories', 0) / (target.get('calories', 1))) > 0.9:
+        danger_status = True
+
+    probability_of_success = "ВЫСОКИЙ"
+    remaining_time_factor = 1.0 - time_factor
+    if danger_status:
+        probability_of_success = "НИЗКИЙ"
+    elif remaining_time_factor < 0.2 and target_delta['calories'] > target.get('calories', 1) * 0.3:
+        probability_of_success = "НИЗКИЙ"
+    elif target_delta['fat'] < 10 and remaining_time_factor > 0.25:
+        probability_of_success = "СРЕДНИЙ"
+
+    # 3. Contextual Verdict (REWRITTEN)
+    status_title = "Анализ дня"
+    smart_advice = ""
+
+    # --- Sentence Constructor ---
+    if nutrient_statuses['calories'] == 'CRITICAL_LIMIT':
+        status_title = "Лимит превышен"
+        smart_advice = "Лимит калорий на сегодня исчерпан. До конца дня рекомендуется пить только воду или зеленый чай."
+    elif nutrient_statuses['fat'] == 'CRITICAL_LIMIT':
+        status_title = "Критический перебор жиров"
+        smart_advice = f"Ты превысил лимит жиров. Чтобы улучшить балл, до конца дня полностью исключи масла и орехи, фокусируясь на чистом белке. Осталось добрать {target_delta['protein']}г белка."
+    elif danger_status:
+        status_title = "Риск провала"
+        time_left_phrase = "уже" if time_factor > 0.5 else "только"
+        smart_advice = f"Слушай, сейчас {time_left_phrase} {now.strftime('%H:%M')}, а ты потратил почти все жиры. У тебя серьезные проблемы с балансом. Срочно удели внимание нежирному белку, которого осталось {target_delta['protein']}г."
+    elif target_delta['protein'] > target.get('protein', 1) * 0.6 and time_factor > 0.6:
+        status_title = "Критический недобор белка"
+        smart_advice = f"Времени осталось немного, а тебе еще нужно набрать {target_delta['protein']}г белка. Это приоритет №1, чтобы улучшить результат. Сфокусируйся на этом."
+    elif final_score > 95:
+        status_title = "Идеальный темп"
+        smart_advice = f"Ты уверенно движешься к цели. Осталось набрать {target_delta['protein']}г белка и {target_delta['carbohydrates']}г углеводов, время еще есть. Так держать!"
+    else:
+        status_title = "Все по плану"
+        smart_advice = f"Ты в графике. Чтобы достичь цели, тебе осталось {target_delta['calories']} ккал, из которых {target_delta['protein']}г белка — твой главный приоритет."
+
+    # --- Final return statement ---
     return {
         "daily_score": final_score,
         "status_color": color,
         "status_message": tooltips,
         "y_axis_pos": final_score,
-        "time_progress": round(time_factor * 100, 1)
+        "time_progress": round(time_factor * 100, 1),
+        "target_delta": target_delta,
+        "nutrient_statuses": nutrient_statuses,
+        "probability_of_success": probability_of_success,
+        "danger_status": danger_status,
+        "status_title": status_title,
+        "smart_advice": smart_advice
     }

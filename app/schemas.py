@@ -60,6 +60,7 @@ class AverageSummary(BaseModel):
 class WeeklySummaryResponse(BaseModel):
     daily_breakdown: List[DailyStatDetail]
     period_summary: AverageSummary
+    progress_lab_summary: Optional[Dict[str, Any]] = None
 
 # --- Stats Schemas ---
 class DailyStat(BaseModel):

@@ -481,6 +481,7 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
     daily_breakdown = []
     total_consumed = {"calories": 0, "protein": 0, "fat": 0, "carbohydrates": 0}
     days_with_data = 0
+    progress_lab_summary_for_today = None
 
     for i in range(days):
         current_date = end_date - timedelta(days=i)
@@ -507,7 +508,9 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
 
         score_result = {}
         if current_date == date.today():
+            # Используем новую расширенную функцию для сегодняшнего дня
             score_result = utils.calculate_progress_lab_score(target_macros, actual_macros)
+            progress_lab_summary_for_today = score_result
         else:
             end_of_day_dt = datetime.combine(current_date, datetime.min.time().replace(hour=23))
             score_result = utils.calculate_progress_lab_score(target_macros, actual_macros, current_dt=end_of_day_dt)
@@ -552,7 +555,8 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
 
     return schemas.WeeklySummaryResponse(
         daily_breakdown=daily_breakdown,
-        period_summary=period_summary
+        period_summary=period_summary,
+        progress_lab_summary=progress_lab_summary_for_today
     )
 
 @app.get("/users/me/dashboard-stats", response_model=schemas.DashboardStats)

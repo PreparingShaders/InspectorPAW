@@ -36,6 +36,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         goToStep(1);
     }
 
+    // --- НОВАЯ УПРОЩЕННАЯ ФУНКЦИЯ: ОБНОВЛЕНИЕ БЛОКА АНАЛИТИКИ ---
+    function updateProgressLabSummary(summary) {
+        if (!summary) return;
+
+        const titleEl = document.getElementById('summary-title');
+        const adviceEl = document.getElementById('summary-advice');
+
+        if (titleEl) titleEl.textContent = summary.status_title || 'Анализ дня';
+        if (adviceEl) adviceEl.textContent = summary.smart_advice || 'Нет данных для анализа.';
+    }
+
+
     // --- ГЛАВНАЯ ЛОГИКА: АНАЛИЗ ПРИ ВЫБОРЕ ФОТО ---
     mealImageInput.addEventListener('change', async () => {
         if (!mealImageInput.files[0]) return;
@@ -44,7 +56,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const formData = new FormData();
         formData.append('file', mealImageInput.files[0]);
 
-        // Описание теперь опционально и может отсутствовать в HTML
         if (mealDescriptionInput && mealDescriptionInput.value.trim()) {
             formData.append('description', mealDescriptionInput.value.trim());
         }
@@ -222,6 +233,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const res = await fetch(`/users/me/stats/summary-by-period?days=${days}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
+
+            // ВЫЗОВ УПРОЩЕННОЙ ФУНКЦИИ
+            if (data.progress_lab_summary) {
+                updateProgressLabSummary(data.progress_lab_summary);
+            }
+
             const container = document.getElementById('score-graph-container');
             container.innerHTML = '';
             const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
