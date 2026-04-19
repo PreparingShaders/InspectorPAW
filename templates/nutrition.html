@@ -21,12 +21,23 @@
         .step { display: none; }
         .step.active { display: block; }
 
-        /* --- СТИЛЬ ДЛЯ ФИОЛЕТОВОГО СВЕЧЕНИЯ --- */
-        .neon-glow-purple {
-            box-shadow: 0 0 8px rgba(138, 43, 226, 0.6), 0 0 20px rgba(138, 43, 226, 0.4);
+        /* --- СТИЛЬ ДЛЯ "БЕГУЩЕЙ ТОЧКИ" --- */
+        @property --angle {
+          syntax: '<angle>';
+          initial-value: 0deg;
+          inherits: false;
         }
-        textarea.neon-glow-purple {
-             border: 1px solid rgba(138, 43, 226, 0.5);
+        @keyframes rotate-border {
+          0% { --angle: 0deg; }
+          100% { --angle: 360deg; }
+        }
+        .ai-running-border {
+            position: relative;
+            border: 2px solid transparent;
+            background-color: transparent;
+            background-clip: padding-box;
+            animation: rotate-border 4s linear infinite;
+            background-image: conic-gradient(from var(--angle), rgba(138, 43, 226, 0) 0%, rgba(138, 43, 226, 0) 20%, #8A2BE2 50%, rgba(138, 43, 226, 0) 60%, rgba(138, 43, 226, 0) 100%);
         }
     </style>
 </head>
@@ -69,12 +80,12 @@
             <div id="step-1" class="step active ai-section w-full flex-grow">
                 <div class="flex flex-col h-full justify-start">
 
-                    <div id="initial-view" class="flex flex-col h-full justify-between">
-                        <div id="progress-lab-summary" class="w-full bg-white/5 border border-white/20 rounded-2xl p-4 space-y-2 flex flex-col justify-center items-center h-48 neon-glow-pantone-gray">
+                    <div id="initial-view" class="flex flex-col h-full justify-start space-y-4">
+                        <div id="progress-lab-summary" class="w-full bg-white/5 border border-white/20 rounded-2xl p-4 space-y-2 flex flex-col justify-start items-center h-48 neon-glow-pantone-gray">
                             <h4 id="summary-title" class="text-white font-bold text-lg text-center">Анализ дня</h4>
-                            <p id="summary-advice" class="text-base text-gray-200 leading-relaxed text-center font-medium"></p>
+                            <p id="summary-advice" class="text-sm text-gray-200 leading-relaxed text-center font-medium w-full"></p>
                         </div>
-                        <div class="w-full pb-2 pt-4">
+                        <div class="w-full pb-2 pt-2">
                             <label for="meal-image" class="upload-button-label neon-glow-pantone-gray block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95">
                                 Добавить фото
                             </label>
@@ -82,10 +93,10 @@
                         </div>
                     </div>
 
-                    <div id="image-added-view" class="hidden flex-grow flex flex-col justify-between">
-                        <textarea id="meal-description" class="w-full bg-gray-800/50 text-white rounded-xl p-3 flex-grow placeholder-gray-400 neon-glow-purple" placeholder="Добавьте описание (необязательно)"></textarea>
-                        <div class="w-full pb-2 pt-4">
-                            <button id="send-to-ai-btn" class="w-full py-4 text-lg font-semibold rounded-xl text-white bg-transparent border border-purple-500/50 neon-glow-purple transition-all active:scale-95">
+                    <div id="image-added-view" class="hidden flex-grow flex flex-col justify-start space-y-4">
+                        <textarea id="meal-description" class="w-full bg-gray-800/50 text-white rounded-xl p-3 h-48 placeholder-gray-400 neon-glow-pantone-gray" placeholder="Добавьте описание (необязательно)"></textarea>
+                        <div class="w-full pb-2 pt-2">
+                            <button id="send-to-ai-btn" class="w-full py-4 text-lg font-semibold rounded-xl text-white ai-running-border transition-all active:scale-95">
                                 Фото добавлено. Отправить в AI
                             </button>
                         </div>
