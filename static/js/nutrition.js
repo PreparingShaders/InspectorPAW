@@ -2,10 +2,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const token = localStorage.getItem('accessToken');
     if (!token) { window.location.href = '/'; return; }
 
-    // Элементы
+    // --- Элементы UI ---
     const mealImageInput = document.getElementById('meal-image');
     const mealDescriptionInput = document.getElementById('meal-description');
-    const uploadButtonLabel = document.querySelector('.upload-button-label');
+    const sendToAiBtn = document.getElementById('send-to-ai-btn');
+    const initialView = document.getElementById('initial-view');
+    const imageAddedView = document.getElementById('image-added-view');
+
     const mealLogsContainer = document.getElementById('meal-logs-container');
     const aiCoachTitle = document.getElementById('ai-coach-title');
     const aiCoachAdvice = document.getElementById('ai-coach-advice');
@@ -23,40 +26,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         3: document.getElementById('step-3')
     };
 
+    // --- Управление состоянием UI ---
     function goToStep(stepNumber) {
-        Object.values(steps).forEach(step => { if (step) step.classList.remove('active'); });
+        Object.values(steps).forEach(step => step && step.classList.remove('active'));
         if (steps[stepNumber]) steps[stepNumber].classList.add('active');
+    }
+
+    function showInitialView() {
+        initialView.classList.remove('hidden');
+        imageAddedView.classList.add('hidden');
+    }
+
+    function showImageAddedView() {
+        initialView.classList.add('hidden');
+        imageAddedView.classList.remove('hidden');
     }
 
     function resetWizard() {
         mealImageInput.value = '';
-        if (mealDescriptionInput) mealDescriptionInput.value = '';
-        if (confirmForm) confirmForm.reset();
-        uploadButtonLabel.textContent = 'Добавить фото';
+        mealDescriptionInput.value = '';
+        confirmForm.reset();
+        showInitialView();
         goToStep(1);
     }
 
-    // --- НОВАЯ УПРОЩЕННАЯ ФУНКЦИЯ: ОБНОВЛЕНИЕ БЛОКА АНАЛИТИКИ ---
-    function updateProgressLabSummary(summary) {
-        if (!summary) return;
+    // --- НОВАЯ ЛОГИКА: ДВУХЭТАПНЫЙ АНАЛИЗ ---
 
-        const titleEl = document.getElementById('summary-title');
-        const adviceEl = document.getElementById('summary-advice');
+    // 1. При выборе фото, меняем UI
+    mealImageInput.addEventListener('change', () => {
+        if (!mealImageInput.files || mealImageInput.files.length === 0) {
+            return;
+        }
+        showImageAddedView();
+    });
 
-        if (titleEl) titleEl.textContent = summary.status_title || 'Анализ дня';
-        if (adviceEl) adviceEl.textContent = summary.smart_advice || 'Нет данных для анализа.';
-    }
+    // 2. При клике на "Отправить в AI", запускаем анализ
+    sendToAiBtn.addEventListener('click', async () => {
+        if (!mealImageInput.files || mealImageInput.files.length === 0) {
+            alert('Сначала выберите фото.');
+            return;
+        }
 
+        goToStep(2); // Показываем лоадер
 
-    // --- ГЛАВНАЯ ЛОГИКА: АНАЛИЗ ПРИ ВЫБОРЕ ФОТО ---
-    mealImageInput.addEventListener('change', async () => {
-        if (!mealImageInput.files[0]) return;
-
-        goToStep(2); // Переход к лоадеру
         const formData = new FormData();
         formData.append('file', mealImageInput.files[0]);
-
-        if (mealDescriptionInput && mealDescriptionInput.value.trim()) {
+        if (mealDescriptionInput.value.trim()) {
             formData.append('description', mealDescriptionInput.value.trim());
         }
 
@@ -67,10 +82,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: formData
             });
 
-            if (!res.ok) throw new Error('Ошибка анализа');
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.detail || 'Ошибка анализа');
+            }
 
             const result = await res.json();
 
+            // Заполняем данными Шаг 3
             aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'Vision'})`;
             aiCoachAdvice.textContent = result.ai_coach_advice || 'Приятного аппетита!';
             currentFoodName = result.ai_response_text || 'Прием пищи';
@@ -86,18 +105,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const el = document.getElementById(id);
                 if (el) el.value = Math.round(val || 0);
             }
-            goToStep(3);
+
+            goToStep(3); // Переходим на шаг подтверждения
+
         } catch (err) {
             console.error(err);
-            errorMessageDiv.textContent = "Ошибка анализа";
+            errorMessageDiv.textContent = err.message;
             setTimeout(() => {
                 errorMessageDiv.textContent = "";
-                goToStep(1);
-            }, 2000);
+                resetWizard();
+            }, 3000);
         }
     });
 
-    // Сохранение результата
+    // --- Сохранение результата (без изменений) ---
     confirmForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const mealData = {
@@ -122,7 +143,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- Функции отрисовки колец ---
+    // --- Функции отрисовки (без изменений) ---
+    function updateProgressLabSummary(summary) {
+        if (!summary) return;
+        const titleEl = document.getElementById('summary-title');
+        const adviceEl = document.getElementById('summary-advice');
+        if (titleEl) titleEl.textContent = summary.status_title || 'Анализ дня';
+        if (adviceEl) adviceEl.textContent = summary.smart_advice || 'Нет данных для анализа.';
+    }
+
     function updateRing(ringId, value, maxValue) {
         const ring = document.getElementById(ringId);
         if (!ring) return;
@@ -156,19 +185,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const meals = await res.json();
             const targets = JSON.parse(mealLogsContainer.dataset.targets || '{}');
             mealLogsContainer.innerHTML = '';
-
             const trans = { breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин', snack: 'Перекус' };
             meals.forEach(m => {
                 const card = document.createElement('div');
                 card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray mb-4';
-                card.innerHTML = `
-                    <div class="text-center mb-2"><h4 class="font-bold">${trans[m.meal_type]}</h4><p class="text-[10px] text-gray-400">${m.food_name}</p></div>
-                    <div class="flex justify-around">
-                        ${createMiniRing(m.id, 'calories', m.total_calories, targets.target_calories, 'amber')}
-                        ${createMiniRing(m.id, 'protein', m.total_protein, targets.target_protein, 'protein-white')}
-                        ${createMiniRing(m.id, 'fat', m.total_fat, targets.target_fat, 'golden-orange')}
-                        ${createMiniRing(m.id, 'carbs', m.total_carbohydrates, targets.target_carbohydrates, 'muted-teal')}
-                    </div>`;
+                card.innerHTML = `<div class="text-center mb-2"><h4 class="font-bold">${trans[m.meal_type]}</h4><p class="text-[10px] text-gray-400">${m.food_name}</p></div><div class="flex justify-around">${createMiniRing(m.id, 'calories', m.total_calories, targets.target_calories, 'amber')}${createMiniRing(m.id, 'protein', m.total_protein, targets.target_protein, 'protein-white')}${createMiniRing(m.id, 'fat', m.total_fat, targets.target_fat, 'golden-orange')}${createMiniRing(m.id, 'carbs', m.total_carbohydrates, targets.target_carbohydrates, 'muted-teal')}</div>`;
                 mealLogsContainer.appendChild(card);
                 ['calories', 'protein', 'fat', 'carbs'].forEach(type => {
                     updateRing(`log-${m.id}-${type}-ring`, m[`total_${type === 'carbs' ? 'carbohydrates' : type}`], targets[`target_${type === 'carbs' ? 'carbohydrates' : type}`]);
@@ -178,24 +199,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function createMiniRing(id, type, val, target, color) {
-        return `<div class="text-center flex flex-col items-center"><div class="ring-container w-10 h-10 relative">
-            <svg id="log-${id}-${type}-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                <circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-${color});"/>
-            </svg>
-            <div class="absolute inset-0 flex items-center justify-center"><span id="log-${id}-${type}-value" class="text-[9px] font-bold">${Math.round(val)}</span></div>
-        </div></div>`;
+        return `<div class="text-center flex flex-col items-center"><div class="ring-container w-10 h-10 relative"><svg id="log-${id}-${type}-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-${color});"/></svg><div class="absolute inset-0 flex items-center justify-center"><span id="log-${id}-${type}-value" class="text-[9px] font-bold">${Math.round(val)}</span></div></div></div>`;
     }
 
-    // --- Тултипы и График ---
     function showTooltip(element, dayData) {
         if (!scoreTooltip) return;
         clearTimeout(tooltipTimeout);
         const messageContainer = document.getElementById('tooltip-message');
         const tooltips = dayData.status_message;
-        messageContainer.innerHTML = (typeof tooltips === 'object' && tooltips !== null)
-            ? Object.values(tooltips).map(msg => `<p>${msg}</p>`).join('')
-            : tooltips || '';
-
+        messageContainer.innerHTML = (typeof tooltips === 'object' && tooltips !== null) ? Object.values(tooltips).map(msg => `<p>${msg}</p>`).join('') : tooltips || '';
         document.getElementById('tooltip-date').textContent = new Date(dayData.date).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
         document.getElementById('tooltip-score').textContent = dayData.daily_score;
         document.getElementById('tooltip-calories').textContent = Math.round(dayData.consumed_calories);
@@ -206,17 +218,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('tooltip-target-fat').textContent = Math.round(dayData.target_fat);
         document.getElementById('tooltip-carbs').textContent = Math.round(dayData.consumed_carbohydrates);
         document.getElementById('tooltip-target-carbs').textContent = Math.round(dayData.target_carbohydrates);
-
         const rect = element.getBoundingClientRect();
         scoreTooltip.classList.remove('opacity-0', 'pointer-events-none');
         scoreTooltip.classList.add('opacity-100');
         scoreTooltip.style.transform = 'scale(1)';
-
         let top = rect.top + window.scrollY - scoreTooltip.offsetHeight - 15;
         let left = rect.left + window.scrollX + (rect.width / 2) - (scoreTooltip.offsetWidth / 2);
         if (top < window.scrollY + 10) top = rect.bottom + window.scrollY + 15;
         left = Math.max(10, Math.min(left, window.innerWidth - scoreTooltip.offsetWidth - 10));
-
         scoreTooltip.style.top = `${top}px`;
         scoreTooltip.style.left = `${left}px`;
         tooltipTimeout = setTimeout(hideTooltip, 6000);
@@ -233,16 +242,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const res = await fetch(`/users/me/stats/summary-by-period?days=${days}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
-
-            // ВЫЗОВ УПРОЩЕННОЙ ФУНКЦИИ
             if (data.progress_lab_summary) {
                 updateProgressLabSummary(data.progress_lab_summary);
             }
-
             const container = document.getElementById('score-graph-container');
             container.innerHTML = '';
             const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
-
             sortedData.forEach(day => {
                 const col = document.createElement('div');
                 col.className = 'flex-1 h-full relative flex justify-center';
@@ -263,11 +268,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Инициализация ---
     if (cancelAnalysisBtn) cancelAnalysisBtn.addEventListener('click', resetWizard);
     document.addEventListener('click', (e) => { if (scoreTooltip && !scoreTooltip.contains(e.target) && !e.target.closest('.score-circle')) hideTooltip(); });
-
-    // Кнопки периода
     const oneMonthBtn = document.getElementById('one-month-btn');
     const threeMonthsBtn = document.getElementById('three-months-btn');
-
     if (oneMonthBtn && threeMonthsBtn) {
         const updateBtns = (a, i) => {
             a.classList.add('active'); a.classList.remove('text-gray-400');
@@ -277,9 +279,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         threeMonthsBtn.onclick = () => { updateBtns(threeMonthsBtn, oneMonthBtn); fetchScoreGraphData(90); };
     }
 
-    // Последовательная загрузка данных
+    // --- Первоначальная загрузка данных ---
     await fetchAndDisplayAverageStats();
     await fetchAndDisplayMealHistory();
     await fetchScoreGraphData(30);
-    goToStep(1);
+    resetWizard(); // Убедимся, что при загрузке страницы всегда начальный вид
 });
