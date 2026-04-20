@@ -4,7 +4,6 @@ import re
 import io
 import base64
 import asyncio
-import requests
 from contextlib import asynccontextmanager
 import google.genai as genai
 from openai import AsyncOpenAI
@@ -24,56 +23,14 @@ from .config import settings, Settings
 
 models.Base.metadata.create_all(bind=engine)
 
-# --- Глобальная переменная для отслеживания даты обновления моделей ---
-LAST_MODEL_UPDATE_DATE = None
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Действия при запуске
+    utils.update_ai_chat_models_if_needed()
+    yield
+    # Действия при остановке (если нужны)
 
-def update_ai_chat_models_if_needed():
-    """
-    Проверяет, нужно ли обновлять список моделей, и если да, то обновляет.
-    """
-    global LAST_MODEL_UPDATE_DATE
-    today = date.today()
-    
-    if LAST_MODEL_UPDATE_DATE == today and settings.AI_CHAT_MODELS:
-        print("--- Список моделей AI-коуча уже актуален. ---")
-        return
-
-    print("--- Обновление списка бесплатных моделей AI-коуча... ---")
-    try:
-        response = requests.get("https://openrouter.ai/api/v1/models")
-        if response.status_code != 200:
-            print("Ошибка при получении моделей от OpenRouter.")
-            return
-
-        models_data = response.json().get('data', [])
-        
-        chat_keywords = ['instruct', 'chat', 'it']
-        free_model_ids = [
-            model.get('id') for model in models_data 
-            if model.get('pricing', {}).get('prompt') == "0" 
-            and model.get('pricing', {}).get('completion') == "0"
-            and any(keyword in model.get('id', '').lower() for keyword in chat_keywords)
-        ]
-        
-        available_best_models = [
-            model_id for model_id in settings.AI_COACH_PRIORITY_MODELS 
-            if model_id in free_model_ids
-        ]
-        
-        other_free_models = [
-            model_id for model_id in free_model_ids 
-            if model_id not in settings.AI_COACH_PRIORITY_MODELS
-        ]
-        
-        Settings.AI_CHAT_MODELS = (available_best_models + other_free_models)[:10]
-        LAST_MODEL_UPDATE_DATE = today
-        print(f"--- Список моделей AI-коуча обновлен: {Settings.AI_CHAT_MODELS} ---")
-
-    except Exception as e:
-        print(f"Не удалось обновить список моделей: {e}")
-
-
-app = FastAPI(title="InspectorPAW API")
+app = FastAPI(title="InspectorPAW API", lifespan=lifespan)
 
 # Монтируем статическую директорию
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -123,6 +80,24 @@ async def read_ai_hub_page(request: Request):
 
 
 # --- AI Логика ---
+@app.post("/ai-hub/chat")
+async def ai_hub_chat(chat_request: schemas.AIChatRequest, current_user: models.User = Depends(auth.get_current_user)):
+    messages = []
+    for message in chat_request.history:
+        role = "assistant" if message['sender'] == 'ai' else 'user'
+        messages.append({"role": role, "content": message['text']})
+    messages.append({"role": "user", "content": chat_request.prompt})
+
+    try:
+        chat_completion = await open_router_client.chat.completions.create(
+            model=chat_request.model,
+            messages=messages,
+        )
+        response_text = chat_completion.choices[0].message.content
+        return {"response": response_text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def call_ai_model(file_content: Optional[bytes], description: Optional[str]) -> (str, str):
     prompt = """
     Ты — эксперт-нутрициолог с математическим уклоном. 
@@ -294,8 +269,6 @@ async def analyze_meal(
         db: Session = Depends(get_db),
         current_user: models.User = Depends(auth.get_current_user)
 ):
-    update_ai_chat_models_if_needed()
-
     if not file and not description:
         raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
     

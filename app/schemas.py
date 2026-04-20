@@ -2,6 +2,12 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
+# --- AI Hub Chat Schema ---
+class AIChatRequest(BaseModel):
+    model: str
+    prompt: str
+    history: List[Dict[str, str]]
+
 # --- Target Calculation Schemas ---
 class CalculatedTargets(BaseModel):
     target_calories: int

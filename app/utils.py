@@ -1,12 +1,62 @@
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional, Dict, Any, List
 import math
 import datetime
 import google.genai as genai
 import asyncio
+import requests # Добавлен импорт requests
 from openai import AsyncOpenAI
 from . import models
-from .config import settings
+from .config import settings, Settings # Импортируем Settings
+
+# --- Глобальная переменная для отслеживания даты обновления моделей ---
+LAST_MODEL_UPDATE_DATE = None
+
+def update_ai_chat_models_if_needed():
+    """
+    Проверяет, нужно ли обновлять список моделей, и если да, то обновляет.
+    """
+    global LAST_MODEL_UPDATE_DATE
+    today = date.today()
+    
+    if LAST_MODEL_UPDATE_DATE == today and settings.AI_CHAT_MODELS:
+        print("--- Список моделей AI-коуча уже актуален. ---")
+        return
+
+    print("--- Обновление списка бесплатных моделей AI-коуча... ---")
+    try:
+        response = requests.get("https://openrouter.ai/api/v1/models")
+        if response.status_code != 200:
+            print("Ошибка при получении моделей от OpenRouter.")
+            return
+
+        models_data = response.json().get('data', [])
+        
+        chat_keywords = ['instruct', 'chat', 'it']
+        free_model_ids = [
+            model.get('id') for model in models_data 
+            if model.get('pricing', {}).get('prompt') == "0" 
+            and model.get('pricing', {}).get('completion') == "0"
+            and any(keyword in model.get('id', '').lower() for keyword in chat_keywords)
+        ]
+        
+        available_best_models = [
+            model_id for model_id in settings.AI_COACH_PRIORITY_MODELS 
+            if model_id in free_model_ids
+        ]
+        
+        other_free_models = [
+            model_id for model_id in free_model_ids 
+            if model_id not in settings.AI_COACH_PRIORITY_MODELS
+        ]
+        
+        Settings.AI_CHAT_MODELS = (available_best_models + other_free_models)[:10]
+        LAST_MODEL_UPDATE_DATE = today
+        print(f"--- Список моделей AI-коуча обновлен: {Settings.AI_CHAT_MODELS} ---")
+
+    except Exception as e:
+        print(f"Не удалось обновить список моделей: {e}")
+
 
 # --- AI Coach Function ---
 async def get_ai_coach_advice(
@@ -129,7 +179,7 @@ def _get_status_for_nutrient(target_val: float, actual_val: float, time_factor: 
     if target_val == 0: return "Не отслеживается"
     day_ratio = actual_val / target_val
     if day_ratio > 1.15 and nutrient_name != 'белка': return f"Значительный перебор"
-    if day_ratio > 1.05: return f"Небольшой перебор"
+    if day_ratio > 1.05: return "Небольшой перебор"
     if day_ratio >= 0.95: return "Норма выполнена"
     pace_ratio = (actual_val / (target_val * time_factor)) if time_factor > 0 else 0
     if pace_ratio >= 0.85: return "По плану"
