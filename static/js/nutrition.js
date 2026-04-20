@@ -28,8 +28,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Управление состоянием UI ---
     function goToStep(stepNumber) {
-        Object.values(steps).forEach(step => step && step.classList.remove('active'));
-        if (steps[stepNumber]) steps[stepNumber].classList.add('active');
+        Object.values(steps).forEach(step => {
+            if (step) {
+                step.classList.remove('active');
+                step.classList.add('hidden'); // Убедимся, что все неактивные шаги скрыты
+            }
+        });
+        if (steps[stepNumber]) {
+            steps[stepNumber].classList.remove('hidden'); // Показываем активный шаг
+            steps[stepNumber].classList.add('active');
+        }
     }
 
     function showInitialView() {

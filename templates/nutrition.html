@@ -43,6 +43,11 @@
         .slow-spin {
             animation: spin 1s linear infinite;
         }
+        /* Определение анимации spin */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="h-full flex flex-col">
@@ -109,8 +114,8 @@
                 </div>
             </div>
 
-            <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-end">
-                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 h-48 flex flex-col justify-center items-center space-y-4 neon-glow-pantone-gray mb-16">
+            <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-center hidden">
+                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 flex flex-col justify-center items-center space-y-4 neon-glow-pantone-gray mb-16">
                     <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full slow-spin"></div>
                     <p class="text-center text-gray-300 leading-relaxed">Ваше фото отправлено в AI модель.<br>Процесс распознавания занимает до 10 секунд.<br>Не переходите на другие страницы и ожидайте ответа.</p>
                 </div>
