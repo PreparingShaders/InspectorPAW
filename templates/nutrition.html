@@ -40,6 +40,9 @@
             border: 1px solid rgba(138, 43, 226, 0.7);
             animation: animated-glow 4s infinite ease-in-out;
         }
+        .slow-spin {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body class="h-full flex flex-col">
@@ -95,7 +98,7 @@
                     </div>
 
                     <div id="image-added-view" class="hidden flex-grow flex flex-col justify-start space-y-4">
-                        <textarea id="meal-description" class="w-full bg-gray-800/50 text-white rounded-xl p-3 h-48 placeholder-gray-400 neon-glow-pantone-gray" placeholder="Описание еды.&#10;Например: каша на кокосовом молоке с ложкой масла.&#10;&#10;Это поможет AI точнее определить КБЖУ."></textarea>
+                        <textarea id="meal-description" class="w-full bg-gray-800/50 text-white rounded-xl p-3 h-48 placeholder-gray-400 neon-glow-pantone-gray" placeholder="Например: каша на кокосовом молоке с ложкой масла.&#10;&#10;Это поможет AI точнее определить КБЖУ."></textarea>
                         <div class="w-full pb-2 pt-2">
                             <button id="send-to-ai-btn" class="w-full py-4 text-lg font-semibold rounded-xl text-white ai-animated-glow-button transition-all active:scale-95">
                                 Фото добавлено. Отправить в AI
@@ -105,8 +108,14 @@
 
                 </div>
             </div>
-            <!-- ... (остальные шаги без изменений) ... -->
-            <div id="step-2" class="step ai-section w-full flex-grow items-center justify-center"><div class="flex flex-col items-center"><div class="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_#A855F7]"></div><p id="model-status" class="text-purple-400 font-bold animate-pulse mt-4 text-center">Анализ состава...</p><div id="analysis-status" class="text-xs text-gray-500 mt-2 text-center"></div></div></div>
+
+            <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-end">
+                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 h-48 flex flex-col justify-center items-center space-y-4 neon-glow-pantone-gray mb-16">
+                    <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full slow-spin"></div>
+                    <p class="text-center text-gray-300 leading-relaxed">Ваше фото отправлено в AI модель.<br>Процесс распознавания занимает до 10 секунд.<br>Не переходите на другие страницы и ожидайте ответа.</p>
+                </div>
+            </div>
+
             <div id="step-3" class="step ai-section w-full flex-grow"><div id="ai-coach-section" class="w-full ai-coach-container mb-4"><h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4><p id="ai-coach-advice" class="text-white text-center text-sm leading-tight"></p></div><div id="ai-response-text" class="hidden"></div><form id="confirm-form" class="space-y-4"><div class="form-group"><label for="meal-type">Прием пищи</label><select id="meal-type" class="w-full bg-white/5 border border-white/10 rounded-xl p-2 text-white"><option value="breakfast">Завтрак</option><option value="lunch" selected>Обед</option><option value="dinner">Ужин</option><option value="snack">Перекус</option></select></div><div id="interactive-rings-container" class="grid grid-cols-2 gap-3"><div class="flex flex-col"><label class="text-xs text-amber-500">Ккал</label><input type="number" id="calories" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-blue-300">Белки</label><input type="number" id="protein" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-orange-400">Жиры</label><input type="number" id="fat" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-teal-400">Углев.</label><input type="number" id="carbohydrates" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div></div><div class="flex space-x-3 pt-2"><button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button><button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button></div></form></div>
         </div>
 
