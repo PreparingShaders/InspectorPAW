@@ -4,17 +4,54 @@ import math
 import datetime
 import google.genai as genai
 import asyncio
-import requests # Добавлен импорт requests
+import requests
 from openai import AsyncOpenAI
 from . import models
-from .config import settings, Settings # Импортируем Settings
+from .config import settings, Settings
 
 # --- Глобальная переменная для отслеживания даты обновления моделей ---
 LAST_MODEL_UPDATE_DATE = None
 
-def update_ai_chat_models_if_needed():
+# --- API Клиент для тестирования моделей ---
+# Создаем клиент здесь, чтобы не пересоздавать его для каждого теста модели
+_open_router_test_client = AsyncOpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=settings.OPEN_ROUTER_API_KEY,
+)
+
+async def test_model(model_id: str) -> Optional[str]:
+    """
+    Тестирует модель, отправляя короткий запрос и ожидая ответ в течение 5 секунд.
+    Возвращает model_id, если тест успешен, иначе None.
+    """
+    try:
+        # Используем asyncio.timeout для ограничения времени выполнения запроса
+        async with asyncio.timeout(5): # Таймаут 5 секунд
+            chat_completion = await _open_router_test_client.chat.completions.create(
+                model=model_id,
+                messages=[
+                    {"role": "user", "content": "Ответь 'ок'"}
+                ],
+                max_tokens=5, # Ожидаем очень короткий ответ
+            )
+            response_text = chat_completion.choices[0].message.content.strip().lower()
+            if "ок" in response_text:
+                print(f"Модель {model_id} успешно ответила.")
+                return model_id
+            else:
+                print(f"Модель {model_id} ответила, но не 'ок': {response_text}")
+                return None
+    except asyncio.TimeoutError:
+        print(f"Модель {model_id} не ответила в течение 5 секунд (таймаут).")
+        return None
+    except Exception as e:
+        print(f"Ошибка при тестировании модели {model_id}: {e}")
+        return None
+
+async def update_ai_chat_models_if_needed():
     """
     Проверяет, нужно ли обновлять список моделей, и если да, то обновляет.
+    Теперь включает тестирование моделей.
     """
     global LAST_MODEL_UPDATE_DATE
     today = date.today()
@@ -33,20 +70,30 @@ def update_ai_chat_models_if_needed():
         models_data = response.json().get('data', [])
         
         chat_keywords = ['instruct', 'chat', 'it']
-        free_model_ids = [
+        potential_free_model_ids = [
             model.get('id') for model in models_data 
             if model.get('pricing', {}).get('prompt') == "0" 
             and model.get('pricing', {}).get('completion') == "0"
             and any(keyword in model.get('id', '').lower() for keyword in chat_keywords)
+            and 'free' in model.get('id', '').lower()
         ]
         
+        # Тестируем все потенциально бесплатные модели параллельно
+        print(f"Начинаем тестирование {len(potential_free_model_ids)} потенциально бесплатных моделей...")
+        tasks = [test_model(model_id) for model_id in potential_free_model_ids]
+        tested_models_results = await asyncio.gather(*tasks)
+        
+        # Фильтруем только успешно ответившие модели
+        working_free_model_ids = [model_id for model_id in tested_models_results if model_id is not None]
+        print(f"Найдено {len(working_free_model_ids)} рабочих бесплатных моделей.")
+
         available_best_models = [
             model_id for model_id in settings.AI_COACH_PRIORITY_MODELS 
-            if model_id in free_model_ids
+            if model_id in working_free_model_ids
         ]
         
         other_free_models = [
-            model_id for model_id in free_model_ids 
+            model_id for model_id in working_free_model_ids
             if model_id not in settings.AI_COACH_PRIORITY_MODELS
         ]
         
@@ -70,7 +117,7 @@ async def get_ai_coach_advice(
     Возвращает кортеж (совет, использованная_модель).
     """
     # Выбираем лучшую доступную модель из динамического списка
-    model_id_to_use = settings.AI_CHAT_MODELS[0] if settings.AI_CHAT_MODELS else "google/gemini-flash-1.5"
+    model_id_to_use = user_targets.get('ai_model') or (settings.AI_CHAT_MODELS[0] if settings.AI_CHAT_MODELS else "google/gemini-flash-1.5")
     print(f"--- AI Coach использует модель: {model_id_to_use} ---")
 
     time_str = current_time.strftime("%H:%M")

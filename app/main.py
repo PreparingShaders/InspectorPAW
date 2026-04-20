@@ -26,7 +26,7 @@ models.Base.metadata.create_all(bind=engine)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Действия при запуске
-    utils.update_ai_chat_models_if_needed()
+    await utils.update_ai_chat_models_if_needed()
     yield
     # Действия при остановке (если нужны)
 
@@ -266,6 +266,7 @@ def create_metric_for_current_user(
 async def analyze_meal(
         description: Optional[str] = Form(None),
         file: Optional[UploadFile] = File(None),
+        ai_model: Optional[str] = Form(None),
         db: Session = Depends(get_db),
         current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -314,6 +315,7 @@ async def analyze_meal(
         latest_metric.weight_kg if latest_metric else None,
         latest_metric.body_fat_percentage if latest_metric else None
     )
+    user_targets['ai_model'] = ai_model
 
     today_stats = crud.get_user_stats_by_period(db, user_id=current_user.id, start_date=date.today(), end_date=date.today())
     consumed_today = {

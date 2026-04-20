@@ -83,6 +83,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             formData.append('description', mealDescriptionInput.value.trim());
         }
 
+        const aiModel = localStorage.getItem('aiHubCurrentModel');
+        if (aiModel) {
+            formData.append('ai_model', aiModel);
+        }
+
         try {
             const res = await fetch('/analyze-meal/', {
                 method: 'POST',
