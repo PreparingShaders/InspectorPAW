@@ -8,6 +8,10 @@ class AIChatRequest(BaseModel):
     prompt: str
     history: List[Dict[str, str]]
 
+class AIModel(BaseModel):
+    id: str
+    name: Optional[str] = None
+
 # --- Target Calculation Schemas ---
 class CalculatedTargets(BaseModel):
     target_calories: int

@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let messages = [];
     let currentModel = localStorage.getItem(CURRENT_MODEL_KEY) || 'google/gemini-flash-1.5';
+    let cachedModels = []; // Кэш для моделей
 
     function updateCurrentModelDisplay() {
         currentModelDisplay.textContent = `Модель: ${currentModel}`;
@@ -52,32 +53,39 @@ document.addEventListener('DOMContentLoaded', () => {
         saveHistory();
     }
 
-    async function fetchModels() {
-        modelListContainer.innerHTML = '<p class="text-white">Загрузка...</p>';
+    function displayModels(models) {
+        modelListContainer.innerHTML = '';
+        if (models.length === 0) {
+            modelListContainer.innerHTML = '<p class="text-yellow-500">Модели не найдены.</p>';
+            return;
+        }
+        models.forEach(model => {
+            const button = document.createElement('button');
+            button.textContent = model.name || model.id;
+            button.classList.add('w-full', 'text-left', 'p-2', 'rounded-lg', 'hover:bg-gray-700', 'text-white');
+            button.dataset.modelId = model.id;
+            button.addEventListener('click', () => {
+                currentModel = model.id;
+                localStorage.setItem(CURRENT_MODEL_KEY, currentModel);
+                updateCurrentModelDisplay();
+                modelSelectionModal.classList.add('hidden');
+            });
+            modelListContainer.appendChild(button);
+        });
+    }
+
+    async function fetchAndTestModels() {
+        modelListContainer.innerHTML = '<p class="text-white">Получение и тестирование моделей...</p>';
         try {
-            const response = await fetch("https://openrouter.ai/api/v1/models");
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch('/ai-hub/get-models', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
-            const data = await response.json();
-            const freeModels = data.data.filter(model =>
-                model.pricing && model.pricing.prompt === "0" && model.pricing.completion === "0"
-            );
-
-            modelListContainer.innerHTML = '';
-            freeModels.forEach(model => {
-                const button = document.createElement('button');
-                button.textContent = model.name || model.id;
-                button.classList.add('w-full', 'text-left', 'p-2', 'rounded-lg', 'hover:bg-gray-700', 'text-white');
-                button.dataset.modelId = model.id;
-                button.addEventListener('click', () => {
-                    currentModel = model.id;
-                    localStorage.setItem(CURRENT_MODEL_KEY, currentModel);
-                    updateCurrentModelDisplay();
-                    modelSelectionModal.classList.add('hidden');
-                });
-                modelListContainer.appendChild(button);
-            });
+            cachedModels = await response.json();
+            displayModels(cachedModels);
 
         } catch (error) {
             console.error('Failed to fetch models:', error);
@@ -90,8 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (text) {
             addMessage('user', text);
             chatInput.value = '';
-
-            addMessage('ai', '...'); // Placeholder for AI response
+            addMessage('ai', '...');
 
             try {
                 const token = localStorage.getItem('accessToken');
@@ -104,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                         model: currentModel,
                         prompt: text,
-                        history: messages.slice(0, -2) // Отправляем историю без последнего сообщения пользователя и плейсхолдера
+                        history: messages.slice(0, -2)
                     })
                 });
 
@@ -114,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const result = await response.json();
-                messages.pop(); // Удаляем плейсхолдер "..."
+                messages.pop();
                 addMessage('ai', result.response);
 
             } catch (error) {
@@ -126,14 +133,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modelSelectionButton.addEventListener('click', () => {
         modelSelectionModal.classList.remove('hidden');
-        fetchModels();
+        if (cachedModels.length === 0) {
+            fetchAndTestModels();
+        } else {
+            displayModels(cachedModels);
+        }
     });
 
     closeModalButton.addEventListener('click', () => {
         modelSelectionModal.classList.add('hidden');
     });
 
-    refreshModelsButton.addEventListener('click', fetchModels);
+    refreshModelsButton.addEventListener('click', fetchAndTestModels);
 
     sendButton.addEventListener('click', handleSend);
     chatInput.addEventListener('keypress', (e) => {

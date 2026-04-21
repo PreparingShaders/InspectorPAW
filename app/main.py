@@ -4,6 +4,7 @@ import re
 import io
 import base64
 import asyncio
+import requests
 from contextlib import asynccontextmanager
 import google.genai as genai
 from openai import AsyncOpenAI
@@ -23,14 +24,7 @@ from .config import settings, Settings
 
 models.Base.metadata.create_all(bind=engine)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Действия при запуске
-    await utils.update_ai_chat_models_if_needed()
-    yield
-    # Действия при остановке (если нужны)
-
-app = FastAPI(title="InspectorPAW API", lifespan=lifespan)
+app = FastAPI(title="InspectorPAW API")
 
 # Монтируем статическую директорию
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -97,6 +91,15 @@ async def ai_hub_chat(chat_request: schemas.AIChatRequest, current_user: models.
         return {"response": response_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/ai-hub/get-models", response_model=List[schemas.AIModel])
+async def get_models():
+    try:
+        working_models = await utils.get_available_ai_models()
+        return working_models
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Не удалось получить список моделей: {e}")
+
 
 async def call_ai_model(file_content: Optional[bytes], description: Optional[str]) -> (str, str):
     prompt = """

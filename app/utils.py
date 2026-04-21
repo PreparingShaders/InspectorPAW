@@ -9,100 +9,68 @@ from openai import AsyncOpenAI
 from . import models
 from .config import settings, Settings
 
-# --- Глобальная переменная для отслеживания даты обновления моделей ---
-LAST_MODEL_UPDATE_DATE = None
-
-# --- API Клиент для тестирования моделей ---
-# Создаем клиент здесь, чтобы не пересоздавать его для каждого теста модели
-_open_router_test_client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=settings.OPEN_ROUTER_API_KEY,
-)
-
 async def test_model(model_id: str) -> Optional[str]:
     """
-    Тестирует модель, отправляя короткий запрос и ожидая ответ в течение 5 секунд.
+    Тестирует модель, отправляя короткий запрос и ожидая ответ в течение 7 секунд.
     Возвращает model_id, если тест успешен, иначе None.
     """
     try:
-        # Используем asyncio.timeout для ограничения времени выполнения запроса
-        async with asyncio.timeout(5): # Таймаут 5 секунд
-            chat_completion = await _open_router_test_client.chat.completions.create(
+        async with asyncio.timeout(7):
+            client = AsyncOpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPEN_ROUTER_API_KEY,
+            )
+            chat_completion = await client.chat.completions.create(
                 model=model_id,
-                messages=[
-                    {"role": "user", "content": "Ответь 'ок'"}
-                ],
-                max_tokens=5, # Ожидаем очень короткий ответ
+                messages=[{"role": "user", "content": "Ответь 'ок'"}],
+                max_tokens=5,
             )
             response_text = chat_completion.choices[0].message.content.strip().lower()
             if "ок" in response_text:
-                print(f"Модель {model_id} успешно ответила.")
                 return model_id
-            else:
-                print(f"Модель {model_id} ответила, но не 'ок': {response_text}")
-                return None
-    except asyncio.TimeoutError:
-        print(f"Модель {model_id} не ответила в течение 5 секунд (таймаут).")
-        return None
-    except Exception as e:
-        print(f"Ошибка при тестировании модели {model_id}: {e}")
+            return None
+    except Exception:
         return None
 
-async def update_ai_chat_models_if_needed():
+async def get_available_ai_models() -> List[Dict[str, str]]:
     """
-    Проверяет, нужно ли обновлять список моделей, и если да, то обновляет.
-    Теперь включает тестирование моделей.
+    Получает список бесплатных моделей с OpenRouter и тестирует их.
+    Возвращает список словарей рабочих моделей.
     """
-    global LAST_MODEL_UPDATE_DATE
-    today = date.today()
-    
-    if LAST_MODEL_UPDATE_DATE == today and settings.AI_CHAT_MODELS:
-        print("--- Список моделей AI-коуча уже актуален. ---")
-        return
-
     print("--- Обновление списка бесплатных моделей AI-коуча... ---")
     try:
         response = requests.get("https://openrouter.ai/api/v1/models")
         if response.status_code != 200:
             print("Ошибка при получении моделей от OpenRouter.")
-            return
+            return []
 
         models_data = response.json().get('data', [])
         
-        chat_keywords = ['instruct', 'chat', 'it']
-        potential_free_model_ids = [
-            model.get('id') for model in models_data 
-            if model.get('pricing', {}).get('prompt') == "0" 
-            and model.get('pricing', {}).get('completion') == "0"
-            and any(keyword in model.get('id', '').lower() for keyword in chat_keywords)
-            and 'free' in model.get('id', '').lower()
+        potential_models = [
+            {"id": model.get("id"), "name": model.get("name") or model.get("id")}
+            for model in models_data 
+            if model.get("id") and "free" in model.get("id").lower()
         ]
-        
-        # Тестируем все потенциально бесплатные модели параллельно
-        print(f"Начинаем тестирование {len(potential_free_model_ids)} потенциально бесплатных моделей...")
-        tasks = [test_model(model_id) for model_id in potential_free_model_ids]
+
+        for model in potential_models:
+            print(model)
+        print(len(potential_models))
+
+        tasks = [test_model(model["id"]) for model in potential_models]
         tested_models_results = await asyncio.gather(*tasks)
         
-        # Фильтруем только успешно ответившие модели
-        working_free_model_ids = [model_id for model_id in tested_models_results if model_id is not None]
-        print(f"Найдено {len(working_free_model_ids)} рабочих бесплатных моделей.")
-
-        available_best_models = [
-            model_id for model_id in settings.AI_COACH_PRIORITY_MODELS 
-            if model_id in working_free_model_ids
+        working_model_ids = {model_id for model_id in tested_models_results if model_id}
+        
+        working_models = [
+            model for model in potential_models if model["id"] in working_model_ids
         ]
         
-        other_free_models = [
-            model_id for model_id in working_free_model_ids
-            if model_id not in settings.AI_COACH_PRIORITY_MODELS
-        ]
-        
-        Settings.AI_CHAT_MODELS = (available_best_models + other_free_models)[:10]
-        LAST_MODEL_UPDATE_DATE = today
-        print(f"--- Список моделей AI-коуча обновлен: {Settings.AI_CHAT_MODELS} ---")
+        print(f"Найдено {len(working_models)} рабочих бесплатных моделей.")
+        return working_models
 
     except Exception as e:
         print(f"Не удалось обновить список моделей: {e}")
+        return []
 
 
 # --- AI Coach Function ---
