@@ -2,12 +2,11 @@ from datetime import date, timedelta
 from typing import Optional, Dict, Any, List
 import math
 import datetime
-import google.genai as genai
 import asyncio
 import requests
 from openai import AsyncOpenAI
 from . import models
-from .config import settings, Settings
+from .config import settings
 
 async def test_model(model_id: str) -> Optional[str]:
     """
@@ -31,46 +30,6 @@ async def test_model(model_id: str) -> Optional[str]:
             return None
     except Exception:
         return None
-
-async def get_available_ai_models() -> List[Dict[str, str]]:
-    """
-    Получает список бесплатных моделей с OpenRouter и тестирует их.
-    Возвращает список словарей рабочих моделей.
-    """
-    print("--- Обновление списка бесплатных моделей AI-коуча... ---")
-    try:
-        response = requests.get("https://openrouter.ai/api/v1/models")
-        if response.status_code != 200:
-            print("Ошибка при получении моделей от OpenRouter.")
-            return []
-
-        models_data = response.json().get('data', [])
-        
-        potential_models = [
-            {"id": model.get("id"), "name": model.get("name") or model.get("id")}
-            for model in models_data 
-            if model.get("id") and "free" in model.get("id").lower()
-        ]
-
-        for model in potential_models:
-            print(model)
-        print(len(potential_models))
-
-        tasks = [test_model(model["id"]) for model in potential_models]
-        tested_models_results = await asyncio.gather(*tasks)
-        
-        working_model_ids = {model_id for model_id in tested_models_results if model_id}
-        
-        working_models = [
-            model for model in potential_models if model["id"] in working_model_ids
-        ]
-        
-        print(f"Найдено {len(working_models)} рабочих бесплатных моделей.")
-        return working_models
-
-    except Exception as e:
-        print(f"Не удалось обновить список моделей: {e}")
-        return []
 
 
 # --- AI Coach Function ---

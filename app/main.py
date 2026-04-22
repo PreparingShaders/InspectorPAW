@@ -95,8 +95,7 @@ async def ai_hub_chat(chat_request: schemas.AIChatRequest, current_user: models.
 @app.get("/ai-hub/get-models", response_model=List[schemas.AIModel])
 async def get_models():
     try:
-        working_models = await utils.get_available_ai_models()
-        return working_models
+        return settings.ALL_AVAILABLE_AI_MODELS
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Не удалось получить список моделей: {e}")
 
