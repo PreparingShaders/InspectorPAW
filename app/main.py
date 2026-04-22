@@ -100,78 +100,101 @@ async def get_models():
         raise HTTPException(status_code=500, detail=f"Не удалось получить список моделей: {e}")
 
 
-async def call_ai_model(file_content: Optional[bytes], description: Optional[str]) -> (str, str):
-    prompt = """
-    Ты — эксперт-нутрициолог с математическим уклоном. 
-    Твоя задача — проанализировать еду (фото или описание) и рассчитать КБЖУ.
+async def get_nutrition_analysis_and_advice(
+    file_content: Optional[bytes],
+    description: Optional[str],
+    ai_context: dict,
+    model_to_use: str
+) -> (dict, str):
+    """
+    Выполняет анализ питания и дает совет одним запросом к AI, используя конкретную модель.
+    """
+    context_str = json.dumps(ai_context, indent=2, ensure_ascii=False)
 
-    ### ПРАВИЛА РАСЧЕТА:
-    1. Сначала определи вес (weight), белки (P), жиры (F) и углеводы (C) в граммах.
-    2. Итоговые калории (Kcal) ОБЯЗАТЕЛЬНО рассчитывай строго по формуле: 
-       Kcal = (P * 4) + (C * 4) + (F * 9)
-    3. Округляй все числовые значения до целых чисел.
-    4. Сумма калорий в ответе не может отличаться от результата формулы.
+    prompt = f"""
+    Ты — интегрированный ассистент по питанию, сочетающий в себе две роли:
+    1.  **Эксперт-нутрициолог:** Ты точно анализируешь еду (по фото или описанию) и рассчитываешь её КБЖУ.
+    2.  **Элитный коуч:** Ты даешь прямой, честный и мотивирующий совет, помогая пользователю достичь цели.
+
+    ### ЗАДАЧА:
+    Проанализируй предоставленные данные (фото и/или описание еды) и полный контекст дня пользователя.
+    Верни **ТОЛЬКО ОДИН JSON-ОБЪЕКТ** без лишнего текста, пояснений и Markdown-разметки.
+
+    ### КОНТЕКСТ ДНЯ ПОЛЬЗОВАТЕЛЯ:
+    ```json
+    {context_str}
+    ```
+
+    ### ПРАВИЛА РАСЧЕТА КБЖУ:
+    1.  Определи вес (weight_g), белки (proteins_g), жиры (fats_g) и углеводы (carbs_g).
+    2.  Итоговые калории (calories) **ОБЯЗАТЕЛЬНО** рассчитай строго по формуле: `calories = (proteins_g * 4) + (carbs_g * 4) + (fats_g * 9)`.
+    3.  Округляй все числовые значения до целых.
+
+    ### ПРАВИЛА ДЛЯ СОВЕТА КОУЧА:
+    1.  Стиль: прямой, честный, мотивирующий, в стиле "ты".
+    2.  Длина: 3-4 предложения.
+    3.  Содержание:
+        - Начни с вердикта: стоит ли есть это блюдо, основываясь на данных из `progress_assessment`.
+        - Объясни "почему" на цифрах, сравнивая КБЖУ блюда с остатками в `remaining_macros`.
+        - Дай один, самый важный совет (например, что съесть вместо этого или как скорректировать день).
 
     ### ФОРМАТ ОТВЕТА (STRICT JSON):
-    Верни короткое описание блюда  и JSON-объект без лишнего текста, пояснений и Markdown-разметки:
-    {
-      "food_name": "Название блюда",
-      "weight_g": 0,
-      "calories": 0,
-      "proteins_g": 0,
-      "fats_g": 0,
-      "carbs_g": 0,
-      "confidence_score": 0.0
-    }
+    ```json
+    {{
+      "food_analysis": {{
+        "food_name": "Название блюда",
+        "weight_g": 0,
+        "calories": 0,
+        "proteins_g": 0,
+        "fats_g": 0,
+        "carbs_g": 0
+      }},
+      "coach_advice": "Твой совет здесь."
+    }}
+    ```
     """
+
+    print(f"Attempting to use model for combined analysis and advice: {model_to_use}")
+
+    if model_to_use in settings.NATIVE_GEMINI_MODELS:
+        content_parts = []
+        if file_content:
+            img = Image.open(io.BytesIO(file_content))
+            content_parts.append(img)
+        
+        full_prompt = f"{prompt}\nДополнительное описание от пользователя: {description}" if description else prompt
+        print(full_prompt)
+        content_parts.append(full_prompt)
+        
+        response = await asyncio.to_thread(gemini_client.models.generate_content, model=model_to_use, contents=content_parts)
+        return json.loads(response.text), model_to_use
+
+    elif model_to_use in settings.OPEN_ROUTER_MODELS:
+        messages = [{"role": "system", "content": "You are an integrated nutrition assistant. Your response must be a single, valid JSON object."}]
+        content_parts = [{"type": "text", "text": prompt}]
+        
+        if description:
+             content_parts[0]["text"] += f"\nUser's description: {description}"
+        
+        if file_content:
+            base64_image = base64.b64encode(file_content).decode('utf-8')
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+            })
+        
+        messages.append({"role": "user", "content": content_parts})
+        
+        chat_completion = await open_router_client.chat.completions.create(
+            model=model_to_use,
+            messages=messages,
+            max_tokens=1024,
+            response_format={"type": "json_object"},
+        )
+        return json.loads(chat_completion.choices[0].message.content), model_to_use
     
-    for model_name in settings.NUTRITION_MODELS:
-        try:
-            print(f"Attempting to use model for nutrition analysis: {model_name}")
-            
-            if model_name in settings.NATIVE_GEMINI_MODELS:
-                content_parts = []
-                full_prompt = f"{prompt}\nДополнительное описание: {description}" if description else prompt
-                
-                if file_content:
-                    img = Image.open(io.BytesIO(file_content))
-                    content_parts.append(img)
-                content_parts.append(full_prompt)
-                
-                response = await asyncio.to_thread(gemini_client.models.generate_content, model=model_name, contents=content_parts)
-                return response.text, model_name
-
-            elif model_name in settings.OPEN_ROUTER_MODELS:
-                messages = [{"role": "system", "content": prompt}]
-                content_parts = []
-                if description:
-                    content_parts.append({"type": "text", "text": description})
-                if file_content:
-                    base64_image = base64.b64encode(file_content).decode('utf-8')
-                    content_parts.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
-                    })
-                
-                if content_parts:
-                    messages.append({"role": "user", "content": content_parts})
-                
-                chat_completion = await open_router_client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    max_tokens=300,
-                )
-                return chat_completion.choices[0].message.content, model_name
-            
-            else:
-                print(f"Model {model_name} not found in any API list, skipping.")
-                continue
-
-        except Exception as e:
-            print(f"Model {model_name} failed: {e}")
-            continue
-            
-    raise HTTPException(status_code=503, detail="All AI models are currently unavailable. Please try again later.")
+    else:
+        raise ValueError(f"Model {model_to_use} is not configured in any known provider.")
 
 
 # --- API эндпоинты ---
@@ -277,41 +300,7 @@ async def analyze_meal(
     
     file_content = await file.read() if file else None
 
-    try:
-        raw_ai_response, nutrition_model_used = await call_ai_model(file_content=file_content, description=description)
-    except HTTPException as e:
-        raise e
-
-    if not raw_ai_response:
-        raise HTTPException(status_code=500, detail="AI model returned an empty response.")
-
-    try:
-        json_match = re.search(r'{.*}', raw_ai_response, re.DOTALL)
-        if not json_match:
-            raise HTTPException(status_code=500, detail="AI model did not return a valid JSON object. Response: " + raw_ai_response)
-        
-        json_string = json_match.group(0)
-        ai_data = json.loads(json_string)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="AI model returned invalid JSON. Response: " + raw_ai_response)
-
-    food_name = ai_data.get("food_name", "Неизвестное блюдо")
-    proteins_g = round(float(ai_data.get("proteins_g", 0)))
-    fats_g = round(float(ai_data.get("fats_g", 0)))
-    carbs_g = round(float(ai_data.get("carbs_g", 0)))
-    
-    calculated_calories = (proteins_g * 4) + (fats_g * 9) + (carbs_g * 4)
-    calories = round(calculated_calories)
-
-    analyzed_meal_totals = {
-        "food_name": food_name,
-        "total_calories": calories,
-        "total_protein": proteins_g,
-        "total_fat": fats_g,
-        "total_carbohydrates": carbs_g
-    }
-
-    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
+    # --- Сбор контекста ---
     today_stats = crud.get_user_stats_by_period(db, user_id=current_user.id, start_date=date.today(), end_date=date.today())
     consumed_today = {
         "calories": today_stats.total_calories or 0,
@@ -319,28 +308,68 @@ async def analyze_meal(
         "fat": today_stats.total_fat or 0,
         "carbohydrates": today_stats.total_carbohydrates or 0
     }
-
-    # Готовим единый контекст для AI
+    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
     ai_context = await utils.prepare_ai_context(
         user=current_user,
         consumed_today=consumed_today,
-        analyzed_meal=analyzed_meal_totals,
+        analyzed_meal={},
         latest_weight_kg=latest_metric.weight_kg if latest_metric else None,
         latest_body_fat_percentage=latest_metric.body_fat_percentage if latest_metric else None
     )
-    # Добавляем модель, выбранную пользователем, в контекст
-    if ai_model:
-        ai_context['user_targets']['ai_model'] = ai_model
 
-    # Получаем совет от AI
-    ai_advice, coach_model_used = await utils.get_ai_coach_advice(ai_context)
+    # --- Вызов AI с перебором моделей ---
+    models_to_try = list(settings.NUTRITION_MODELS)
+    if ai_model and ai_model in models_to_try:
+        models_to_try.insert(0, models_to_try.pop(models_to_try.index(ai_model)))
+
+    ai_response = None
+    model_used = None
+    last_error = None
+
+    for model in models_to_try:
+        try:
+            ai_response, model_used = await get_nutrition_analysis_and_advice(
+                file_content=file_content,
+                description=description,
+                ai_context=ai_context,
+                model_to_use=model
+            )
+            if ai_response:
+                break 
+        except Exception as e:
+            last_error = e
+            print(f"Model {model} failed: {e}. Trying next model.")
+            if file_content: # Перематываем ридер файла для следующей попытки
+                file.file.seek(0)
+                file_content = await file.read()
+
+
+    if not ai_response:
+        raise HTTPException(status_code=503, detail=f"All AI models are currently unavailable. Last error: {last_error}")
+
+    # --- Обработка ответа ---
+    food_analysis = ai_response.get("food_analysis", {})
+    coach_advice = ai_response.get("coach_advice", "Не удалось получить совет от AI.")
+
+    proteins_g = round(float(food_analysis.get("proteins_g", 0)))
+    fats_g = round(float(food_analysis.get("fats_g", 0)))
+    carbs_g = round(float(food_analysis.get("carbs_g", 0)))
+    calculated_calories = (proteins_g * 4) + (fats_g * 9) + (carbs_g * 4)
+
+    analyzed_meal_totals = {
+        "food_name": food_analysis.get("food_name", "Неизвестное блюдо"),
+        "total_calories": round(calculated_calories),
+        "total_protein": proteins_g,
+        "total_fat": fats_g,
+        "total_carbohydrates": carbs_g
+    }
 
     return schemas.AnalysisResponse(
         suggested_totals=schemas.MealTotals(**analyzed_meal_totals),
-        ai_response_text=food_name,
-        ai_coach_advice=ai_advice,
-        nutrition_model_used=nutrition_model_used,
-        coach_model_used=coach_model_used
+        ai_response_text=analyzed_meal_totals["food_name"],
+        ai_coach_advice=coach_advice,
+        nutrition_model_used=model_used,
+        coach_model_used=model_used
     )
 
 

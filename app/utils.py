@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from typing import Optional, Dict, Any, List
 import math
 import datetime
@@ -40,96 +40,57 @@ async def prepare_ai_context(
     latest_body_fat_percentage: Optional[float]
 ) -> Dict[str, Any]:
     """
-    Собирает все необходимые данные в единый JSON для AI-коуча.
+    Собирает данные в компактный JSON с детальной разбивкой остатков по БЖУ.
     """
-    current_time = datetime.datetime.now()
+    now = datetime.datetime.now()
     user_targets = calculate_user_targets(user, latest_weight_kg, latest_body_fat_percentage)
 
-    # Добавляем съедаемое блюдо к уже съеденному для полного анализа
-    total_consumed_with_meal = {
-        'calories': consumed_today.get('calories', 0) + analyzed_meal.get('total_calories', 0),
-        'protein': consumed_today.get('protein', 0) + analyzed_meal.get('total_protein', 0),
-        'fat': consumed_today.get('fat', 0) + analyzed_meal.get('total_fat', 0),
-        'carbohydrates': consumed_today.get('carbohydrates', 0) + analyzed_meal.get('total_carbohydrates', 0),
+    # Вычисляем остатки (дельта) для каждого макронутриента
+    def get_remaining(nutrient: str):
+        target = user_targets.get(f"target_{nutrient}", 0)
+        actual = consumed_today.get(nutrient, 0)
+        return max(0, round(target - actual))
+
+    remaining = {
+        "calories": get_remaining("calories"),
+        "protein": get_remaining("protein"),
+        "fat": get_remaining("fat"),
+        "carbohydrates": get_remaining("carbohydrates")
     }
 
+    # Формирование контекста
+    context = {
+        "user_profile": {
+            "gender": user.gender,
+            "age": (date.today().year - user.date_of_birth.year) if user.date_of_birth else None,
+            "height_cm": user.height_cm,
+            "weight_kg": latest_weight_kg,
+            "goal": user.goal,
+        },
+        "daily_stats": {
+            "time_now": now.strftime("%Y-%m-%d %H:%M"),
+            "targets": user_targets,
+            "already_consumed": consumed_today
+        },
+        "proposed_meal": analyzed_meal,
+        "progress_assessment": {
+            "remaining_macros": remaining, # Теперь здесь полный расклад по БЖУ
+            "danger_status": False,
+            "probability_of_success": "ВЫСОКИЙ"
+        },
+        "meta": {"monitoring_window": "05:00-23:50"}
+    }
+
+    # Подтягиваем оценку опасности из существующей логики
     progress_metrics = calculate_progress_lab_score(
         target=user_targets,
-        actual=total_consumed_with_meal,
-        current_dt=current_time
+        actual=consumed_today,
+        current_dt=now
     )
+    context["progress_assessment"]["danger_status"] = progress_metrics.get("danger_status")
+    context["progress_assessment"]["probability_of_success"] = progress_metrics.get("probability_of_success")
 
-    # Добавляем ai_model к user_targets, если он есть у пользователя
-    # user_targets['ai_model'] = user.ai_model
-
-    return {
-        "user_targets": user_targets,
-        "consumed_today": consumed_today,
-        "analyzed_meal": analyzed_meal,
-        "current_time": current_time,
-        "progress_metrics": progress_metrics
-    }
-
-
-async def get_ai_coach_advice(ai_context: Dict) -> (str, str):
-    """
-    Генерирует персональный совет от AI-коуча на основе полного контекста дня.
-    Возвращает кортеж (совет, использованная_модель).
-    """
-    # Extract data from context
-    user_targets = ai_context["user_targets"]
-    consumed_today = ai_context["consumed_today"]
-    analyzed_meal = ai_context["analyzed_meal"]
-    current_time = ai_context["current_time"]
-    progress_metrics = ai_context["progress_metrics"]
-
-    model_id_to_use = user_targets.get('ai_model') or (settings.AI_CHAT_MODELS[0] if settings.AI_CHAT_MODELS else "google/gemini-flash-1.5")
-    print(f"--- AI Coach использует модель: {model_id_to_use} ---")
-
-    time_str = current_time.strftime("%H:%M")
-    target_delta = progress_metrics.get("target_delta", {})
-
-    prompt = f"""
-    Ты — элитный нутрициолог-коуч. Твой стиль — прямой, честный и мотивирующий. Ты не боишься говорить правду, но всегда делаешь это, чтобы помочь пользователю достичь цели.
-
-    ### Полный контекст твоего дня:
-    - **Время:** {time_str}
-    - **Твои дневные цели:** Калории: {user_targets.get('calories', 0)}, Белки: {user_targets.get('protein', 0)}г, Жиры: {user_targets.get('fat', 0)}г, Углеводы: {user_targets.get('carbohydrates', 0)}г.
-    - **Уже съедено сегодня:** Калории: {round(consumed_today.get('calories', 0))}, Белки: {round(consumed_today.get('protein', 0))}г, Жиры: {round(consumed_today.get('fat', 0))}г, Углеводы: {round(consumed_today.get('carbohydrates', 0))}г.
-    - **Ты собираешься съесть:** "{analyzed_meal.get('food_name', 'неизвестное блюдо')}" (Калории: {analyzed_meal.get('total_calories', 0)}, Б: {analyzed_meal.get('total_protein', 0)}г, Ж: {analyzed_meal.get('total_fat', 0)}г, У: {analyzed_meal.get('total_carbohydrates', 0)}г).
-
-    ### Анализ твоего прогресса (с учетом этого блюда):
-    - **Общий балл дня:** {progress_metrics.get('daily_score', 'N/A')} из 100.
-    - **Вероятность успеха:** {progress_metrics.get('probability_of_success', 'N/A')}.
-    - **Остаток до цели:** Белки: {target_delta.get('protein', 0)}г, Жиры: {target_delta.get('fat', 0)}г, Углеводы: {target_delta.get('carbohydrates', 0)}г.
-    - **Статус опасности:** {'Да, есть риск провала' if progress_metrics.get('danger_status') else 'Нет, все под контролем'}.
-
-    ### Твоя задача (отвечай в стиле "ты", 3-4 предложения):
-    1.  **Начни с главного — с вердикта.** Основываясь на "Анализе прогресса", скажи, стоит ли есть это блюдо.
-        - *Пример: "Твой балл падает до {progress_metrics.get('daily_score')}, а вероятность успеха становится низкой. Так что нет, это блюдо сейчас — плохая идея."*
-    2.  **Объясни "почему" на цифрах.** Кратко и по делу, почему твой вердикт именно такой.
-        - *Пример: "У тебя в остатке всего {target_delta.get('fat', 0)}г жиров, а это блюдо содержит {analyzed_meal.get('total_fat', 0)}г. Ты уйдешь в критический перебор."*
-    3.  **Дай один, самый важный совет.** Что делать вместо этого? Или как исправить ситуацию, если блюдо уже съедено?
-        - *Пример: "Замени его на куриную грудку на гриле. Тебе критически не хватает {target_delta.get('protein', 0)}г белка, и это лучший способ его добрать без лишнего жира."*
-    """
-
-    try:
-        open_router_client = AsyncOpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=settings.OPEN_ROUTER_API_KEY,
-        )
-        chat_completion = await open_router_client.chat.completions.create(
-            model=model_id_to_use,
-            messages=[
-                {"role": "system", "content": "Ты — элитный нутрициолог-коуч. Твой стиль — прямой, честный и мотивирующий. Отвечай в стиле 'ты'."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=300,
-        )
-        return chat_completion.choices[0].message.content, model_id_to_use
-    except Exception as e:
-        print(f"AI Coach Error using model {model_id_to_use}: {e}")
-        return "Не удалось получить совет от AI. Попробуйте позже.", model_id_to_use
+    return context
 
 
 def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float], latest_body_fat_percentage: Optional[float]):
