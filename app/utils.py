@@ -215,7 +215,8 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     
     pace_recommendation = {
         "text_advice": smart_advice,
-        "macros_pace": macros_pace
+        "macros_pace": macros_pace,
+        "formatted_time": now.strftime("%H:%M")
     }
     # --- Конец нового блока ---
 
@@ -228,7 +229,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
             "nutrient_statuses": {"calories": "OK", "protein": "OK", "fat": "OK", "carbohydrates": "OK"},
             "probability_of_success": "ВЫСОКИЙ",
             "danger_status": False,
-            "pace_recommendation": pace_recommendation, # Добавляем сюда
+            "pace_recommendation": pace_recommendation,
         }
 
     total_score = 0.0
@@ -314,5 +315,5 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         "nutrient_statuses": nutrient_statuses,
         "probability_of_success": probability_of_success,
         "danger_status": danger_status,
-        "pace_recommendation": pace_recommendation, # Добавляем сюда
+        "pace_recommendation": pace_recommendation,
     }

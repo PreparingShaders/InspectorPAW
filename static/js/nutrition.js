@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- НОВАЯ ЛОГИКА: ОБНОВЛЕНИЕ БЛОКА "АНАЛИЗ ДНЯ" ---
+    // --- ОБНОВЛЕНИЕ БЛОКА "АНАЛИЗ ДНЯ" ---
     function updateProgressLabSummary(summary) {
         const defaultContent = document.getElementById('summary-content-default');
         const gamifiedContent = document.getElementById('summary-content-gamified');
@@ -155,12 +155,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const titleEl = document.getElementById('summary-title');
 
         if (summary && summary.pace_recommendation) {
-            const { text_advice, macros_pace } = summary.pace_recommendation;
+            const { text_advice, macros_pace, formatted_time } = summary.pace_recommendation;
 
+            titleEl.textContent = `Цель на ${formatted_time}`;
             document.getElementById('pace-advice-text').textContent = text_advice;
 
             const barsContainer = document.getElementById('pace-bars-container');
-            barsContainer.innerHTML = ''; // Очищаем контейнер
+            barsContainer.innerHTML = '';
 
             const nutrientConfig = {
                 calories: { label: 'Ккал', color: 'var(--color-amber)' },
@@ -174,18 +175,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!pace) continue;
 
                 const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
-                const barHeight = Math.min(percentage, 110); // Ограничиваем высоту
+                const barHeight = Math.min(percentage, 110);
+
+                let barColor = nutrientConfig[key].color;
+                let showPlus = false;
+
+                if (percentage > 100) {
+                    if (key === 'protein') {
+                        barColor = '#22c55e'; // Зеленый для перебора белка
+                        showPlus = true;
+                    } else {
+                        barColor = '#e11d48'; // Красный для перебора остальных
+                    }
+                }
 
                 const barWrapper = document.createElement('div');
-                barWrapper.className = 'flex flex-col items-center w-1/4';
+                barWrapper.className = 'flex flex-col items-center w-1/4 relative';
+
+                if (showPlus) {
+                    const plusIcon = document.createElement('span');
+                    plusIcon.className = 'absolute -top-4 text-green-400 font-bold text-lg';
+                    plusIcon.textContent = '+';
+                    barWrapper.appendChild(plusIcon);
+                }
 
                 const barBg = document.createElement('div');
-                barBg.className = 'pace-bar-bg w-8 h-16 flex items-end';
+                barBg.className = 'pace-bar-bg w-8 h-12 flex items-end';
 
                 const barFill = document.createElement('div');
                 barFill.className = 'pace-bar-fill w-full';
                 barFill.style.height = `${barHeight}%`;
-                barFill.style.backgroundColor = nutrientConfig[key].color;
+                barFill.style.backgroundColor = barColor;
 
                 const label = document.createElement('p');
                 label.className = 'text-xs font-semibold text-gray-400 mt-1';
@@ -197,7 +217,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 barsContainer.appendChild(barWrapper);
             }
 
-            titleEl.textContent = '🎯 Цель на сейчас';
             defaultContent.classList.add('hidden');
             gamifiedContent.classList.remove('hidden');
 
