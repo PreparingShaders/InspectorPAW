@@ -31,11 +31,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         Object.values(steps).forEach(step => {
             if (step) {
                 step.classList.remove('active');
-                step.classList.add('hidden'); // Убедимся, что все неактивные шаги скрыты
+                step.classList.add('hidden');
             }
         });
         if (steps[stepNumber]) {
-            steps[stepNumber].classList.remove('hidden'); // Показываем активный шаг
+            steps[stepNumber].classList.remove('hidden');
             steps[stepNumber].classList.add('active');
         }
     }
@@ -58,24 +58,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         goToStep(1);
     }
 
-    // --- НОВАЯ ЛОГИКА: ДВУХЭТАПНЫЙ АНАЛИЗ ---
-
-    // 1. При выборе фото, меняем UI
+    // --- Логика анализа ---
     mealImageInput.addEventListener('change', () => {
-        if (!mealImageInput.files || mealImageInput.files.length === 0) {
-            return;
-        }
+        if (!mealImageInput.files || mealImageInput.files.length === 0) return;
         showImageAddedView();
     });
 
-    // 2. При клике на "Отправить в AI", запускаем анализ
     sendToAiBtn.addEventListener('click', async () => {
         if (!mealImageInput.files || mealImageInput.files.length === 0) {
             alert('Сначала выберите фото.');
             return;
         }
 
-        goToStep(2); // Показываем лоадер
+        goToStep(2);
 
         const formData = new FormData();
         formData.append('file', mealImageInput.files[0]);
@@ -84,9 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const aiModel = localStorage.getItem('aiHubCurrentModel');
-        if (aiModel) {
-            formData.append('ai_model', aiModel);
-        }
+        if (aiModel) formData.append('ai_model', aiModel);
 
         try {
             const res = await fetch('/analyze-meal/', {
@@ -102,7 +95,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const result = await res.json();
 
-            // Заполняем данными Шаг 3
             aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'Vision'})`;
             aiCoachAdvice.textContent = result.ai_coach_advice || 'Приятного аппетита!';
             currentFoodName = result.ai_response_text || 'Прием пищи';
@@ -115,11 +107,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             for (const [id, val] of Object.entries(fields)) {
-                const el = document.getElementById(id);
-                if (el) el.value = Math.round(val || 0);
+                document.getElementById(id).value = Math.round(val || 0);
             }
 
-            goToStep(3); // Переходим на шаг подтверждения
+            goToStep(3);
 
         } catch (err) {
             console.error(err);
@@ -131,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- Сохранение результата (без изменений) ---
+    // --- Сохранение результата ---
     confirmForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const mealData = {
@@ -156,15 +147,69 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- Функции отрисовки (без изменений) ---
+    // --- НОВАЯ ЛОГИКА: ОБНОВЛЕНИЕ БЛОКА "АНАЛИЗ ДНЯ" ---
     function updateProgressLabSummary(summary) {
-        if (!summary) return;
-        const titleEl = document.getElementById('summary-title');
+        const defaultContent = document.getElementById('summary-content-default');
+        const gamifiedContent = document.getElementById('summary-content-gamified');
         const adviceEl = document.getElementById('summary-advice');
-        if (titleEl) titleEl.textContent = summary.status_title || 'Анализ дня';
-        if (adviceEl) adviceEl.textContent = summary.smart_advice || 'Нет данных для анализа.';
+        const titleEl = document.getElementById('summary-title');
+
+        if (summary && summary.pace_recommendation) {
+            const { text_advice, macros_pace } = summary.pace_recommendation;
+
+            document.getElementById('pace-advice-text').textContent = text_advice;
+
+            const barsContainer = document.getElementById('pace-bars-container');
+            barsContainer.innerHTML = ''; // Очищаем контейнер
+
+            const nutrientConfig = {
+                calories: { label: 'Ккал', color: 'var(--color-amber)' },
+                protein: { label: 'Белки', color: 'var(--color-protein-white)' },
+                fat: { label: 'Жиры', color: 'var(--color-golden-orange)' },
+                carbohydrates: { label: 'Угли', color: 'var(--color-muted-teal)' }
+            };
+
+            for (const key in nutrientConfig) {
+                const pace = macros_pace[key];
+                if (!pace) continue;
+
+                const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
+                const barHeight = Math.min(percentage, 110); // Ограничиваем высоту
+
+                const barWrapper = document.createElement('div');
+                barWrapper.className = 'flex flex-col items-center w-1/4';
+
+                const barBg = document.createElement('div');
+                barBg.className = 'pace-bar-bg w-8 h-16 flex items-end';
+
+                const barFill = document.createElement('div');
+                barFill.className = 'pace-bar-fill w-full';
+                barFill.style.height = `${barHeight}%`;
+                barFill.style.backgroundColor = nutrientConfig[key].color;
+
+                const label = document.createElement('p');
+                label.className = 'text-xs font-semibold text-gray-400 mt-1';
+                label.textContent = nutrientConfig[key].label;
+
+                barBg.appendChild(barFill);
+                barWrapper.appendChild(barBg);
+                barWrapper.appendChild(label);
+                barsContainer.appendChild(barWrapper);
+            }
+
+            titleEl.textContent = '🎯 Цель на сейчас';
+            defaultContent.classList.add('hidden');
+            gamifiedContent.classList.remove('hidden');
+
+        } else {
+            titleEl.textContent = 'Анализ дня';
+            adviceEl.textContent = (summary && summary.smart_advice) ? summary.smart_advice : 'Нет данных для анализа.';
+            defaultContent.classList.remove('hidden');
+            gamifiedContent.classList.add('hidden');
+        }
     }
 
+    // --- Функции отрисовки (без изменений) ---
     function updateRing(ringId, value, maxValue) {
         const ring = document.getElementById(ringId);
         if (!ring) return;
@@ -296,5 +341,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchAndDisplayAverageStats();
     await fetchAndDisplayMealHistory();
     await fetchScoreGraphData(30);
-    resetWizard(); // Убедимся, что при загрузке страницы всегда начальный вид
+    resetWizard();
 });

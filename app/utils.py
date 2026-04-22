@@ -192,6 +192,33 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     start_h, end_h = 5.0, 23.0
     time_factor = max(0.05, min(1.0, (current_time - start_h) / (end_h - start_h)))
 
+    # --- Новый блок для геймификации ---
+    macros_pace = {}
+    advice_parts = []
+    nutrient_map = {'protein': 'белка', 'fat': 'жиров', 'carbohydrates': 'углеводов', 'calories': 'калорий'}
+
+    for key, name in nutrient_map.items():
+        t_val = target.get(key, 0)
+        a_val = actual.get(key, 0)
+        expected = t_val * time_factor
+        macros_pace[key] = {'actual': a_val, 'expected': expected, 'target': t_val}
+
+        diff = a_val - expected
+        if diff < -10: # Значительный недобор
+            advice_parts.append(f"добрать ~{abs(round(diff))} г {name}")
+        elif diff > 10 and key != 'protein': # Значительный перебор (кроме белка)
+            advice_parts.append(f"у вас перебор {name} на ~{round(diff)} г")
+
+    smart_advice = "Вы отлично идете по плану!"
+    if advice_parts:
+        smart_advice = "Чтобы достичь цели, вам стоит: " + ", ".join(advice_parts) + "."
+    
+    pace_recommendation = {
+        "text_advice": smart_advice,
+        "macros_pace": macros_pace
+    }
+    # --- Конец нового блока ---
+
     if not any(actual.values()):
         return {
             "daily_score": 0, "status_color": "#5A6978",
@@ -201,6 +228,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
             "nutrient_statuses": {"calories": "OK", "protein": "OK", "fat": "OK", "carbohydrates": "OK"},
             "probability_of_success": "ВЫСОКИЙ",
             "danger_status": False,
+            "pace_recommendation": pace_recommendation, # Добавляем сюда
         }
 
     total_score = 0.0
@@ -286,4 +314,5 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         "nutrient_statuses": nutrient_statuses,
         "probability_of_success": probability_of_success,
         "danger_status": danger_status,
+        "pace_recommendation": pace_recommendation, # Добавляем сюда
     }
