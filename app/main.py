@@ -312,13 +312,6 @@ async def analyze_meal(
     }
 
     latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
-    user_targets = utils.calculate_user_targets(
-        current_user,
-        latest_metric.weight_kg if latest_metric else None,
-        latest_metric.body_fat_percentage if latest_metric else None
-    )
-    user_targets['ai_model'] = ai_model
-
     today_stats = crud.get_user_stats_by_period(db, user_id=current_user.id, start_date=date.today(), end_date=date.today())
     consumed_today = {
         "calories": today_stats.total_calories or 0,
@@ -327,12 +320,20 @@ async def analyze_meal(
         "carbohydrates": today_stats.total_carbohydrates or 0
     }
 
-    ai_advice, coach_model_used = await utils.get_ai_coach_advice(
-        user_targets=user_targets,
+    # Готовим единый контекст для AI
+    ai_context = await utils.prepare_ai_context(
+        user=current_user,
         consumed_today=consumed_today,
         analyzed_meal=analyzed_meal_totals,
-        current_time=datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=3)))
+        latest_weight_kg=latest_metric.weight_kg if latest_metric else None,
+        latest_body_fat_percentage=latest_metric.body_fat_percentage if latest_metric else None
     )
+    # Добавляем модель, выбранную пользователем, в контекст
+    if ai_model:
+        ai_context['user_targets']['ai_model'] = ai_model
+
+    # Получаем совет от AI
+    ai_advice, coach_model_used = await utils.get_ai_coach_advice(ai_context)
 
     return schemas.AnalysisResponse(
         suggested_totals=schemas.MealTotals(**analyzed_meal_totals),

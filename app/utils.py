@@ -32,44 +32,85 @@ async def test_model(model_id: str) -> Optional[str]:
         return None
 
 
-# --- AI Coach Function ---
-async def get_ai_coach_advice(
-    user_targets: Dict,
+async def prepare_ai_context(
+    user: models.User,
     consumed_today: Dict,
     analyzed_meal: Dict,
-    current_time: datetime.datetime
-) -> (str, str):
+    latest_weight_kg: Optional[float],
+    latest_body_fat_percentage: Optional[float]
+) -> Dict[str, Any]:
     """
-    Генерирует персональный совет от AI-коуча на основе текущей диеты и нового приема пищи.
+    Собирает все необходимые данные в единый JSON для AI-коуча.
+    """
+    current_time = datetime.datetime.now()
+    user_targets = calculate_user_targets(user, latest_weight_kg, latest_body_fat_percentage)
+
+    # Добавляем съедаемое блюдо к уже съеденному для полного анализа
+    total_consumed_with_meal = {
+        'calories': consumed_today.get('calories', 0) + analyzed_meal.get('total_calories', 0),
+        'protein': consumed_today.get('protein', 0) + analyzed_meal.get('total_protein', 0),
+        'fat': consumed_today.get('fat', 0) + analyzed_meal.get('total_fat', 0),
+        'carbohydrates': consumed_today.get('carbohydrates', 0) + analyzed_meal.get('total_carbohydrates', 0),
+    }
+
+    progress_metrics = calculate_progress_lab_score(
+        target=user_targets,
+        actual=total_consumed_with_meal,
+        current_dt=current_time
+    )
+
+    # Добавляем ai_model к user_targets, если он есть у пользователя
+    # user_targets['ai_model'] = user.ai_model
+
+    return {
+        "user_targets": user_targets,
+        "consumed_today": consumed_today,
+        "analyzed_meal": analyzed_meal,
+        "current_time": current_time,
+        "progress_metrics": progress_metrics
+    }
+
+
+async def get_ai_coach_advice(ai_context: Dict) -> (str, str):
+    """
+    Генерирует персональный совет от AI-коуча на основе полного контекста дня.
     Возвращает кортеж (совет, использованная_модель).
     """
-    # Выбираем лучшую доступную модель из динамического списка
+    # Extract data from context
+    user_targets = ai_context["user_targets"]
+    consumed_today = ai_context["consumed_today"]
+    analyzed_meal = ai_context["analyzed_meal"]
+    current_time = ai_context["current_time"]
+    progress_metrics = ai_context["progress_metrics"]
+
     model_id_to_use = user_targets.get('ai_model') or (settings.AI_CHAT_MODELS[0] if settings.AI_CHAT_MODELS else "google/gemini-flash-1.5")
     print(f"--- AI Coach использует модель: {model_id_to_use} ---")
 
     time_str = current_time.strftime("%H:%M")
+    target_delta = progress_metrics.get("target_delta", {})
 
     prompt = f"""
-    Ты — эксперт-нутрициолог с математическим уклоном и немного дерзким характером. Твоя задача — дать пользователю четкий, основанный на цифрах совет. Говори прямо, как есть.
+    Ты — элитный нутрициолог-коуч. Твой стиль — прямой, честный и мотивирующий. Ты не боишься говорить правду, но всегда делаешь это, чтобы помочь пользователю достичь цели.
 
-    ### Контекст:
-    - Сейчас {time_str}.
-    - Дневные цели пользователя:
-        - Калории: {user_targets.get('calories', 0)}
-        - Белки (P): {user_targets.get('protein', 0)} г
-        - Жиры (F): {user_targets.get('fat', 0)} г
-        - Углеводы (C): {user_targets.get('carbohydrates', 0)} г
-    - Пользователь собирается съесть: **{analyzed_meal.get('food_name', 'неизвестное блюдо')}** (P: {analyzed_meal.get('total_protein', 0)}г, F: {analyzed_meal.get('total_fat', 0)}г, C: {analyzed_meal.get('total_carbohydrates', 0)}г).
-    - Сегодня уже съедено: P: {round(consumed_today.get('protein', 0))}г, F: {round(consumed_today.get('fat', 0))}г, C: {round(consumed_today.get('carbohydrates', 0))}г.
+    ### Полный контекст твоего дня:
+    - **Время:** {time_str}
+    - **Твои дневные цели:** Калории: {user_targets.get('calories', 0)}, Белки: {user_targets.get('protein', 0)}г, Жиры: {user_targets.get('fat', 0)}г, Углеводы: {user_targets.get('carbohydrates', 0)}г.
+    - **Уже съедено сегодня:** Калории: {round(consumed_today.get('calories', 0))}, Белки: {round(consumed_today.get('protein', 0))}г, Жиры: {round(consumed_today.get('fat', 0))}г, Углеводы: {round(consumed_today.get('carbohydrates', 0))}г.
+    - **Ты собираешься съесть:** "{analyzed_meal.get('food_name', 'неизвестное блюдо')}" (Калории: {analyzed_meal.get('total_calories', 0)}, Б: {analyzed_meal.get('total_protein', 0)}г, Ж: {analyzed_meal.get('total_fat', 0)}г, У: {analyzed_meal.get('total_carbohydrates', 0)}г).
 
-    ### Твоя задача (отвечай в стиле "ты"):
-    1.  **Проанализируй тайминг и график.** Сравни текущее потребление с ожидаемым на {time_str}. Объясни, идет ли пользователь с опережением или отставанием по макронутриентам.
-        - *Пример: "Сейчас только {time_str}, а ты уже съел {round(consumed_today.get('fat', 0) + analyzed_meal.get('total_fat', 0))} грамм жиров из твоих {user_targets.get('fat', 0)}. Ты идешь с опережением графика."*
-    2.  **Дай прямой совет по следующему шагу.** Если есть перебор по одному макросу (например, жирам), а по другому недобор (белки), дай конкретную рекомендацию.
-        - *Пример: "У тебя осталось всего {round(user_targets.get('fat', 0) - (consumed_today.get('fat', 0) + analyzed_meal.get('total_fat', 0)))} грамм жиров, но тебе еще надо {round(user_targets.get('protein', 0) - (consumed_today.get('protein', 0) + analyzed_meal.get('total_protein', 0)))} грамм белка. Выбери нежирное мясо или творог, иначе провал миссии, бро."*
-    3.  **Добавь важное напоминание.** Если ты видишь, что в рационе нет овощей или фруктов, напомни о важности клетчатки.
-        - *Пример: "Я заметил у тебя отсутствие клетчатки в течение дня. Если хочешь нормально какать, советую ее добавить."*
-    4.  **Будь кратким (3-4 предложения) и мотивирующим, но строгим.**
+    ### Анализ твоего прогресса (с учетом этого блюда):
+    - **Общий балл дня:** {progress_metrics.get('daily_score', 'N/A')} из 100.
+    - **Вероятность успеха:** {progress_metrics.get('probability_of_success', 'N/A')}.
+    - **Остаток до цели:** Белки: {target_delta.get('protein', 0)}г, Жиры: {target_delta.get('fat', 0)}г, Углеводы: {target_delta.get('carbohydrates', 0)}г.
+    - **Статус опасности:** {'Да, есть риск провала' if progress_metrics.get('danger_status') else 'Нет, все под контролем'}.
+
+    ### Твоя задача (отвечай в стиле "ты", 3-4 предложения):
+    1.  **Начни с главного — с вердикта.** Основываясь на "Анализе прогресса", скажи, стоит ли есть это блюдо.
+        - *Пример: "Твой балл падает до {progress_metrics.get('daily_score')}, а вероятность успеха становится низкой. Так что нет, это блюдо сейчас — плохая идея."*
+    2.  **Объясни "почему" на цифрах.** Кратко и по делу, почему твой вердикт именно такой.
+        - *Пример: "У тебя в остатке всего {target_delta.get('fat', 0)}г жиров, а это блюдо содержит {analyzed_meal.get('total_fat', 0)}г. Ты уйдешь в критический перебор."*
+    3.  **Дай один, самый важный совет.** Что делать вместо этого? Или как исправить ситуацию, если блюдо уже съедено?
+        - *Пример: "Замени его на куриную грудку на гриле. Тебе критически не хватает {target_delta.get('protein', 0)}г белка, и это лучший способ его добрать без лишнего жира."*
     """
 
     try:
@@ -80,10 +121,10 @@ async def get_ai_coach_advice(
         chat_completion = await open_router_client.chat.completions.create(
             model=model_id_to_use,
             messages=[
-                {"role": "system", "content": "Ты — эксперт-нутрициолог с математическим уклоном и немного дерзким характером. Отвечай в стиле 'ты'."},
+                {"role": "system", "content": "Ты — элитный нутрициолог-коуч. Твой стиль — прямой, честный и мотивирующий. Отвечай в стиле 'ты'."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=250,
+            max_tokens=300,
         )
         return chat_completion.choices[0].message.content, model_id_to_use
     except Exception as e:
@@ -185,13 +226,11 @@ def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float) -> Dic
     }
 
 def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None) -> Dict[str, Any]:
-    # --- Existing initial calculations ---
     now = current_dt if current_dt else datetime.datetime.now()
     current_time = now.hour + now.minute / 60
     start_h, end_h = 5.0, 23.0
     time_factor = max(0.05, min(1.0, (current_time - start_h) / (end_h - start_h)))
 
-    # --- Handle empty data case ---
     if not any(actual.values()):
         return {
             "daily_score": 0, "status_color": "#5A6978",
@@ -201,11 +240,8 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
             "nutrient_statuses": {"calories": "OK", "protein": "OK", "fat": "OK", "carbohydrates": "OK"},
             "probability_of_success": "ВЫСОКИЙ",
             "danger_status": False,
-            "status_title": "Начните день",
-            "smart_advice": "Добавьте свой первый прием пищи, чтобы начать анализ."
         }
 
-    # --- Existing score calculation logic ---
     total_score = 0.0
     weights = {'calories': 40, 'protein': 30, 'fat': 15, 'carbohydrates': 15}
     tolerance_threshold = 0.3
@@ -242,9 +278,6 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     elif 80 <= final_score <= 94: color = "#f59e0b"
     tooltips = get_nutrient_tooltips(target, actual, time_factor)
 
-    # --- NEW LOGIC STARTS HERE ---
-
-    # 1. Reverse Engineering
     target_delta = {
         key: max(0, round(target.get(key, 0) - actual.get(key, 0)))
         for key in ['calories', 'protein', 'fat', 'carbohydrates']
@@ -265,7 +298,6 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         else:
             nutrient_statuses[key] = "OK"
 
-    # 2. Predictive Analysis
     danger_status = False
     if nutrient_statuses['fat'] == "CRITICAL_LIMIT" or nutrient_statuses['calories'] == "CRITICAL_LIMIT":
         danger_status = True
@@ -283,32 +315,6 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     elif target_delta['fat'] < 10 and remaining_time_factor > 0.25:
         probability_of_success = "СРЕДНИЙ"
 
-    # 3. Contextual Verdict (REWRITTEN)
-    status_title = "Анализ дня"
-    smart_advice = ""
-
-    # --- Sentence Constructor ---
-    if nutrient_statuses['calories'] == 'CRITICAL_LIMIT':
-        status_title = "Лимит превышен"
-        smart_advice = "Лимит калорий на сегодня исчерпан. До конца дня рекомендуется пить только воду или зеленый чай."
-    elif nutrient_statuses['fat'] == 'CRITICAL_LIMIT':
-        status_title = "Критический перебор жиров"
-        smart_advice = f"Ты превысил лимит жиров. Чтобы улучшить балл, до конца дня полностью исключи масла и орехи, фокусируясь на чистом белке. Осталось добрать {target_delta['protein']}г белка."
-    elif danger_status:
-        status_title = "Риск провала"
-        time_left_phrase = "уже" if time_factor > 0.5 else "только"
-        smart_advice = f"Слушай, сейчас {time_left_phrase} {now.strftime('%H:%M')}, а ты потратил почти все жиры. У тебя серьезные проблемы с балансом. Срочно удели внимание нежирному белку, которого осталось {target_delta['protein']}г."
-    elif target_delta['protein'] > target.get('protein', 1) * 0.6 and time_factor > 0.6:
-        status_title = "Критический недобор белка"
-        smart_advice = f"Времени осталось немного, а тебе еще нужно набрать {target_delta['protein']}г белка. Это приоритет №1, чтобы улучшить результат. Сфокусируйся на этом."
-    elif final_score > 95:
-        status_title = "Идеальный темп"
-        smart_advice = f"Ты уверенно движешься к цели. Осталось набрать {target_delta['protein']}г белка и {target_delta['carbohydrates']}г углеводов, время еще есть. Так держать!"
-    else:
-        status_title = "Все по плану"
-        smart_advice = f"Ты в графике. Чтобы достичь цели, тебе осталось {target_delta['calories']} ккал, из которых {target_delta['protein']}г белка — твой главный приоритет."
-
-    # --- Final return statement ---
     return {
         "daily_score": final_score,
         "status_color": color,
@@ -319,6 +325,4 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         "nutrient_statuses": nutrient_statuses,
         "probability_of_success": probability_of_success,
         "danger_status": danger_status,
-        "status_title": status_title,
-        "smart_advice": smart_advice
     }
