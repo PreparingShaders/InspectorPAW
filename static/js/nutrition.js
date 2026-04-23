@@ -148,81 +148,123 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- ОБНОВЛЕНИЕ БЛОКА "АНАЛИЗ ДНЯ" ---
-    function updateProgressLabSummary(summary) {
+    function updateProgressLabSummary(summary, latestDayData) {
         const defaultContent = document.getElementById('summary-content-default');
         const gamifiedContent = document.getElementById('summary-content-gamified');
         const adviceEl = document.getElementById('summary-advice');
         const titleEl = document.getElementById('summary-title');
+        const scoreRingContainer = document.getElementById('score-ring-container');
+        const summaryHeader = document.getElementById('summary-header');
 
         if (summary && summary.pace_recommendation) {
+            // --- GAMIFIED VIEW ---
             const { text_advice, macros_pace, formatted_time } = summary.pace_recommendation;
 
-            titleEl.textContent = `Цель на ${formatted_time}`;
-            document.getElementById('pace-advice-text').textContent = text_advice;
+            // 1. Configure header for gamified view
+            summaryHeader.classList.add('justify-start');
+            titleEl.textContent = `Статус на ${formatted_time}`;
+            titleEl.classList.add('flex-grow');
 
+            // 2. Add Score ring
+            if (latestDayData && scoreRingContainer) {
+                scoreRingContainer.style.display = 'block';
+                const scoreRingId = 'summary-score-ring';
+                const scoreValueId = 'summary-score-value';
+                const score = latestDayData.daily_score || 0;
+                const scoreColor = latestDayData.status_color || '#F0F0F0';
+
+                scoreRingContainer.innerHTML = `
+                    <div class="text-center flex flex-col items-center justify-center h-full">
+                        <div class="ring-container w-12 aspect-square relative" style="box-shadow: 0 0 12px ${scoreColor}; border-radius: 50%;">
+                            <svg id="${scoreRingId}" class="progress-ring-svg" viewBox="0 0 120 120">
+                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${scoreColor};" />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span id="${scoreValueId}" class="font-bold text-base" style="color: ${scoreColor};">${score}</span>
+                            </div>
+                        </div>
+                        <p class="text-xs font-semibold text-gray-400 mt-1">Score</p>
+                    </div>
+                `;
+                updateRing(scoreRingId, score, 100);
+                const scoreValueSpan = document.getElementById(scoreValueId);
+                if (scoreValueSpan) scoreValueSpan.style.color = scoreColor;
+            } else if (scoreRingContainer) {
+                scoreRingContainer.style.display = 'none';
+            }
+
+            // 3. Nutrient rings
+            document.getElementById('pace-advice-text').textContent = text_advice;
             const barsContainer = document.getElementById('pace-bars-container');
             barsContainer.innerHTML = '';
+            barsContainer.className = 'flex justify-around items-center h-auto mt-4';
 
             const nutrientConfig = {
-                calories: { label: 'Ккал', color: 'var(--color-amber)' },
-                protein: { label: 'Белки', color: 'var(--color-protein-white)' },
-                fat: { label: 'Жиры', color: 'var(--color-golden-orange)' },
-                carbohydrates: { label: 'Угли', color: 'var(--color-muted-teal)' }
+                calories: { label: 'Ккал', color: 'var(--color-amber)', neon: 'neon-glow-amber' },
+                protein: { label: 'Б', color: 'var(--color-protein-white)', neon: 'neon-glow-protein-white' },
+                fat: { label: 'Ж', color: 'var(--color-golden-orange)', neon: 'neon-glow-golden-orange' },
+                carbohydrates: { label: 'У', color: 'var(--color-muted-teal)', neon: 'neon-glow-muted-teal' }
             };
 
             for (const key in nutrientConfig) {
                 const pace = macros_pace[key];
                 if (!pace) continue;
 
-                const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
-                const barHeight = Math.min(percentage, 110);
+                const config = nutrientConfig[key];
+                const ringId = `pace-${key}-ring`;
+                const valueId = `pace-${key}-value`;
 
-                let barColor = nutrientConfig[key].color;
-                let showPlus = false;
+                const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
+                let ringColor = config.color;
 
                 if (percentage > 100) {
                     if (key === 'protein') {
-                        barColor = '#22c55e'; // Зеленый для перебора белка
-                        showPlus = true;
+                        ringColor = '#22c55e';
                     } else {
-                        barColor = '#e11d48'; // Красный для перебора остальных
+                        ringColor = '#e11d48';
                     }
                 }
 
-                const barWrapper = document.createElement('div');
-                barWrapper.className = 'flex flex-col items-center w-1/4 relative';
+                const ringWrapper = document.createElement('div');
+                ringWrapper.className = 'text-center flex flex-col items-center space-y-1';
+                ringWrapper.innerHTML = `
+                    <div class="ring-container w-12 aspect-square ${config.neon} relative">
+                        <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
+                            <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${ringColor};" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="${valueId}" class="font-bold text-base" style="color: ${ringColor};">0</span>
+                        </div>
+                    </div>
+                    <p class="text-xs font-semibold text-gray-400 mt-1">${config.label}</p>
+                `;
 
-                if (showPlus) {
-                    const plusIcon = document.createElement('span');
-                    plusIcon.className = 'absolute -top-4 text-green-400 font-bold text-lg';
-                    plusIcon.textContent = '+';
-                    barWrapper.appendChild(plusIcon);
+                barsContainer.appendChild(ringWrapper);
+                updateRing(ringId, pace.actual, pace.expected);
+                const ringBar = document.querySelector(`#${ringId} .progress-ring-bar`);
+                if(ringBar) ringBar.style.stroke = ringColor;
+                const valueSpan = document.getElementById(valueId);
+                if(valueSpan) {
+                    valueSpan.style.color = ringColor;
+                    valueSpan.textContent = Math.round(pace.actual);
                 }
-
-                const barBg = document.createElement('div');
-                barBg.className = 'pace-bar-bg w-8 h-12 flex items-end';
-
-                const barFill = document.createElement('div');
-                barFill.className = 'pace-bar-fill w-full';
-                barFill.style.height = `${barHeight}%`;
-                barFill.style.backgroundColor = barColor;
-
-                const label = document.createElement('p');
-                label.className = 'text-xs font-semibold text-gray-400 mt-1';
-                label.textContent = nutrientConfig[key].label;
-
-                barBg.appendChild(barFill);
-                barWrapper.appendChild(barBg);
-                barWrapper.appendChild(label);
-                barsContainer.appendChild(barWrapper);
             }
 
+            // 4. Show/Hide content blocks
             defaultContent.classList.add('hidden');
             gamifiedContent.classList.remove('hidden');
 
         } else {
+            // --- DEFAULT VIEW ---
+            if (scoreRingContainer) scoreRingContainer.style.display = 'none';
+            summaryHeader.classList.remove('justify-start');
             titleEl.textContent = 'Анализ дня';
+            titleEl.classList.remove('flex-grow');
+
             adviceEl.textContent = (summary && summary.smart_advice) ? summary.smart_advice : 'Нет данных для анализа.';
+
             defaultContent.classList.remove('hidden');
             gamifiedContent.classList.add('hidden');
         }
@@ -319,11 +361,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const res = await fetch(`/users/me/stats/summary-by-period?days=${days}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
-            if (data.progress_lab_summary) {
-                updateProgressLabSummary(data.progress_lab_summary);
-            }
+
+            // Sort to find the latest day for the summary score
+            const sortedForSummary = data.daily_breakdown.length > 0 ? [...data.daily_breakdown].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+            const latestDay = sortedForSummary.length > 0 ? sortedForSummary[0] : null;
+
+            // Call updateProgressLabSummary with the latest day's data.
+            // This is called regardless of whether progress_lab_summary exists to handle UI reset.
+            updateProgressLabSummary(data.progress_lab_summary, latestDay);
+
             const container = document.getElementById('score-graph-container');
             container.innerHTML = '';
+            // Sort ascending for graph display
             const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
             sortedData.forEach(day => {
                 const col = document.createElement('div');
