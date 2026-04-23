@@ -253,3 +253,33 @@ input[type=range].styled-slider::-moz-range-thumb {
 .home-label-text {
     font-size: 0.675rem; /* Уменьшено примерно на 10% от 0.75rem */
 }
+
+/* --- Оптимизация для сенсорных устройств --- */
+/* Отключаем ресурсоемкую анимацию свечения на устройствах без ховера (планшеты, телефоны) */
+@media (hover: none) {
+    .neon-glow-amber,
+    .neon-glow-protein-white,
+    .neon-glow-golden-orange,
+    .neon-glow-muted-teal,
+    .neon-glow-pantone-gray,
+    .neon-glow-over-limit-red {
+        animation: none;
+    }
+
+    /* Применяем статичную тень, чтобы сохранить эффект свечения */
+    .neon-glow-amber { box-shadow: 0 0 15px 2px var(--color-amber); }
+    .neon-glow-protein-white { box-shadow: 0 0 15px 2px var(--color-protein-white); }
+    .neon-glow-golden-orange { box-shadow: 0 0 15px 2px var(--color-golden-orange); }
+    .neon-glow-muted-teal { box-shadow: 0 0 15px 2px var(--color-muted-teal); }
+    .neon-glow-pantone-gray { box-shadow: 0 0 15px 2px var(--color-pantone-gray); }
+    .neon-glow-over-limit-red { box-shadow: 0 0 15px 2px var(--color-over-limit-red); }
+
+    .overflow-glow-red {
+        animation: none !important;
+        box-shadow: 0 0 18px 3px var(--color-over-limit-red), 0 0 30px 3px rgba(255,107,107,0.4) !important;
+    }
+    .overflow-glow-green {
+        animation: none !important;
+        box-shadow: 0 0 18px 3px var(--color-over-limit-green), 0 0 30px 3px rgba(80,200,120,0.4) !important;
+    }
+}

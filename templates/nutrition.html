@@ -23,22 +23,14 @@
 
         /* --- СТИЛЬ ДЛЯ ПЕРЕЛИВАЮЩЕГОСЯ СВЕЧЕНИЯ --- */
         @keyframes animated-glow {
-            0% {
-                background-color: rgba(75, 0, 130, 0.4); /* Indigo */
-                box-shadow: 0 0 10px rgba(75, 0, 130, 0.7), 0 0 25px rgba(75, 0, 130, 0.5);
-            }
-            50% {
-                background-color: rgba(0, 0, 255, 0.4); /* Blue */
-                box-shadow: 0 0 15px rgba(0, 0, 255, 0.8), 0 0 35px rgba(0, 0, 255, 0.6);
-            }
-            100% {
-                background-color: rgba(75, 0, 130, 0.4); /* Indigo */
-                box-shadow: 0 0 10px rgba(75, 0, 130, 0.7), 0 0 25px rgba(75, 0, 130, 0.5);
-            }
+            0% { background-color: rgba(75, 0, 130, 0.4); } /* Indigo */
+            50% { background-color: rgba(0, 0, 255, 0.4); } /* Blue */
+            100% { background-color: rgba(75, 0, 130, 0.4); } /* Indigo */
         }
         .ai-animated-glow-button {
             border: 1px solid rgba(138, 43, 226, 0.7);
             animation: animated-glow 4s infinite ease-in-out;
+            box-shadow: 0 0 15px rgba(75, 0, 130, 0.6); /* Добавим статичную тень */
         }
         .slow-spin {
             animation: spin 1s linear infinite;
