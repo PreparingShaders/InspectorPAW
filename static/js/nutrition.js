@@ -154,20 +154,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const adviceEl = document.getElementById('summary-advice');
         const titleEl = document.getElementById('summary-title');
         const scoreRingContainer = document.getElementById('score-ring-container');
-        const summaryHeader = document.getElementById('summary-header');
+        const paceBarsContainer = document.getElementById('pace-bars-container');
 
         if (summary && summary.pace_recommendation) {
             // --- GAMIFIED VIEW ---
             const { text_advice, macros_pace, formatted_time } = summary.pace_recommendation;
 
-            // 1. Configure header for gamified view
-            summaryHeader.classList.add('justify-start');
+            // 1. Update titles
             titleEl.textContent = `Статус на ${formatted_time}`;
-            titleEl.classList.add('flex-grow');
+            document.getElementById('pace-advice-text').textContent = text_advice;
 
-            // 2. Add Score ring
-            if (latestDayData && scoreRingContainer) {
-                scoreRingContainer.style.display = 'block';
+            // 2. Clear previous rings
+            scoreRingContainer.innerHTML = '';
+            paceBarsContainer.innerHTML = '';
+
+            // 3. Add Score ring
+            if (latestDayData) {
                 const scoreRingId = 'summary-score-ring';
                 const scoreValueId = 'summary-score-value';
                 const score = latestDayData.daily_score || 0;
@@ -190,16 +192,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateRing(scoreRingId, score, 100);
                 const scoreValueSpan = document.getElementById(scoreValueId);
                 if (scoreValueSpan) scoreValueSpan.style.color = scoreColor;
-            } else if (scoreRingContainer) {
-                scoreRingContainer.style.display = 'none';
             }
 
-            // 3. Nutrient rings
-            document.getElementById('pace-advice-text').textContent = text_advice;
-            const barsContainer = document.getElementById('pace-bars-container');
-            barsContainer.innerHTML = '';
-            barsContainer.className = 'flex justify-around items-center h-auto mt-4';
-
+            // 4. Nutrient rings
             const nutrientConfig = {
                 calories: { label: 'Ккал', color: 'var(--color-amber)', neon: 'neon-glow-amber' },
                 protein: { label: 'Б', color: 'var(--color-protein-white)', neon: 'neon-glow-protein-white' },
@@ -241,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p class="text-xs font-semibold text-gray-400 mt-1">${config.label}</p>
                 `;
 
-                barsContainer.appendChild(ringWrapper);
+                paceBarsContainer.appendChild(ringWrapper);
                 updateRing(ringId, pace.actual, pace.expected);
                 const ringBar = document.querySelector(`#${ringId} .progress-ring-bar`);
                 if(ringBar) ringBar.style.stroke = ringColor;
@@ -252,19 +247,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            // 4. Show/Hide content blocks
+            // 5. Show/Hide content blocks
             defaultContent.classList.add('hidden');
             gamifiedContent.classList.remove('hidden');
 
         } else {
             // --- DEFAULT VIEW ---
-            if (scoreRingContainer) scoreRingContainer.style.display = 'none';
-            summaryHeader.classList.remove('justify-start');
             titleEl.textContent = 'Анализ дня';
-            titleEl.classList.remove('flex-grow');
-
             adviceEl.textContent = (summary && summary.smart_advice) ? summary.smart_advice : 'Нет данных для анализа.';
-
             defaultContent.classList.remove('hidden');
             gamifiedContent.classList.add('hidden');
         }

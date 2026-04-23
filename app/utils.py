@@ -211,7 +211,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
 
     smart_advice = "Вы отлично идете по плану!"
     if advice_parts:
-        smart_advice = "Чтобы достичь цели, вам стоит: " + ", ".join(advice_parts) + "."
+        smart_advice = "Обстановка: " + ", ".join(advice_parts) + "."
     
     pace_recommendation = {
         "text_advice": smart_advice,

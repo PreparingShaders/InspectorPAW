@@ -99,20 +99,20 @@
                 <div class="flex flex-col h-full justify-start">
 
                     <div id="initial-view" class="flex flex-col h-full justify-start space-y-1">
-                        <div id="progress-lab-summary" class="w-full bg-white/5 border border-white/20 rounded-2xl p-4 flex flex-col min-h-48 neon-glow-pantone-gray">
-                            <div id="summary-header" class="flex items-center justify-start w-full">
-                                <div id="score-ring-container" class="w-16 h-16 mr-4">
-                                    <!-- Score ring will be injected here by JS -->
-                                </div>
-                                <h4 id="summary-title" class="text-white font-bold text-lg text-center flex-grow">Анализ дня</h4>
-                            </div>
+                        <div id="progress-lab-summary" class="w-full bg-white/5 border border-white/20 rounded-2xl p-4 flex flex-col neon-glow-pantone-gray">
+                            <h4 id="summary-title" class="text-white font-bold text-lg text-center">Анализ дня</h4>
                             <div id="summary-content-default" class="w-full flex-grow flex items-center justify-center">
                                 <p id="summary-advice" class="text-sm text-gray-200 leading-relaxed text-center font-medium w-full"></p>
                             </div>
-                            <div id="summary-content-gamified" class="hidden w-full flex-grow flex flex-col justify-around">
-                                <p id="pace-advice-text" class="text-xs text-gray-200 leading-relaxed text-center font-medium w-full px-2 mb-2"></p>
-                                <div id="pace-bars-container" class="flex justify-around items-end h-12 mt-4">
-                                    <!-- Bars will be injected here by JS -->
+                            <div id="summary-content-gamified" class="hidden w-full flex-grow flex flex-col justify-center">
+                                <p id="pace-advice-text" class="text-xs text-gray-200 leading-relaxed text-center font-medium w-full px-2 mb-3"></p>
+                                <div id="all-rings-container" class="flex justify-around items-center w-full">
+                                    <div id="score-ring-container" class="w-1/5">
+                                        <!-- Score ring will be injected here by JS -->
+                                    </div>
+                                    <div id="pace-bars-container" class="flex justify-around items-center w-4/5">
+                                        <!-- Nutrient rings will be injected here by JS -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
