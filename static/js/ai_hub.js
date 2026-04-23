@@ -36,10 +36,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMessages() {
         chatHistory.innerHTML = '';
         messages.forEach(msg => {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('flex', 'w-full');
+
             const bubble = document.createElement('div');
-            bubble.classList.add('chat-bubble', msg.sender);
+            bubble.classList.add('chat-bubble', msg.sender, 'max-w-[80%]'); // Ограничиваем ширину
             bubble.textContent = msg.text;
-            chatHistory.appendChild(bubble);
+
+            if (msg.sender === 'user') {
+                messageWrapper.classList.add('justify-end'); // Выравниваем обертку справа
+            } else {
+                messageWrapper.classList.add('justify-start'); // Выравниваем обертку слева
+            }
+
+            messageWrapper.appendChild(bubble);
+            chatHistory.appendChild(messageWrapper);
         });
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
