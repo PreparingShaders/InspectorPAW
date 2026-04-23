@@ -212,19 +212,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
                 let ringColor = config.color;
+                let glowClass = config.neon;
 
                 if (percentage > 100) {
                     if (key === 'protein') {
                         ringColor = '#22c55e';
+                        glowClass = 'overflow-glow-green';
                     } else {
                         ringColor = '#e11d48';
+                        glowClass = 'overflow-glow-red';
                     }
                 }
 
                 const ringWrapper = document.createElement('div');
                 ringWrapper.className = 'text-center flex flex-col items-center space-y-1';
                 ringWrapper.innerHTML = `
-                    <div class="ring-container w-12 aspect-square ${config.neon} relative">
+                    <div class="ring-container w-12 aspect-square ${glowClass} relative">
                         <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
                             <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
                             <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${ringColor};" />
