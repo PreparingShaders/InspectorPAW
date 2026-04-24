@@ -32,7 +32,7 @@
 </head>
 <body class="h-full flex flex-col">
 
-    <header class="text-center pb-2" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
+    <header class="text-center pb-2 px-4" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
         <h1 class="text-3xl font-extrabold tracking-wider iridescent-text">ProgressLab AI</h1>
         <div class="flex justify-center items-center space-x-2 mt-2">
             <button id="model-selection-button" class="text-xs text-gray-400 border border-gray-600 rounded-full px-3 py-1">
@@ -42,8 +42,8 @@
         </div>
     </header>
 
-    <main class="flex-grow flex flex-col p-4 pb-24 min-h-0">
-        <div id="chat-history" class="flex-grow space-y-4 overflow-y-auto flex flex-col">
+    <main class="flex-grow flex flex-col min-h-0">
+        <div id="chat-history" class="overflow-y-auto flex flex-col gap-4 p-4 pb-40">
             <!-- Сообщения чата будут здесь -->
         </div>
     </main>

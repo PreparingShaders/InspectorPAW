@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (storedHistory) {
             messages = JSON.parse(storedHistory);
             renderMessages();
+            chatHistory.scrollTop = chatHistory.scrollHeight; // Прокрутка вниз при загрузке
         }
     }
 
@@ -33,30 +34,22 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
     }
 
-    function renderMessages(scrollToTop = false) {
+    function renderMessages() {
         chatHistory.innerHTML = '';
         messages.forEach(msg => {
             const bubble = document.createElement('div');
             bubble.classList.add('chat-bubble', msg.sender);
             bubble.textContent = msg.text;
-            chatHistory.appendChild(bubble); // Добавляем в конец, чтобы сохранить порядок
+            chatHistory.appendChild(bubble);
         });
-
-        if (scrollToTop) {
-            chatHistory.scrollTop = 0; // Прокрутка наверх
-        } else {
-            // При загрузке истории или ответе AI, прокручиваем вниз
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        }
     }
 
-    function addMessage(sender, text, scrollToTop = false) {
-        // Новые сообщения добавляются в конец массива
-        messages.push({ sender, text });
-        if (messages.length > MAX_MESSAGES) {
-            messages.shift(); // Удаляем старые из начала
+    function addMessage(sender, text) {
+        if (messages.length >= MAX_MESSAGES) {
+            messages.shift();
         }
-        renderMessages(scrollToTop);
+        messages.push({ sender, text });
+        renderMessages();
         saveHistory();
     }
 
@@ -103,11 +96,21 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleSend() {
         const text = chatInput.value.trim();
         if (text) {
-            // Добавляем сообщение пользователя и прокручиваем наверх
-            addMessage('user', text, true);
+            // 1. Добавляем сообщение пользователя
+            addMessage('user', text);
             chatInput.value = '';
-            // Добавляем временное сообщение AI без прокрутки
+
+            // 2. Находим DOM-элемент этого сообщения (он последний)
+            const userBubble = chatHistory.lastChild;
+
+            // 3. Прокручиваем чат так, чтобы верхняя грань сообщения была у верха контейнера
+            if (userBubble) {
+                userBubble.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            }
+
+            // 4. Добавляем временное сообщение от AI
             addMessage('ai', '...');
+            // После этого прокрутка остается на месте (на сообщении пользователя)
 
             try {
                 const token = localStorage.getItem('accessToken');
@@ -131,8 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const result = await response.json();
                 messages.pop(); // Удаляем "..."
-                // Добавляем ответ AI и прокручиваем вниз, чтобы его было видно
-                addMessage('ai', result.response);
+                addMessage('ai', result.response); // Добавляем реальный ответ
+                // Прокрутка остается на месте, пользователь сам скроллит вниз, чтобы увидеть ответ
 
             } catch (error) {
                 messages.pop(); // Удаляем "..."
