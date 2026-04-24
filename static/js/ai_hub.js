@@ -33,34 +33,30 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
     }
 
-    function renderMessages() {
+    function renderMessages(scrollToTop = false) {
         chatHistory.innerHTML = '';
         messages.forEach(msg => {
-            const messageWrapper = document.createElement('div');
-            messageWrapper.classList.add('flex', 'w-full');
-
             const bubble = document.createElement('div');
-            bubble.classList.add('chat-bubble', msg.sender, 'max-w-[80%]'); // Ограничиваем ширину
+            bubble.classList.add('chat-bubble', msg.sender);
             bubble.textContent = msg.text;
-
-            if (msg.sender === 'user') {
-                messageWrapper.classList.add('justify-end'); // Выравниваем обертку справа
-            } else {
-                messageWrapper.classList.add('justify-start'); // Выравниваем обертку слева
-            }
-
-            messageWrapper.appendChild(bubble);
-            chatHistory.appendChild(messageWrapper);
+            chatHistory.appendChild(bubble); // Добавляем в конец, чтобы сохранить порядок
         });
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+
+        if (scrollToTop) {
+            chatHistory.scrollTop = 0; // Прокрутка наверх
+        } else {
+            // При загрузке истории или ответе AI, прокручиваем вниз
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
     }
 
-    function addMessage(sender, text) {
-        if (messages.length >= MAX_MESSAGES) {
-            messages.shift();
-        }
+    function addMessage(sender, text, scrollToTop = false) {
+        // Новые сообщения добавляются в конец массива
         messages.push({ sender, text });
-        renderMessages();
+        if (messages.length > MAX_MESSAGES) {
+            messages.shift(); // Удаляем старые из начала
+        }
+        renderMessages(scrollToTop);
         saveHistory();
     }
 
@@ -107,8 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleSend() {
         const text = chatInput.value.trim();
         if (text) {
-            addMessage('user', text);
+            // Добавляем сообщение пользователя и прокручиваем наверх
+            addMessage('user', text, true);
             chatInput.value = '';
+            // Добавляем временное сообщение AI без прокрутки
             addMessage('ai', '...');
 
             try {
@@ -132,11 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const result = await response.json();
-                messages.pop();
+                messages.pop(); // Удаляем "..."
+                // Добавляем ответ AI и прокручиваем вниз, чтобы его было видно
                 addMessage('ai', result.response);
 
             } catch (error) {
-                messages.pop();
+                messages.pop(); // Удаляем "..."
                 addMessage('ai', `Ошибка: ${error.message}`);
             }
         }
