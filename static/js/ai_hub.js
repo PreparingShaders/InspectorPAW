@@ -9,48 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentModelDisplay = document.getElementById('current-model-display');
     const refreshModelsButton = document.getElementById('refresh-models-button');
 
-    const MAX_MESSAGES = 10;
-    const CHAT_HISTORY_KEY = 'aiHubChatHistory';
     const CURRENT_MODEL_KEY = 'aiHubCurrentModel';
 
-    let messages = [];
     let currentModel = localStorage.getItem(CURRENT_MODEL_KEY) || 'google/gemini-flash-1.5';
-    let cachedModels = []; // Кэш для моделей
+    let cachedModels = [];
 
     function updateCurrentModelDisplay() {
         currentModelDisplay.textContent = `Модель: ${currentModel}`;
     }
 
-    function loadHistory() {
-        const storedHistory = sessionStorage.getItem(CHAT_HISTORY_KEY);
-        if (storedHistory) {
-            messages = JSON.parse(storedHistory);
-            renderMessages();
-            chatHistory.scrollTop = chatHistory.scrollHeight; // Прокрутка вниз при загрузке
-        }
-    }
-
-    function saveHistory() {
-        sessionStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
-    }
-
-    function renderMessages() {
-        chatHistory.innerHTML = '';
-        messages.forEach(msg => {
-            const bubble = document.createElement('div');
-            bubble.classList.add('chat-bubble', msg.sender);
-            bubble.textContent = msg.text;
-            chatHistory.appendChild(bubble);
-        });
-    }
-
-    function addMessage(sender, text) {
-        if (messages.length >= MAX_MESSAGES) {
-            messages.shift();
-        }
-        messages.push({ sender, text });
-        renderMessages();
-        saveHistory();
+    // Функция просто создает и возвращает DOM-элемент сообщения
+    function createBubble(sender, text) {
+        const bubble = document.createElement('div');
+        bubble.classList.add('chat-bubble', sender);
+        bubble.innerHTML = text.replace(/\n/g, '<br>');
+        return bubble;
     }
 
     function displayModels(models) {
@@ -69,6 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem(CURRENT_MODEL_KEY, currentModel);
                 updateCurrentModelDisplay();
                 modelSelectionModal.classList.add('hidden');
+                // При смене модели просто очищаем видимый чат
+                chatHistory.innerHTML = '';
             });
             modelListContainer.appendChild(button);
         });
@@ -86,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             cachedModels = await response.json();
             displayModels(cachedModels);
-
         } catch (error) {
             console.error('Failed to fetch models:', error);
             modelListContainer.innerHTML = '<p class="text-red-500">Не удалось загрузить модели.</p>';
@@ -96,34 +70,28 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleSend() {
         const text = chatInput.value.trim();
         if (text) {
-            // 1. Добавляем сообщение пользователя
-            addMessage('user', text);
+            const userPrompt = text;
             chatInput.value = '';
 
-            // 2. Находим DOM-элемент этого сообщения (он последний)
-            const userBubble = chatHistory.lastChild;
+            // 1. ПОЛНОСТЬЮ ОЧИЩАЕМ видимый чат
+            chatHistory.innerHTML = '';
 
-            // 3. Прокручиваем чат так, чтобы верхняя грань сообщения была у верха контейнера
-            if (userBubble) {
-                userBubble.scrollIntoView({ block: 'start', behavior: 'smooth' });
-            }
-
-            // 4. Добавляем временное сообщение от AI
-            addMessage('ai', '...');
-            // После этого прокрутка остается на месте (на сообщении пользователя)
+            // 2. Отображаем ТОЛЬКО текущий вопрос и плейсхолдер ответа
+            const userBubble = createBubble('user', userPrompt);
+            const aiBubble = createBubble('ai', '...');
+            chatHistory.appendChild(userBubble);
+            chatHistory.appendChild(aiBubble);
 
             try {
                 const token = localStorage.getItem('accessToken');
+
                 const response = await fetch('/ai-hub/chat', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
                         model: currentModel,
-                        prompt: text,
-                        history: messages.slice(0, -2)
+                        prompt: userPrompt,
+                        history: [] // ИСТОРИЯ ВСЕГДА ПУСТАЯ
                     })
                 });
 
@@ -133,17 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const result = await response.json();
-                messages.pop(); // Удаляем "..."
-                addMessage('ai', result.response); // Добавляем реальный ответ
-                // Прокрутка остается на месте, пользователь сам скроллит вниз, чтобы увидеть ответ
+
+                // 3. Обновляем текст плейсхолдера реальным ответом
+                aiBubble.innerHTML = result.response.replace(/\n/g, '<br>');
 
             } catch (error) {
-                messages.pop(); // Удаляем "..."
-                addMessage('ai', `Ошибка: ${error.message}`);
+                aiBubble.innerHTML = `Ошибка: ${error.message}`.replace(/\n/g, '<br>');
             }
         }
     }
 
+    // --- Слушатели событий ---
     modelSelectionButton.addEventListener('click', () => {
         modelSelectionModal.classList.remove('hidden');
         if (cachedModels.length === 0) {
@@ -166,6 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    loadHistory();
+    // --- Инициализация ---
     updateCurrentModelDisplay();
 });
