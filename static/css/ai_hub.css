@@ -77,3 +77,60 @@ body {
     cursor: pointer;
     padding: 8px;
 }
+
+/* --- Стили для модального окна --- */
+
+#model-selection-modal .modal-content {
+    background: rgba(26, 27, 30, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1.5rem;
+}
+
+#model-list .model-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+#model-list .model-item:last-child {
+    border-bottom: none;
+}
+
+#model-list .model-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+#model-list .model-item.selected {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+#model-list .model-item .checkmark {
+    display: none;
+    color: #3b82f6;
+}
+
+#model-list .model-item.selected .checkmark {
+    display: inline;
+}
+
+#close-modal-button {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    margin-top: 1rem;
+    cursor: pointer;
+    transition: color 0.2s ease-in-out;
+}
+
+#close-modal-button:hover {
+    color: white;
+}

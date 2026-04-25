@@ -61,18 +61,21 @@ class Settings(BaseSettings):
         for model in self.NATIVE_GEMINI_MODELS:
             if model not in combined_models:
                 combined_models.append(model)
+        # Сортируем по "настоящему" имени модели, игнорируя префикс до слэша
         return combined_models
 
     @property
     def ALL_AVAILABLE_AI_MODELS(self) -> List[dict[str, str]]:
-        all_models = set(self.NATIVE_GEMINI_MODELS + self.OPEN_ROUTER_MODELS + self.NUTRITION_MODELS)
+        all_models = set(self.CHAT_MODELS + self.NUTRITION_MODELS)
         models_list = []
         for model_id in all_models:
             models_list.append({
                 "id": model_id,
                 "name": model_id.replace(":", " - ")
             })
-        return models_list
+        # Здесь тоже применяем более умную сортировку
+        return sorted(models_list, key=lambda x: x['name'].split('/')[-1])
+
     # Указываем, что нужно загружать переменные из .env файла
     model_config = SettingsConfigDict(env_file=".env", extra='ignore')
 

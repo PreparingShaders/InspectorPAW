@@ -7,7 +7,7 @@ import asyncio
 import requests
 from contextlib import asynccontextmanager
 import google.genai as genai
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, APIStatusError
 from PIL import Image
 import json
 
@@ -89,8 +89,17 @@ async def ai_hub_chat(chat_request: schemas.AIChatRequest, current_user: models.
         )
         response_text = chat_completion.choices[0].message.content
         return {"response": response_text}
+    except APIStatusError as e:
+        # Перехватываем специфичную ошибку API
+        if e.status_code == 429:
+            # Если это ошибка rate limit, возвращаем кастомное сообщение
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Сейчас модель не доступна, выберите другую")
+        else:
+            # Для других ошибок API, возвращаем более общее сообщение
+            raise HTTPException(status_code=e.status_code, detail=f"Ошибка API: {e.message}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Для всех остальных непредвиденных ошибок
+        raise HTTPException(status_code=500, detail="Произошла внутренняя ошибка сервера. Попробуйте позже.")
 
 @app.get("/ai-hub/get-models", response_model=List[schemas.AIModel])
 async def get_models():

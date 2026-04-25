@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
         currentModelDisplay.textContent = `Модель: ${currentModel}`;
     }
 
-    // Функция просто создает и возвращает DOM-элемент сообщения
     function createBubble(sender, text) {
         const bubble = document.createElement('div');
         bubble.classList.add('chat-bubble', sender);
@@ -26,31 +25,49 @@ document.addEventListener('DOMContentLoaded', () => {
         return bubble;
     }
 
+    // Обновленная функция для отображения моделей
     function displayModels(models) {
         modelListContainer.innerHTML = '';
         if (models.length === 0) {
-            modelListContainer.innerHTML = '<p class="text-yellow-500">Модели не найдены.</p>';
+            modelListContainer.innerHTML = '<p class="text-yellow-500 p-4 text-center">Модели не найдены.</p>';
             return;
         }
         models.forEach(model => {
-            const button = document.createElement('button');
-            button.textContent = model.name || model.id;
-            button.classList.add('w-full', 'text-left', 'p-2', 'rounded-lg', 'hover:bg-gray-700', 'text-white');
-            button.dataset.modelId = model.id;
-            button.addEventListener('click', () => {
+            const item = document.createElement('div');
+            item.classList.add('model-item');
+            if (model.id === currentModel) {
+                item.classList.add('selected');
+            }
+
+            const modelName = document.createElement('span');
+            modelName.textContent = model.name || model.id;
+
+            const checkmark = document.createElement('span');
+            checkmark.classList.add('checkmark');
+            checkmark.innerHTML = '&#10003;'; // Галочка
+
+            item.appendChild(modelName);
+            item.appendChild(checkmark);
+
+            item.addEventListener('click', () => {
                 currentModel = model.id;
                 localStorage.setItem(CURRENT_MODEL_KEY, currentModel);
                 updateCurrentModelDisplay();
-                modelSelectionModal.classList.add('hidden');
-                // При смене модели просто очищаем видимый чат
-                chatHistory.innerHTML = '';
+                // Обновляем выделение в списке
+                document.querySelectorAll('.model-item').forEach(el => el.classList.remove('selected'));
+                item.classList.add('selected');
+                // Закрываем модальное окно после выбора
+                setTimeout(() => {
+                    modelSelectionModal.classList.add('hidden');
+                }, 200);
             });
-            modelListContainer.appendChild(button);
+            modelListContainer.appendChild(item);
         });
     }
 
     async function fetchAndTestModels() {
-        modelListContainer.innerHTML = '<p class="text-white">Получение и тестирование моделей...</p>';
+        refreshModelsButton.querySelector('svg').classList.add('animate-spin');
+        modelListContainer.innerHTML = '<p class="text-white p-4 text-center">Загрузка моделей...</p>';
         try {
             const token = localStorage.getItem('accessToken');
             const response = await fetch('/ai-hub/get-models', {
@@ -61,9 +78,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             cachedModels = await response.json();
             displayModels(cachedModels);
+
         } catch (error) {
             console.error('Failed to fetch models:', error);
-            modelListContainer.innerHTML = '<p class="text-red-500">Не удалось загрузить модели.</p>';
+            modelListContainer.innerHTML = '<p class="text-red-500 p-4 text-center">Не удалось загрузить модели.</p>';
+        } finally {
+            refreshModelsButton.querySelector('svg').classList.remove('animate-spin');
         }
     }
 
@@ -73,10 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const userPrompt = text;
             chatInput.value = '';
 
-            // 1. ПОЛНОСТЬЮ ОЧИЩАЕМ видимый чат
             chatHistory.innerHTML = '';
 
-            // 2. Отображаем ТОЛЬКО текущий вопрос и плейсхолдер ответа
             const userBubble = createBubble('user', userPrompt);
             const aiBubble = createBubble('ai', '...');
             chatHistory.appendChild(userBubble);
@@ -84,14 +102,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const token = localStorage.getItem('accessToken');
-
                 const response = await fetch('/ai-hub/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
                         model: currentModel,
                         prompt: userPrompt,
-                        history: [] // ИСТОРИЯ ВСЕГДА ПУСТАЯ
+                        history: []
                     })
                 });
 
@@ -101,8 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const result = await response.json();
-
-                // 3. Обновляем текст плейсхолдера реальным ответом
                 aiBubble.innerHTML = result.response.replace(/\n/g, '<br>');
 
             } catch (error) {
@@ -117,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cachedModels.length === 0) {
             fetchAndTestModels();
         } else {
-            displayModels(cachedModels);
+            displayModels(cachedModels); // Перерисовываем на случай, если модель изменилась
         }
     });
 
