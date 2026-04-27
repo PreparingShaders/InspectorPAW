@@ -1,113 +1,155 @@
 import os
-import asyncio
+import json
+import subprocess
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
-from google import genai
-from google.genai import types
 
 # --- НАСТРОЙКИ ---
 load_dotenv()
 
-# Твой URL воркера (убедись, что в .env он без лишних пробелов)
-WORKER_URL = os.getenv("WORKER_URL", "https://inspectorgpt.classname1984.workers.dev").rstrip('/')
-
-OR_KEY = os.getenv("OPEN_ROUTER_API_KEY")
+# Получаем ключ Gemini из .env файла
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-print("=" * 50)
-print(f"ЗАПУСК ТЕСТОВ ЧЕРЕЗ ВОРКЕР: {WORKER_URL}")
-print("=" * 50)
-# Проверь первые и последние символы ключа
-print(f"DEBUG: Key starts with: {OR_KEY[:10]}... ends with: {OR_KEY[-5:]}")
-# --- ИНИЦИАЛИЗАЦИЯ КЛИЕНТОВ ЧЕРЕЗ ПРОКСИ ---
-
-# 1. Клиент OpenRouter (через воркер)
-# OpenRouter ожидает путь /v1/... поэтому добавляем его в base_url
-or_client = AsyncOpenAI(
-    api_key=OR_KEY,
-    base_url=f"{WORKER_URL}/v1",
-    default_headers={
-        "HTTP-Referer": "https://github.com/Aleksey/InspectorAI",
-        "X-Title": "InspectorAI_Debug"
-    }
-)
-
-
-# 2. Клиент Gemini (через воркер)
-# SDK Gemini само формирует пути, поэтому передаем чистый URL воркера
-gemini_client = genai.Client(
-    api_key=GEMINI_KEY,
-    http_options=types.HttpOptions(base_url=WORKER_URL),
-)
-
-
-# --- ФУНКЦИИ ТЕСТИРОВАНИЯ ---
-
-async def test_openrouter():
-    print("\n[1/2] ТЕСТ: OpenRouter (через воркер)...")
-    if not OR_KEY:
-        print("❌ ОШИБКА: Ключ OpenRouter не найден в .env")
-        return
-    # Используем максимально стабильную бесплатную модель Google через OpenRouter
-    models_priority = [
-        "minimax/minimax-m2.5",  # Топ-1. Очень быстрая, логика на уровне GPT-4o. Идеальна для функций.
-        "z-ai/glm-4.5-air:free",  # Отличная "адаптивная" модель, быстрая и человечная в ответах.
-        "arcee-ai/trinity-mini:free",  # Легкая, шустрая, хороша для простых команд и фаст-чата.
-        "openai/gpt-oss-20b:free",  # Сбалансированная база, неплохая логика, средняя скорость.
-        "nvidia/nemotron-3-nano-30b-a3b:free",
-        "arcee-ai/trinity-large-preview:free",  # Умнее mini, но требует больше времени на генерацию.
-        "openai/gpt-oss-120b:free"  # Очень умная (MoE), но для ТГ может быть слишком "задумчивой".
-    ]
-
+def run_command(command):
+    """Безопасно выполняет команду в оболочке и возвращает результат."""
     try:
-        for model in models_priority:
-            response = await or_client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": "Say 'OpenRouter via Worker OK'"}],
-                max_tokens=20,
-                timeout=20.0
-            )
-
-            content = response.choices[0].message.content
-            if content:
-                print(f"✅ УСПЕХ! Ответ ({model}): {content.strip()}")
-            else:
-                print(f"⚠️ ТЕХНИЧЕСКИЙ УСПЕХ: Ключ принят, но модель вернула пустоту (None).")
-    except Exception as e:
-        print(f"❌ ОШИБКА OpenRouter: {e}")
-        if "401" in str(e):
-            print("👉 Подсказка: Если напрямую ключ работал, значит воркер не передает заголовки (headers).")
-
-
-async def test_gemini():
-    print("\n[2/2] ТЕСТ: Gemini (через воркер)...")
-    if not GEMINI_KEY:
-        print("❌ ОШИБКА: Ключ Gemini не найден в .env")
-        return
-
-    try:
-        # Стандартная модель Gemini 2.0 Flash
-        model = "gemini-2.5-flash"
-        response = gemini_client.models.generate_content(
-            model=model,
-            contents="Say 'Gemini via Worker OK'"
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            shell=True,
+            check=True
         )
-        print(f"✅ УСПЕХ! Ответ: {response.text.strip()}")
-    except Exception as e:
-        print(f"❌ ОШИБКА Gemini: {e}")
+        return result.stdout, None
+    except subprocess.CalledProcessError as e:
+        return e.stdout, e.stderr
 
+def main():
+    """
+    Получает список моделей Gemini через REST API, тестирует их и формирует
+    список рабочих моделей.
+    """
+    print("=" * 50)
+    print("Проверка моделей Gemini через REST API (curl)...")
+    print("=" * 50)
 
-async def main():
-    # Запускаем тесты
-    await test_openrouter()
-    #await test_gemini()
+    if not GEMINI_KEY:
+        print("❌ КРИТИЧЕСКАЯ ОШИБКА: Ключ GEMINI_API_KEY не найден в .env файле.")
+        return
 
+    # --- 1. Получаем список моделей ---
+    print("\n--- [1/2] Запрос списка доступных моделей... ---")
+    list_models_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_KEY}"
+    command = f"curl -s -H 'Content-Type: application/json' -X GET '{list_models_url}'"
+    
+    stdout, stderr = run_command(command)
+
+    if stderr:
+        print(f"❌ ОШИБКА при выполнении curl: {stderr}")
+        return
+
+    try:
+        data = json.loads(stdout)
+        if 'error' in data:
+            print(f"❌ ОШИБКА API: {data['error']['message']}")
+            return
+        
+        all_models = data.get('models', [])
+        generative_models = [
+            m for m in all_models 
+            if 'generateContent' in m.get('supportedGenerationMethods', [])
+        ]
+        
+        if not generative_models:
+            print("Не найдено моделей, поддерживающих генерацию контента.")
+            return
+            
+        print(f"✅ Найдено {len(generative_models)} моделей для генерации контента.")
+
+    except json.JSONDecodeError:
+        print(f"❌ ОШИБКА: Не удалось разобрать ответ от API. Ответ: {stdout}")
+        return
+
+    # --- 2. Тестируем каждую модель ---
+    print("\n--- [2/2] Тестирование ответа от каждой модели... ---")
+    
+    working_models = [] # <-- Создаем пустой список для рабочих моделей
+
+    for model in sorted(generative_models, key=lambda m: m['name']):
+        model_name = model['name']
+        print(f"Тестируем: '{model_name}'...", end=" ", flush=True)
+        
+        test_url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={GEMINI_KEY}"
+        post_data = '{"contents":[{"parts":[{"text":"Say OK"}]}]}'
+        command = f"curl -s -H 'Content-Type: application/json' -d '{post_data}' -X POST '{test_url}'"
+        
+        stdout, stderr = run_command(command)
+
+        if stderr:
+            print(f"❌ ОШИБКА curl: {stderr}")
+            continue
+
+        try:
+            response_data = json.loads(stdout)
+            if 'error' in response_data:
+                print(f"❌ ОШИБКА API: {response_data['error']['message']}")
+            elif response_data.get('candidates'):
+                text = response_data['candidates'][0]['content']['parts'][0]['text']
+                if "OK" in text:
+                    print("✅ ОТВЕЧАЕТ")
+                    # <-- Добавляем короткое имя модели в список
+                    short_model_name = model_name.replace("models/", "")
+                    working_models.append(short_model_name)
+                else:
+                    print(f"⚠️  Ответ пустой или некорректный (Текст: {text})")
+            else:
+                prompt_feedback = response_data.get('promptFeedback', {})
+                if prompt_feedback.get('blockReason'):
+                    reason = prompt_feedback['blockReason']
+                    print(f"❌ ЗАБЛОКИРОВАНО: {reason}")
+                else:
+                    print(f"⚠️  Неизвестный формат ответа: {stdout}")
+        except json.JSONDecodeError:
+            print(f"❌ ОШИБКА: Не удалось разобрать JSON ответа. Ответ: {stdout}")
+
+    # --- 3. Выводим итоговый список ---
     print("\n" + "=" * 50)
-    print("Диагностика через прокси завершена.")
+    print("ГОТОВЫЙ СПИСОК РАБОЧИХ МОДЕЛЕЙ GEMINI:")
+    print("=" * 50)
+    
+    if working_models:
+        print("NATIVE_GEMINI_MODELS = [")
+        for m in sorted(working_models):
+            print(f"    '{m}',")
+        print("]")
+    else:
+        print("Рабочие модели не найдены.")
+
+    print("\nПроверка завершена.")
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    main()
+
+NATIVE_GEMINI_MODELS = [
+    # Топ-выбор: скорость, баланс и высокие лимиты
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+
+    # Облегченные версии для максимальной экономии/скорости
+    'gemini-2.5-flash-lite',
+    'gemini-flash-lite-latest',
+
+    # Превью-версии (могут иметь более жесткие лимиты)
+    'gemini-3-flash-preview',
+    'gemini-3.1-flash-lite-preview',
+
+    # Семейство Gemma (Open Models), отсортированные по убыванию веса/возможностей
+    'gemma-4-31b-it',
+    'gemma-4-26b-a4b-it',
+    'gemma-3-27b-it',
+    'gemma-3-12b-it',
+    'gemma-3-4b-it',
+    'gemma-3-1b-it',
+    'gemma-3n-e4b-it',
+    'gemma-3n-e2b-it',
+]

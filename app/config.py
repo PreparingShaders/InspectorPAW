@@ -13,6 +13,29 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # --- Списки моделей, разделенные по API ---
+    NATIVE_GEMINI_MODELS = [
+        # Топ-выбор: скорость, баланс и высокие лимиты
+        'gemini-2.5-flash',
+        'gemini-flash-latest',
+
+        # Облегченные версии для максимальной экономии/скорости
+        'gemini-2.5-flash-lite',
+        'gemini-flash-lite-latest',
+
+        # Превью-версии (могут иметь более жесткие лимиты)
+        'gemini-3-flash-preview',
+        'gemini-3.1-flash-lite-preview',
+
+        # Семейство Gemma (Open Models), отсортированные по убыванию веса/возможностей
+        'gemma-4-31b-it',
+        'gemma-4-26b-a4b-it',
+        'gemma-3-27b-it',
+        'gemma-3-12b-it',
+        'gemma-3-4b-it',
+        'gemma-3-1b-it',
+        'gemma-3n-e4b-it',
+        'gemma-3n-e2b-it',
+    ]
 
     # 1. Модели для прямого вызова через Google Gemini API
     NATIVE_GEMINI_MODELS: List[str] = [
@@ -24,11 +47,11 @@ class Settings(BaseSettings):
 
     # 2. Модели для вызова через OpenRouter
     OPEN_ROUTER_MODELS: List[str] = [
-        'z-ai/glm-4.5-air:free',
         'nvidia/nemotron-3-nano-30b-a3b:free',
         'nvidia/nemotron-nano-9b-v2:free',
         'nvidia/nemotron-nano-12b-v2-vl:free',
         'google/gemma-4-31b-it:free',
+        'z-ai/glm-4.5-air:free',
         'minimax/minimax-m2.5:free',
         'openai/gpt-oss-120b:free',
         'nvidia/nemotron-3-super-120b-a12b:free',
