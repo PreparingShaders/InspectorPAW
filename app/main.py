@@ -76,30 +76,63 @@ async def read_ai_hub_page(request: Request):
 # --- AI Логика ---
 @app.post("/ai-hub/chat")
 async def ai_hub_chat(chat_request: schemas.AIChatRequest, current_user: models.User = Depends(auth.get_current_user)):
-    messages = []
-    for message in chat_request.history:
-        role = "assistant" if message['sender'] == 'ai' else 'user'
-        messages.append({"role": role, "content": message['text']})
-    messages.append({"role": "user", "content": chat_request.prompt})
-
+    model_name = chat_request.model
+    
     try:
-        chat_completion = await open_router_client.chat.completions.create(
-            model=chat_request.model,
-            messages=messages,
-        )
-        response_text = chat_completion.choices[0].message.content
-        return {"response": response_text}
-    except APIStatusError as e:
-        # Перехватываем специфичную ошибку API
-        if e.status_code == 429:
-            # Если это ошибка rate limit, возвращаем кастомное сообщение
-            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Сейчас модель не доступна, выберите другую")
+        response_text = ""
+        
+        # Определяем, какой клиент использовать, на основе модели из конфига
+        if model_name in settings.NATIVE_GEMINI_MODELS:
+            # --- Логика для Gemini API ---
+            contents = []
+            for message in chat_request.history:
+                # Gemini использует 'model' для роли ассистента
+                role = "model" if message['sender'] == 'ai' else 'user'
+                contents.append({'role': role, 'parts': [{'text': message['text']}]})
+            
+            # Добавляем текущий запрос пользователя
+            contents.append({'role': 'user', 'parts': [{'text': chat_request.prompt}]})
+            
+            # API generate_content является блокирующим, поэтому запускаем его в отдельном потоке
+            response = await asyncio.to_thread(
+                gemini_client.models.generate_content,
+                model=model_name,
+                contents=contents
+            )
+            # Обрабатываем возможные блокировки по безопасности или пустые ответы от Gemini
+            if response.parts:
+                response_text = response.parts[0].text
+            else:
+                response_text = "Ответ не был получен от модели. Возможно, запрос был заблокирован из-за настроек безопасности."
+
+        elif model_name in settings.OPEN_ROUTER_MODELS:
+            # --- Логика для OpenRouter API ---
+            messages = []
+            for message in chat_request.history:
+                role = "assistant" if message['sender'] == 'ai' else 'user'
+                messages.append({"role": role, "content": message['text']})
+            messages.append({"role": "user", "content": chat_request.prompt})
+
+            chat_completion = await open_router_client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+            )
+            response_text = chat_completion.choices[0].message.content
+        
         else:
-            # Для других ошибок API, возвращаем более общее сообщение
-            raise HTTPException(status_code=e.status_code, detail=f"Ошибка API: {e.message}")
+             raise HTTPException(status_code=400, detail=f"Модель '{model_name}' не настроена. Пожалуйста, проверьте конфигурацию.")
+
+        return {"response": response_text}
+
+    except APIStatusError as e:
+        if e.status_code == 429:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Модель временно недоступна (rate limit). Выберите другую.")
+        else:
+            raise HTTPException(status_code=e.status_code, detail=f"Ошибка API (OpenRouter): {e.message}")
     except Exception as e:
-        # Для всех остальных непредвиденных ошибок
-        raise HTTPException(status_code=500, detail="Произошла внутренняя ошибка сервера. Попробуйте позже.")
+        # Общий обработчик для других ошибок, включая Gemini
+        error_type = type(e).__name__
+        raise HTTPException(status_code=500, detail=f"Произошла внутренняя ошибка сервера ({error_type}): {str(e)}")
 
 @app.get("/ai-hub/get-models", response_model=List[schemas.AIModel])
 async def get_models():

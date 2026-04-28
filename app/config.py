@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, ClassVar
+from typing import List
 
 
 class Settings(BaseSettings):
@@ -13,19 +13,19 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # --- Списки моделей, разделенные по API ---
-    NATIVE_GEMINI_MODELS = [
+
+    # 1. Модели для прямого вызова через Google Gemini API (дублирование исправлено)
+    NATIVE_GEMINI_MODELS: List[str] = [
         # Топ-выбор: скорость, баланс и высокие лимиты
         'gemini-2.5-flash',
         'gemini-flash-latest',
-
         # Облегченные версии для максимальной экономии/скорости
         'gemini-2.5-flash-lite',
         'gemini-flash-lite-latest',
-
+        'gemini-3.1-flash-lite',
         # Превью-версии (могут иметь более жесткие лимиты)
         'gemini-3-flash-preview',
         'gemini-3.1-flash-lite-preview',
-
         # Семейство Gemma (Open Models), отсортированные по убыванию веса/возможностей
         'gemma-4-31b-it',
         'gemma-4-26b-a4b-it',
@@ -35,14 +35,6 @@ class Settings(BaseSettings):
         'gemma-3-1b-it',
         'gemma-3n-e4b-it',
         'gemma-3n-e2b-it',
-    ]
-
-    # 1. Модели для прямого вызова через Google Gemini API
-    NATIVE_GEMINI_MODELS: List[str] = [
-        'gemini-2.5-flash-lite',
-        'gemini-3.1-flash-lite',
-        'gemini-3.1-flash-lite-preview',
-        'gemini-2.5-flash',
     ]
 
     # 2. Модели для вызова через OpenRouter
@@ -78,26 +70,31 @@ class Settings(BaseSettings):
 
     @property
     def CHAT_MODELS(self) -> List[str]:
-        # Объединяем модели OpenRouter и Gemini, отдавая приоритет OpenRouter
-        # Используем set для удаления дубликатов, затем преобразуем обратно в список
-        combined_models = list(self.OPEN_ROUTER_MODELS)
-        for model in self.NATIVE_GEMINI_MODELS:
+        # Объединяем модели, отдавая приоритет NATIVE_GEMINI_MODELS.
+        combined_models = list(self.NATIVE_GEMINI_MODELS)
+        for model in self.OPEN_ROUTER_MODELS:
             if model not in combined_models:
                 combined_models.append(model)
-        # Сортируем по "настоящему" имени модели, игнорируя префикс до слэша
         return combined_models
 
     @property
     def ALL_AVAILABLE_AI_MODELS(self) -> List[dict[str, str]]:
-        all_models = set(self.CHAT_MODELS + self.NUTRITION_MODELS)
+        # Начинаем с моделей для чата, которые уже в правильном порядке
+        all_models_ordered = self.CHAT_MODELS
+        
+        # Добавляем модели для анализа питания, если их еще нет в списке
+        for model in self.NUTRITION_MODELS:
+            if model not in all_models_ordered:
+                all_models_ordered.append(model)
+
         models_list = []
-        for model_id in all_models:
+        for model_id in all_models_ordered:
             models_list.append({
                 "id": model_id,
                 "name": model_id.replace(":", " - ")
             })
-        # Здесь тоже применяем более умную сортировку
-        return sorted(models_list, key=lambda x: x['name'].split('/')[-1])
+        # Убрана алфавитная сортировка, чтобы сохранить заданный порядок
+        return models_list
 
     # Указываем, что нужно загружать переменные из .env файла
     model_config = SettingsConfigDict(env_file=".env", extra='ignore')
