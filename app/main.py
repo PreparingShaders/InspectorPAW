@@ -6,8 +6,9 @@ import base64
 import asyncio
 import requests
 from contextlib import asynccontextmanager
-import google.genai as genai
-from openai import AsyncOpenAI, APIStatusError
+# import google.genai as genai # Удаляем импорт gemini
+# from openai import AsyncOpenAI, APIStatusError # Удаляем импорт openai
+import httpx # Добавляем импорт httpx
 from PIL import Image
 import json
 
@@ -33,11 +34,15 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # --- API Клиенты ---
-gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-open_router_client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=settings.OPEN_ROUTER_API_KEY,
-)
+# gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY) # Удаляем инициализацию gemini_client
+# unified_ai_client = AsyncOpenAI( # Удаляем инициализацию AsyncOpenAI
+#     base_url=settings.AI_WORKER_URL,
+#     api_key=settings.OPEN_ROUTER_API_KEY,
+# )
+
+# Инициализируем httpx клиент для всех запросов к воркеру
+httpx_client = httpx.AsyncClient(base_url=settings.AI_WORKER_URL)
+
 
 def get_db():
     db = SessionLocal()
@@ -77,62 +82,72 @@ async def read_ai_hub_page(request: Request):
 @app.post("/ai-hub/chat")
 async def ai_hub_chat(chat_request: schemas.AIChatRequest, current_user: models.User = Depends(auth.get_current_user)):
     model_name = chat_request.model
-    
+    headers = {"Content-Type": "application/json"}
+    payload = {}
+    url_path = ""
+
+    # Формируем историю сообщений для OpenAI-совместимого формата
+    openai_messages = []
+    for message in chat_request.history:
+        role = "assistant" if message['sender'] == 'ai' else 'user'
+        openai_messages.append({"role": role, "content": message['text']})
+    openai_messages.append({"role": "user", "content": chat_request.prompt})
+
     try:
-        response_text = ""
-        
-        # Определяем, какой клиент использовать, на основе модели из конфига
         if model_name in settings.NATIVE_GEMINI_MODELS:
-            # --- Логика для Gemini API ---
-            contents = []
-            for message in chat_request.history:
-                # Gemini использует 'model' для роли ассистента
-                role = "model" if message['sender'] == 'ai' else 'user'
-                contents.append({'role': role, 'parts': [{'text': message['text']}]})
+            # Для Gemini через воркер (путь v1beta)
+            url_path = f"/v1beta/models/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
             
-            # Добавляем текущий запрос пользователя
-            contents.append({'role': 'user', 'parts': [{'text': chat_request.prompt}]})
+            # Преобразуем историю в Gemini-совместимый формат
+            gemini_contents = []
+            for msg in chat_request.history:
+                role = "model" if msg['sender'] == 'ai' else 'user'
+                gemini_contents.append({'role': role, 'parts': [{'text': msg['text']}]})
+            gemini_contents.append({'role': 'user', 'parts': [{'text': chat_request.prompt}]})
             
-            # API generate_content является блокирующим, поэтому запускаем его в отдельном потоке
-            response = await asyncio.to_thread(
-                gemini_client.models.generate_content,
-                model=model_name,
-                contents=contents
-            )
-            # Обрабатываем возможные блокировки по безопасности или пустые ответы от Gemini
-            if response.parts:
-                response_text = response.parts[0].text
-            else:
-                response_text = "Ответ не был получен от модели. Возможно, запрос был заблокирован из-за настроек безопасности."
-
+            payload = {"contents": gemini_contents}
+            
         elif model_name in settings.OPEN_ROUTER_MODELS:
-            # --- Логика для OpenRouter API ---
-            messages = []
-            for message in chat_request.history:
-                role = "assistant" if message['sender'] == 'ai' else 'user'
-                messages.append({"role": role, "content": message['text']})
-            messages.append({"role": "user", "content": chat_request.prompt})
-
-            chat_completion = await open_router_client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-            )
-            response_text = chat_completion.choices[0].message.content
-        
+            # Для OpenRouter через воркер (путь v1)
+            url_path = "/v1/chat/completions"
+            headers["Authorization"] = f"Bearer {settings.OPEN_ROUTER_API_KEY}"
+            payload = {
+                "model": model_name,
+                "messages": openai_messages # Используем уже сформированную историю
+            }
         else:
-             raise HTTPException(status_code=400, detail=f"Модель '{model_name}' не настроена. Пожалуйста, проверьте конфигурацию.")
+            raise HTTPException(status_code=400, detail=f"Модель '{model_name}' не настроена. Пожалуйста, проверьте конфигурацию.")
+
+        response = await httpx_client.post(url_path, headers=headers, json=payload, timeout=60)
+        response.raise_for_status() # Вызовет исключение для статусов 4xx/5xx
+        
+        res_data = response.json()
+        response_text = ""
+
+        if model_name in settings.NATIVE_GEMINI_MODELS:
+            if res_data.get('candidates') and res_data['candidates'][0].get('content') and res_data['candidates'][0]['content'].get('parts'):
+                response_text = res_data['candidates'][0]['content']['parts'][0]['text']
+            else:
+                response_text = "Ответ не был получен от модели Gemini. Возможно, запрос был заблокирован из-за настроек безопасности или ответ пуст."
+        elif model_name in settings.OPEN_ROUTER_MODELS:
+            if res_data.get('choices') and res_data['choices'][0].get('message') and res_data['choices'][0]['message'].get('content'):
+                response_text = res_data['choices'][0]['message']['content']
+            else:
+                response_text = "Ответ не был получен от модели OpenRouter. Ответ пуст."
 
         return {"response": response_text}
 
-    except APIStatusError as e:
-        if e.status_code == 429:
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429:
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Модель временно недоступна (rate limit). Выберите другую.")
         else:
-            raise HTTPException(status_code=e.status_code, detail=f"Ошибка API (OpenRouter): {e.message}")
+            raise HTTPException(status_code=e.response.status_code, detail=f"Ошибка API: {e.response.text}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка сети или запроса: {str(e)}")
     except Exception as e:
-        # Общий обработчик для других ошибок, включая Gemini
         error_type = type(e).__name__
         raise HTTPException(status_code=500, detail=f"Произошла внутренняя ошибка сервера ({error_type}): {str(e)}")
+
 
 @app.get("/ai-hub/get-models", response_model=List[schemas.AIModel])
 async def get_models():
@@ -153,7 +168,7 @@ async def get_nutrition_analysis_and_advice(
     """
     context_str = json.dumps(ai_context, indent=2, ensure_ascii=False)
 
-    prompt = f"""
+    prompt_text = f"""
     Ты — интегрированный ассистент по питанию, сочетающий в себе две роли:
     1.  **Эксперт-нутрициолог:** Ты точно анализируешь еду (по фото или описанию) и рассчитываешь её КБЖУ.
     2.  **Элитный коуч:** Ты даешь прямой, ироничный, честный и мотивирующий совет, помогая пользователю достичь цели.Ты добрый, но любишь тонкий английский юмор.
@@ -195,48 +210,80 @@ async def get_nutrition_analysis_and_advice(
     }}
     ```
     """
+    
+    if description:
+        prompt_text += f"\nДополнительное описание от пользователя: {description}"
 
     print(f"Attempting to use model for combined analysis and advice: {model_to_use}")
 
-    if model_to_use in settings.NATIVE_GEMINI_MODELS:
-        content_parts = []
-        if file_content:
-            img = Image.open(io.BytesIO(file_content))
-            content_parts.append(img)
-        
-        full_prompt = f"{prompt}\nДополнительное описание от пользователя: {description}" if description else prompt
-        print(full_prompt)
-        content_parts.append(full_prompt)
-        
-        response = await asyncio.to_thread(gemini_client.models.generate_content, model=model_to_use, contents=content_parts)
-        return json.loads(response.text), model_to_use
-
-    elif model_to_use in settings.OPEN_ROUTER_MODELS:
-        messages = [{"role": "system", "content": "You are an integrated nutrition assistant. Your response must be a single, valid JSON object."}]
-        content_parts = [{"type": "text", "text": prompt}]
-        
-        if description:
-             content_parts[0]["text"] += f"\nUser's description: {description}"
-        
-        if file_content:
-            base64_image = base64.b64encode(file_content).decode('utf-8')
-            content_parts.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
-            })
-        
-        messages.append({"role": "user", "content": content_parts})
-        
-        chat_completion = await open_router_client.chat.completions.create(
-            model=model_to_use,
-            messages=messages,
-            max_tokens=1024,
-            response_format={"type": "json_object"},
-        )
-        return json.loads(chat_completion.choices[0].message.content), model_to_use
+    headers = {"Content-Type": "application/json"}
+    payload = {}
+    url_path = ""
     
-    else:
-        raise ValueError(f"Model {model_to_use} is not configured in any known provider.")
+    try:
+        if model_to_use in settings.NATIVE_GEMINI_MODELS:
+            url_path = f"/v1beta/models/{model_to_use}:generateContent?key={settings.GEMINI_API_KEY}"
+            
+            gemini_contents = []
+            if file_content:
+                base64_image = base64.b64encode(file_content).decode('utf-8')
+                gemini_contents.append({"inline_data": {"mime_type": "image/jpeg", "data": base64_image}})
+            
+            gemini_contents.append({"text": prompt_text})
+            payload = {"contents": [{"parts": gemini_contents}]}
+
+        elif model_to_use in settings.OPEN_ROUTER_MODELS:
+            url_path = "/v1/chat/completions"
+            headers["Authorization"] = f"Bearer {settings.OPEN_ROUTER_API_KEY}"
+            
+            openai_content_parts = [{"type": "text", "text": prompt_text}]
+            if file_content:
+                base64_image = base64.b64encode(file_content).decode('utf-8')
+                openai_content_parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                })
+            
+            payload = {
+                "model": model_to_use,
+                "messages": [{"role": "user", "content": openai_content_parts}],
+                "max_tokens": 1024,
+                "response_format": {"type": "json_object"},
+            }
+        else:
+            raise HTTPException(status_code=400, detail=f"Модель '{model_to_use}' не настроена. Пожалуйста, проверьте конфигурацию.")
+
+        response = await httpx_client.post(url_path, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+        
+        res_data = response.json()
+        
+        # Обработка ответа
+        if model_to_use in settings.NATIVE_GEMINI_MODELS:
+            if res_data.get('candidates') and res_data['candidates'][0].get('content') and res_data['candidates'][0]['content'].get('parts'):
+                response_text = res_data['candidates'][0]['content']['parts'][0]['text']
+            else:
+                response_text = "Ответ не был получен от модели Gemini. Возможно, запрос был заблокирован из-за настроек безопасности или ответ пуст."
+        elif model_to_use in settings.OPEN_ROUTER_MODELS:
+            if res_data.get('choices') and res_data['choices'][0].get('message') and res_data['choices'][0]['message'].get('content'):
+                response_text = res_data['choices'][0]['message']['content']
+            else:
+                response_text = "Ответ не был получен от модели OpenRouter. Ответ пуст."
+        
+        return json.loads(response_text), model_to_use
+
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Модель временно недоступна (rate limit). Выберите другую.")
+        else:
+            raise HTTPException(status_code=e.response.status_code, detail=f"Ошибка API: {e.response.text}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка сети или запроса: {str(e)}")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка декодирования JSON ответа AI: {str(e)}. Ответ: {response_text}")
+    except Exception as e:
+        error_type = type(e).__name__
+        raise HTTPException(status_code=500, detail=f"Произошла внутренняя ошибка сервера ({error_type}): {str(e)}")
 
 
 # --- API эндпоинты ---
@@ -364,34 +411,36 @@ async def analyze_meal(
     if ai_model and ai_model in models_to_try:
         models_to_try.insert(0, models_to_try.pop(models_to_try.index(ai_model)))
 
-    ai_response = None
+    ai_response_data = None
     model_used = None
     last_error = None
 
     for model in models_to_try:
         try:
-            ai_response, model_used = await get_nutrition_analysis_and_advice(
+            ai_response_data, model_used = await get_nutrition_analysis_and_advice(
                 file_content=file_content,
                 description=description,
                 ai_context=ai_context,
                 model_to_use=model
             )
-            if ai_response:
+            if ai_response_data:
                 break 
         except Exception as e:
             last_error = e
             print(f"Model {model} failed: {e}. Trying next model.")
-            if file_content: # Перематываем ридер файла для следующей попытки
-                file.file.seek(0)
-                file_content = await file.read()
+            # Если файл был прочитан, нужно перемотать его для следующей попытки,
+            # но так как мы читаем его один раз в начале, это не требуется
+            # для текущей реализации get_nutrition_analysis_and_advice.
+            # Если бы file_content читался внутри цикла, то нужно было бы:
+            # if file and file.file:
+            #     await file.seek(0) # Перемотка UploadFile
 
-
-    if not ai_response:
+    if not ai_response_data:
         raise HTTPException(status_code=503, detail=f"All AI models are currently unavailable. Last error: {last_error}")
 
     # --- Обработка ответа ---
-    food_analysis = ai_response.get("food_analysis", {})
-    coach_advice = ai_response.get("coach_advice", "Не удалось получить совет от AI.")
+    food_analysis = ai_response_data.get("food_analysis", {})
+    coach_advice = ai_response_data.get("coach_advice", "Не удалось получить совет от AI.")
 
     proteins_g = round(float(food_analysis.get("proteins_g", 0)))
     fats_g = round(float(food_analysis.get("fats_g", 0)))
@@ -587,7 +636,7 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
             total_consumed["calories"] += consumed_calories
             total_consumed["protein"] += consumed_protein
             total_consumed["fat"] += consumed_fat
-            total_consumed["carbohydrates"] += consumed_carbohydrates
+            total_consumed["carbohydrates"] += consumed_carbohydrates # Исправленная строка
 
     avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0

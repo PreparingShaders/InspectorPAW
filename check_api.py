@@ -1,149 +1,26 @@
 import os
 import json
-import subprocess
+import requests
 from dotenv import load_dotenv
 
 # --- НАСТРОЙКИ ---
 load_dotenv()
 
-# Получаем ключ Gemini из .env файла
+# Ключи из .env
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+OPENROUTER_KEY = os.getenv("OPEN_ROUTER_API_KEY")
 
-def run_command(command):
-    """Безопасно выполняет команду в оболочке и возвращает результат."""
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            shell=True,
-            check=True
-        )
-        return result.stdout, None
-    except subprocess.CalledProcessError as e:
-        return e.stdout, e.stderr
+# URL твоего воркера
+PROXY_URL = "https://inspectorgpt.classname1984.workers.dev"
 
-def main():
-    """
-    Получает список моделей Gemini через REST API, тестирует их и формирует
-    список рабочих моделей.
-    """
-    print("=" * 50)
-    print("Проверка моделей Gemini через REST API (curl)...")
-    print("=" * 50)
-
-    if not GEMINI_KEY:
-        print("❌ КРИТИЧЕСКАЯ ОШИБКА: Ключ GEMINI_API_KEY не найден в .env файле.")
-        return
-
-    # --- 1. Получаем список моделей ---
-    print("\n--- [1/2] Запрос списка доступных моделей... ---")
-    list_models_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_KEY}"
-    command = f"curl -s -H 'Content-Type: application/json' -X GET '{list_models_url}'"
-    
-    stdout, stderr = run_command(command)
-
-    if stderr:
-        print(f"❌ ОШИБКА при выполнении curl: {stderr}")
-        return
-
-    try:
-        data = json.loads(stdout)
-        if 'error' in data:
-            print(f"❌ ОШИБКА API: {data['error']['message']}")
-            return
-        
-        all_models = data.get('models', [])
-        generative_models = [
-            m for m in all_models 
-            if 'generateContent' in m.get('supportedGenerationMethods', [])
-        ]
-        
-        if not generative_models:
-            print("Не найдено моделей, поддерживающих генерацию контента.")
-            return
-            
-        print(f"✅ Найдено {len(generative_models)} моделей для генерации контента.")
-
-    except json.JSONDecodeError:
-        print(f"❌ ОШИБКА: Не удалось разобрать ответ от API. Ответ: {stdout}")
-        return
-
-    # --- 2. Тестируем каждую модель ---
-    print("\n--- [2/2] Тестирование ответа от каждой модели... ---")
-    
-    working_models = [] # <-- Создаем пустой список для рабочих моделей
-
-    for model in sorted(generative_models, key=lambda m: m['name']):
-        model_name = model['name']
-        print(f"Тестируем: '{model_name}'...", end=" ", flush=True)
-        
-        test_url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={GEMINI_KEY}"
-        post_data = '{"contents":[{"parts":[{"text":"Say OK"}]}]}'
-        command = f"curl -s -H 'Content-Type: application/json' -d '{post_data}' -X POST '{test_url}'"
-        
-        stdout, stderr = run_command(command)
-
-        if stderr:
-            print(f"❌ ОШИБКА curl: {stderr}")
-            continue
-
-        try:
-            response_data = json.loads(stdout)
-            if 'error' in response_data:
-                print(f"❌ ОШИБКА API: {response_data['error']['message']}")
-            elif response_data.get('candidates'):
-                text = response_data['candidates'][0]['content']['parts'][0]['text']
-                if "OK" in text:
-                    print("✅ ОТВЕЧАЕТ")
-                    # <-- Добавляем короткое имя модели в список
-                    short_model_name = model_name.replace("models/", "")
-                    working_models.append(short_model_name)
-                else:
-                    print(f"⚠️  Ответ пустой или некорректный (Текст: {text})")
-            else:
-                prompt_feedback = response_data.get('promptFeedback', {})
-                if prompt_feedback.get('blockReason'):
-                    reason = prompt_feedback['blockReason']
-                    print(f"❌ ЗАБЛОКИРОВАНО: {reason}")
-                else:
-                    print(f"⚠️  Неизвестный формат ответа: {stdout}")
-        except json.JSONDecodeError:
-            print(f"❌ ОШИБКА: Не удалось разобрать JSON ответа. Ответ: {stdout}")
-
-    # --- 3. Выводим итоговый список ---
-    print("\n" + "=" * 50)
-    print("ГОТОВЫЙ СПИСОК РАБОЧИХ МОДЕЛЕЙ GEMINI:")
-    print("=" * 50)
-    
-    if working_models:
-        print("NATIVE_GEMINI_MODELS = [")
-        for m in sorted(working_models):
-            print(f"    '{m}',")
-        print("]")
-    else:
-        print("Рабочие модели не найдены.")
-
-    print("\nПроверка завершена.")
-
-
-if __name__ == "__main__":
-    main()
-
+# --- ТВОИ СПИСКИ МОДЕЛЕЙ ---
 NATIVE_GEMINI_MODELS = [
-    # Топ-выбор: скорость, баланс и высокие лимиты
     'gemini-2.5-flash',
     'gemini-flash-latest',
-
-    # Облегченные версии для максимальной экономии/скорости
     'gemini-2.5-flash-lite',
     'gemini-flash-lite-latest',
-
-    # Превью-версии (могут иметь более жесткие лимиты)
     'gemini-3-flash-preview',
     'gemini-3.1-flash-lite-preview',
-
-    # Семейство Gemma (Open Models), отсортированные по убыванию веса/возможностей
     'gemma-4-31b-it',
     'gemma-4-26b-a4b-it',
     'gemma-3-27b-it',
@@ -153,3 +30,89 @@ NATIVE_GEMINI_MODELS = [
     'gemma-3n-e4b-it',
     'gemma-3n-e2b-it',
 ]
+
+OPEN_ROUTER_MODELS = [
+    'nvidia/nemotron-3-nano-30b-a3b:free',
+    'nvidia/nemotron-nano-9b-v2:free',
+    'nvidia/nemotron-nano-12b-v2-vl:free',
+    'google/gemma-4-31b-it:free',
+    'z-ai/glm-4.5-air:free',
+    'minimax/minimax-m2.5:free',
+    'openai/gpt-oss-120b:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'qwen/qwen3-vl-235b-a22b-thinking',
+    'qwen/qwen3-vl-30b-a3b-thinking'
+]
+
+
+def test_model(model_name, is_gemini=True):
+    print(f"Тестируем: {model_name:.<40}", end=" ", flush=True)
+
+    headers = {"Content-Type": "application/json"}
+
+    if is_gemini:
+        # Для Gemini через воркер (путь v1beta)
+        url = f"{PROXY_URL}/v1beta/models/{model_name}:generateContent?key={GEMINI_KEY}"
+        payload = {"contents": [{"parts": [{"text": "Say OK"}]}]}
+    else:
+        # Для OpenRouter через воркер (путь v1)
+        url = f"{PROXY_URL}/v1/chat/completions"
+        headers["Authorization"] = f"Bearer {OPENROUTER_KEY}"
+        payload = {
+            "model": model_name,
+            "messages": [{"role": "user", "content": "Say OK"}]
+        }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=20)
+
+        if response.status_code != 200:
+            print(f"❌ Код {response.status_code}")
+            return False
+
+        res_data = response.json()
+
+        if is_gemini:
+            text = res_data['candidates'][0]['content']['parts'][0]['text']
+        else:
+            text = res_data['choices'][0]['message']['content']
+
+        if "OK" in text.upper():
+            print("✅ OK")
+            return True
+        else:
+            print(f"⚠️ Текст: {text[:15]}...")
+            return False
+
+    except Exception as e:
+        print(f"❌ Ошибка")
+        return False
+
+
+def main():
+    working_gemini = []
+    working_or = []
+
+    print("=" * 60)
+    print("ЗАПУСК ТЕСТА ЧЕРЕЗ WORKER PROXY")
+    print("=" * 60)
+
+    print("\n[1] ПРОВЕРКА NATIVE GEMINI (Google)")
+    for m in NATIVE_GEMINI_MODELS:
+        if test_model(m, is_gemini=True):
+            working_gemini.append(m)
+
+    print("\n[2] ПРОВЕРКА OPENROUTER (Free/Paid)")
+    for m in OPEN_ROUTER_MODELS:
+        if test_model(m, is_gemini=False):
+            working_or.append(m)
+
+    print("\n" + "=" * 60)
+    print("РЕЗУЛЬТАТЫ:")
+    print(f"Доступно Gemini: {len(working_gemini)} из {len(NATIVE_GEMINI_MODELS)}")
+    print(f"Доступно OpenRouter: {len(working_or)} из {len(OPEN_ROUTER_MODELS)}")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

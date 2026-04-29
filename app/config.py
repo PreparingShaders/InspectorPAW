@@ -1,12 +1,16 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 
 
 class Settings(BaseSettings):
     # --- API Ключи (загружаются из .env) ---
     GEMINI_API_KEY: str
-    OPEN_ROUTER_API_KEY: str
+    # Ключ для OpenRouter теперь опционален, т.к. может быть не нужен при работе через воркер
+    OPEN_ROUTER_API_KEY: Optional[str] = None
     SECRET_KEY: str
+
+    # --- URL Воркера ---
+    AI_WORKER_URL: str = "https://inspectorgpt.classname1984.workers.dev"
 
     # --- Настройки JWT ---
     ALGORITHM: str = "HS256"
