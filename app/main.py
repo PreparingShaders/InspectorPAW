@@ -77,6 +77,10 @@ async def read_nutrition_page(request: Request):
 async def read_ai_hub_page(request: Request):
     return templates.TemplateResponse(name="ai_hub.html", request=request)
 
+@app.get("/workouts")
+async def read_workouts_page(request: Request):
+    return templates.TemplateResponse(name="workouts.html", request=request)
+
 
 # --- AI Логика ---
 @app.post("/ai-hub/chat")
