@@ -50,9 +50,7 @@ class Settings(BaseSettings):
         'z-ai/glm-4.5-air:free',
         'minimax/minimax-m2.5:free',
         'openai/gpt-oss-120b:free',
-        'nvidia/nemotron-3-super-120b-a12b:free',
-        'qwen/qwen3-vl-235b-a22b-thinking',
-        'qwen/qwen3-vl-30b-a3b-thinking'
+        'nvidia/nemotron-3-super-120b-a12b:free'
     ]
 
     # --- Общий, ФИКСИРОВАННЫЙ список моделей для анализа еды ---
