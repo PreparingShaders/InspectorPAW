@@ -5,11 +5,25 @@ body {
     background-attachment: fixed;
 }
 
+/* Скрываем стандартную навигацию на этой странице */
+nav.glassmorphism {
+    display: none;
+}
+
+/* Стили для кнопки "Назад" */
+.back-button {
+    position: absolute;
+    top: calc(1.5rem + env(safe-area-inset-top));
+    left: 1rem;
+    color: white;
+    z-index: 10;
+}
+
 #chat-history {
-    padding-top: 1rem; /* Отступ сверху */
-    padding-bottom: 120px; /* Увеличен отступ снизу */
-    padding-left: 1rem; /* Добавлен отступ слева */
-    padding-right: 1rem; /* Добавлен отступ справа */
+    padding-top: 1rem;
+    /* padding-bottom убран, т.к. footer теперь в потоке документа */
+    padding-left: 1rem;
+    padding-right: 1rem;
 }
 
 .chat-bubble {
@@ -18,7 +32,7 @@ body {
     border-radius: 20px;
     position: relative;
     word-wrap: break-word;
-    margin: 0 1rem; /* Сохраняем горизонтальный отступ для пузырей */
+    margin: 0 1rem;
 }
 
 .chat-bubble.user {
@@ -27,7 +41,7 @@ body {
     align-self: flex-end;
     margin-left: auto;
     border-radius: 20px 20px 5px 20px;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.7); /* Свечение изменено на белое */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
 }
 
 .chat-bubble.ai {
@@ -36,14 +50,12 @@ body {
     align-self: flex-start;
     margin-right: auto;
     border-radius: 20px 20px 20px 5px;
-    box-shadow: 0 0 12px rgba(173, 97, 255, 0.9); /* Яркое свечение */
+    box-shadow: 0 0 12px rgba(173, 97, 255, 0.9);
 }
 
 .chat-input-container {
-    position: fixed;
-    bottom: 95px; /* Поднято выше */
-    left: 50%;
-    transform: translateX(-50%);
+    /* Убрано position: fixed. Теперь это обычный блочный элемент. */
+    margin: 0 auto; /* Центрируем в футере */
     width: 95%;
     max-width: 500px;
     display: flex;

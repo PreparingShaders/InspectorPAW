@@ -1,7 +1,32 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // --- Глобальный перехватчик для fetch ---
+    async function fetchWithAuth(url, options = {}) {
+        const token = localStorage.getItem('accessToken');
+
+        // Добавляем заголовок авторизации, если он еще не установлен
+        if (token && !options.headers?.Authorization) {
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(url, options);
+
+        // Если токен истек или невалиден, выходим из системы
+        if (response.status === 401) {
+            localStorage.removeItem('accessToken');
+            window.location.href = '/login';
+            // Возвращаем "пустой" Promise, чтобы остановить выполнение цепочки .then()
+            return new Promise(() => {});
+        }
+
+        return response;
+    }
+
     const token = localStorage.getItem('accessToken');
     if (!token) {
-        window.location.href = '/';
+        window.location.href = '/login';
         return;
     }
 
@@ -110,7 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAndDisplayAverageStats() {
         try {
-            const response = await fetch('/users/me/average-stats', { headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await fetchWithAuth('/users/me/average-stats');
             if (!response.ok) throw new Error('Could not fetch average stats.');
             const stats = await response.json();
             updateRingWithOverflow('avg-calories-ring', stats.avg_calories, stats.target_calories);
@@ -128,7 +153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAndDisplayMealHistory() {
         try {
-            const response = await fetch('/meals/', { headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await fetchWithAuth('/meals/');
             if (!response.ok) throw new Error(`Could not fetch meal history. Status: ${response.status}`);
             const meals = await response.json();
             mealLogsContainer.innerHTML = '';
@@ -319,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         aiCoachAdvice.textContent = '';
 
         try {
-            const response = await fetch('/analyze-meal/', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
+            const response = await fetchWithAuth('/analyze-meal/', { method: 'POST', body: formData });
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'Ошибка анализа блюда.');
@@ -381,9 +406,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         try {
-            const response = await fetch('/meals/', {
+            const response = await fetchWithAuth('/meals/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(mealData)
             });
             if (!response.ok) {

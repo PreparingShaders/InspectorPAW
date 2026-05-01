@@ -30,9 +30,14 @@
         }
     </style>
 </head>
-<body class="h-full flex flex-col">
+<body class="h-dvh flex flex-col">
 
-    <header class="text-center pb-2 px-4" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
+    <header class="relative text-center pb-2 px-4" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
+        <button onclick="history.back()" class="back-button">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
         <h1 class="text-3xl font-extrabold tracking-wider iridescent-text">ProgressLab AI</h1>
         <div class="flex justify-center items-center space-x-2 mt-2">
             <button id="model-selection-button" class="text-xs text-gray-400 border border-gray-600 rounded-full px-3 py-1">
@@ -43,14 +48,14 @@
     </header>
 
     <main class="flex-grow flex flex-col min-h-0">
-        <div id="chat-history" class="overflow-y-auto flex flex-col gap-4 p-4 pb-40">
+        <div id="chat-history" class="overflow-y-auto flex flex-col-reverse gap-4 p-4">
             <!-- Сообщения чата будут здесь -->
         </div>
     </main>
 
-    <footer class="fixed bottom-0 left-0 right-0 p-4" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+    <footer class="p-4" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
         <div class="chat-input-container">
-            <input type="text" id="chat-input" placeholder="Опишите чат с ИИ...">
+            <input type="text" id="chat-input" placeholder="Сообщение...">
             <button id="send-button">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
                     <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
@@ -76,9 +81,6 @@
             <button id="close-modal-button" class="w-full text-center mt-4">Закрыть</button>
         </div>
     </div>
-
-    {% set active_page = 'ai_hub' %}
-    {% include 'includes/bottom_nav.html' %}
 
     <script src="/static/js/ai_hub.js"></script>
 </body>

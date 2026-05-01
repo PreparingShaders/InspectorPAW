@@ -1,7 +1,32 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // --- Глобальный перехватчик для fetch ---
+    async function fetchWithAuth(url, options = {}) {
+        const token = localStorage.getItem('accessToken');
+
+        // Добавляем заголовок авторизации, если он еще не установлен
+        if (token && !options.headers?.Authorization) {
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(url, options);
+
+        // Если токен истек или невалиден, выходим из системы
+        if (response.status === 401) {
+            localStorage.removeItem('accessToken');
+            window.location.href = '/login';
+            // Возвращаем "пустой" Promise, чтобы остановить выполнение цепочки .then()
+            return new Promise(() => {});
+        }
+
+        return response;
+    }
+
     const token = localStorage.getItem('accessToken');
     if (!token) {
-        window.location.href = '/';
+        window.location.href = '/login';
         return;
     }
 
@@ -185,9 +210,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             try {
-                const response = await fetch('/users/me/calculate-targets', {
+                const response = await fetchWithAuth('/users/me/calculate-targets', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
                 });
                 const targets = await response.json();
@@ -213,7 +238,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateDatePickers();
 
     try {
-        const response = await fetch('/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await fetchWithAuth('/users/me');
         if (!response.ok) throw new Error('Could not fetch user data.');
         const user = await response.json();
 
@@ -299,16 +324,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         try {
-            const userUpdateResponse = await fetch('/users/me/', {
+            const userUpdateResponse = await fetchWithAuth('/users/me/', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userUpdateData)
             });
             if (!userUpdateResponse.ok) throw new Error('Ошибка обновления профиля');
 
-            const metricsResponse = await fetch('/users/me/metrics', {
+            const metricsResponse = await fetchWithAuth('/users/me/metrics', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(metricsData)
             });
             if (!metricsResponse.ok) throw new Error('Ошибка сохранения метрик');
@@ -325,7 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (logoutButton) {
         logoutButton.addEventListener('click', () => {
             localStorage.removeItem('accessToken');
-            window.location.href = '/'; // Перенаправление на страницу входа
+            window.location.href = '/login'; // Перенаправление на страницу входа
         });
     }
 });

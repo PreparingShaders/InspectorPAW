@@ -1,4 +1,29 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Глобальный перехватчик для fetch ---
+    async function fetchWithAuth(url, options = {}) {
+        const token = localStorage.getItem('accessToken');
+
+        // Добавляем заголовок авторизации, если он еще не установлен
+        if (token && !options.headers?.Authorization) {
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(url, options);
+
+        // Если токен истек или невалиден, выходим из системы
+        if (response.status === 401) {
+            localStorage.removeItem('accessToken');
+            window.location.href = '/login';
+            // Возвращаем "пустой" Promise, чтобы остановить выполнение цепочки .then()
+            return new Promise(() => {});
+        }
+
+        return response;
+    }
+
     const chatHistory = document.getElementById('chat-history');
     const chatInput = document.getElementById('chat-input');
     const sendButton = document.getElementById('send-button');
@@ -69,10 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshModelsButton.querySelector('svg').classList.add('animate-spin');
         modelListContainer.innerHTML = '<p class="text-white p-4 text-center">Загрузка моделей...</p>';
         try {
-            const token = localStorage.getItem('accessToken');
-            const response = await fetch('/ai-hub/get-models', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await fetchWithAuth('/ai-hub/get-models');
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -101,10 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
             chatHistory.appendChild(aiBubble);
 
             try {
-                const token = localStorage.getItem('accessToken');
-                const response = await fetch('/ai-hub/chat', {
+                const response = await fetchWithAuth('/ai-hub/chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         model: currentModel,
                         prompt: userPrompt,

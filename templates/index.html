@@ -152,6 +152,32 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+
+            // --- Глобальный перехватчик для fetch ---
+            async function fetchWithAuth(url, options = {}) {
+                const token = localStorage.getItem('accessToken');
+
+                // Добавляем заголовок авторизации, если он еще не установлен
+                if (token && !options.headers?.Authorization) {
+                    if (!options.headers) {
+                        options.headers = {};
+                    }
+                    options.headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(url, options);
+
+                // Если токен истек или невалиден, выходим из системы
+                if (response.status === 401) {
+                    localStorage.removeItem('accessToken');
+                    window.location.href = '/login';
+                    // Возвращаем "пустой" Promise, чтобы остановить выполнение цепочки .then()
+                    return new Promise(() => {});
+                }
+
+                return response;
+            }
+
             const OVERFLOW_STYLES = {
                 calories:  { glowClass: 'overflow-glow-red'   },
                 protein:   { glowClass: 'overflow-glow-green' },
@@ -226,12 +252,9 @@
 
             async function fetchDashboardData() {
                 try {
-                    const response = await fetch('/users/me/dashboard-stats', {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
-                    });
+                    const response = await fetchWithAuth('/users/me/dashboard-stats');
 
                     if (!response.ok) {
-                        if (response.status === 401) window.location.href = '/';
                         throw new Error('Failed to fetch dashboard data');
                     }
 
@@ -264,12 +287,9 @@
 
             async function fetchWeeklySummaryData() {
                 try {
-                    const response = await fetch('/users/me/stats/weekly-summary', {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
-                    });
+                    const response = await fetchWithAuth('/users/me/stats/weekly-summary');
 
                     if (!response.ok) {
-                        if (response.status === 401) window.location.href = '/';
                         throw new Error('Failed to fetch weekly summary data');
                     }
 
