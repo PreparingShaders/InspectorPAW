@@ -1,12 +1,26 @@
 <style>
-    /* Голубое свечение по контуру для всех иконок */
-    .nav-icon-svg {
+    /* Общее свечение для всех иконок */
+    .nav-icon-base {
         filter: drop-shadow(0 0 2px rgba(0, 242, 255, 0.8));
         transition: all 0.2s ease-in-out;
     }
-    /* Усиливаем свечение при наведении или активности */
-    .nav-link:hover .nav-icon-svg, .nav-link-active .nav-icon-svg {
+    /* Усиление свечения при наведении или активности */
+    .nav-link:hover .nav-icon-base, .nav-link-active .nav-icon-base {
         filter: drop-shadow(0 0 5px rgba(0, 242, 255, 1));
+    }
+
+    /* Стиль для текстовой иконки AI */
+    .ai-icon-text {
+        font-size: 20px; /* Увеличено */
+        font-weight: 900; /* Сделано жирнее */
+        letter-spacing: -1.5px; /* Скорректировано */
+        width: 36px;   /* Увеличено (w-9) */
+        height: 36px;  /* Увеличено (h-9) */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto; /* Центрирование как у SVG */
+        line-height: 1;
     }
 
     /* Стиль для активной кнопки AI HUB */
@@ -26,38 +40,43 @@
 <nav class="glassmorphism fixed left-1/2 -translate-x-1/2 w-[95%] max-w-lg h-16 flex justify-around items-center rounded-2xl neon-glow-pantone-gray" style="bottom: 16px; z-index: 50;">
 
     <a href="/dashboard" class="nav-link text-center {% if active_page == 'dashboard' %}nav-link-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'dashboard' %}var(--color-amber){% else %}var(--color-inactive-icon){% endif %};">
-        <svg class="w-6 h-6 mx-auto nav-icon-svg" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-        </svg>
+        <div class="flex items-center justify-center h-9 w-9 mx-auto">
+            <svg class="w-6 h-6 nav-icon-base" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+            </svg>
+        </div>
         <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">Главная</span>
     </a>
 
     <a href="/workouts" class="nav-link text-center {% if active_page == 'workouts' %}nav-link-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'workouts' %}var(--color-amber){% else %}var(--color-inactive-icon){% endif %};">
-        <svg class="w-7 h-7 mx-auto nav-icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M7 12h10M4 7h1v10H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM20 7h-1v10h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/>
-        </svg>
+        <div class="flex items-center justify-center h-9 w-9 mx-auto">
+            <svg class="w-7 h-7 nav-icon-base" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 12h10M4 7h1v10H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM20 7h-1v10h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/>
+            </svg>
+        </div>
         <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">Тренировки</span>
     </a>
 
     <a href="/ai-hub" class="nav-link text-center {% if active_page == 'ai_hub' %}ai-hub-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'ai_hub' %}#fff{% else %}var(--color-inactive-icon){% endif %};">
-        <svg class="w-8 h-8 mx-auto ai-hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 18.5c-1.8 0-3.4-1.1-4-2.7M15.5 18.5c1.8 0 3.4-1.1 4-2.7M12 21v-2m-7-4H3m18 0h-2M12 3v2m-3.5 1.5L6 5m8.5 1.5L18 5M12 6a6 6 0 00-6 6c0 2.2.9 4.2 2.4 5.6" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 12l-1-1-1-1m2 2l1-1 1-1m-2 2l-1 1 1 1m1-1l1 1" />
-        </svg>
+        <div class="ai-icon-text nav-icon-base ai-hub-icon">AI</div>
         <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">AI HUB</span>
     </a>
 
     <a href="/nutrition" class="nav-link text-center {% if active_page == 'nutrition' %}nav-link-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'nutrition' %}var(--color-amber){% else %}var(--color-inactive-icon){% endif %};">
-        <svg class="w-7 h-7 mx-auto nav-icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 6 C17 6, 20 9, 20 13 C20 17, 16 21, 12 21 C8 21, 4 17, 4 13 C4 9, 7 6, 10 6 M12 6V3"/>
-        </svg>
+        <div class="flex items-center justify-center h-9 w-9 mx-auto">
+            <svg class="w-7 h-7 nav-icon-base" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 6 C17 6, 20 9, 20 13 C20 17, 16 21, 12 21 C8 21, 4 17, 4 13 C4 9, 7 6, 10 6 M12 6V3"/>
+            </svg>
+        </div>
         <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">Питание</span>
     </a>
 
     <a href="/profile" class="nav-link text-center {% if active_page == 'profile' %}nav-link-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'profile' %}var(--color-amber){% else %}var(--color-inactive-icon){% endif %};">
-        <svg class="w-7 h-7 mx-auto nav-icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-        </svg>
+        <div class="flex items-center justify-center h-9 w-9 mx-auto">
+            <svg class="w-7 h-7 nav-icon-base" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+        </div>
         <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">Профиль</span>
     </a>
 </nav>
