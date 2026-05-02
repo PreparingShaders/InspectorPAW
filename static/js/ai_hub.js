@@ -36,11 +36,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const CURRENT_MODEL_KEY = 'aiHubCurrentModel';
 
-    let currentModel = localStorage.getItem(CURRENT_MODEL_KEY) || 'google/gemini-flash-1.5';
+    let currentModel = localStorage.getItem(CURRENT_MODEL_KEY) || null;
     let cachedModels = [];
 
     function updateCurrentModelDisplay() {
-        currentModelDisplay.textContent = `Модель: ${currentModel}`;
+        if (currentModel) {
+            currentModelDisplay.textContent = `Модель: ${currentModel}`;
+        } else {
+            currentModelDisplay.textContent = 'Модель не выбрана';
+        }
     }
 
     function createBubble(sender, text) {
@@ -99,6 +103,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Network response was not ok');
             }
             cachedModels = await response.json();
+
+            if (!currentModel && cachedModels.length > 0) {
+                currentModel = cachedModels[0].id;
+                localStorage.setItem(CURRENT_MODEL_KEY, currentModel);
+            }
+
+            updateCurrentModelDisplay();
             displayModels(cachedModels);
 
         } catch (error) {
@@ -111,16 +122,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleSend() {
         const text = chatInput.value.trim();
-        if (text) {
+        if (text && currentModel) {
             const userPrompt = text;
             chatInput.value = '';
 
-            chatHistory.innerHTML = '';
-
             const userBubble = createBubble('user', userPrompt);
             const aiBubble = createBubble('ai', '...');
-            chatHistory.appendChild(userBubble);
-            chatHistory.appendChild(aiBubble);
+
+            // Правильный порядок для flex-col-reverse:
+            // Сначала добавляем сообщение пользователя, оно "уходит" наверх.
+            // Затем добавляем сообщение ИИ, оно появляется внизу.
+            chatHistory.insertBefore(userBubble, chatHistory.firstChild);
+            chatHistory.insertBefore(aiBubble, chatHistory.firstChild);
 
             try {
                 const response = await fetchWithAuth('/ai-hub/chat', {
@@ -129,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                         model: currentModel,
                         prompt: userPrompt,
-                        history: []
+                        history: [] // История пока не передается
                     })
                 });
 
@@ -144,17 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 aiBubble.innerHTML = `Ошибка: ${error.message}`.replace(/\n/g, '<br>');
             }
+        } else if (!currentModel) {
+            chatInput.placeholder = "Сначала выберите модель";
         }
     }
 
     // --- Слушатели событий ---
     modelSelectionButton.addEventListener('click', () => {
         modelSelectionModal.classList.remove('hidden');
-        if (cachedModels.length === 0) {
-            fetchAndTestModels();
-        } else {
-            displayModels(cachedModels); // Перерисовываем на случай, если модель изменилась
-        }
+        fetchAndTestModels();
     });
 
     closeModalButton.addEventListener('click', () => {
@@ -171,5 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Инициализация ---
-    updateCurrentModelDisplay();
+    if (currentModel) {
+        updateCurrentModelDisplay();
+    }
+    fetchAndTestModels();
 });
