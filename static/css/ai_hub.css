@@ -5,11 +5,6 @@ body {
     background-attachment: fixed;
 }
 
-/* Скрываем стандартную навигацию на этой странице */
-nav.glassmorphism {
-    display: none;
-}
-
 /* Стили для кнопки "Назад" */
 .back-button {
     position: absolute;

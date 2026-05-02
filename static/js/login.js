@@ -23,7 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function clearMessages() {
         errorMessage.textContent = '';
+        errorMessage.style.display = 'none';
         successMessage.textContent = '';
+        successMessage.style.display = 'none';
     }
 
     // --- Login Form Handling ---
@@ -75,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             errorMessage.textContent = error.message;
+            errorMessage.style.display = 'block';
         }
     });
 
@@ -100,13 +103,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) {
                 successMessage.textContent = 'Аккаунт успешно создан! Теперь вы можете войти.';
+                successMessage.style.display = 'block';
                 showLoginLink.click(); // Switch to login view
             } else {
                 const errorData = await response.json();
-                errorMessage.textContent = errorData.detail || 'Не удалось создать аккаунт.';
+                throw new Error(errorData.detail || 'Не удалось создать аккаунт.');
             }
         } catch (error) {
-            errorMessage.textContent = 'Произошла ошибка сети. Попробуйте снова.';
+            errorMessage.textContent = error.message;
+            errorMessage.style.display = 'block';
         }
     });
 });
