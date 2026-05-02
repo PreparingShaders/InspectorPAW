@@ -135,6 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
             chatHistory.insertBefore(userBubble, chatHistory.firstChild);
             chatHistory.insertBefore(aiBubble, chatHistory.firstChild);
 
+            // Прокручиваем чат к последнему сообщению
+            chatHistory.scrollTop = 0;
+
             try {
                 const response = await fetchWithAuth('/ai-hub/chat', {
                     method: 'POST',

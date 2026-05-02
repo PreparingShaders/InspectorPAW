@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Если токен истек или невалиден, выходим из системы
         if (response.status === 401) {
             localStorage.removeItem('accessToken');
-            window.location.href = '/login';
+            window.location.href = '/'; // Исправлено на /
             // Возвращаем "пустой" Promise, чтобы остановить выполнение цепочки .then()
             return new Promise(() => {});
         }
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const token = localStorage.getItem('accessToken');
     if (!token) {
-        window.location.href = '/login';
+        window.location.href = '/'; // Исправлено на /
         return;
     }
 
@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (logoutButton) {
         logoutButton.addEventListener('click', () => {
             localStorage.removeItem('accessToken');
-            window.location.href = '/login'; // Перенаправление на страницу входа
+            window.location.href = '/'; // Перенаправление на страницу входа
         });
     }
 });
