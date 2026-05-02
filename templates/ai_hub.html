@@ -16,12 +16,21 @@
             background-size: 200% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: iridescent-flow 4s linear infinite;
+            animation:
+                iridescent-flow 4s linear infinite,
+                iridescent-glow 4s linear infinite;
         }
         @keyframes iridescent-flow {
             to {
                 background-position: 200% center;
             }
+        }
+        @keyframes iridescent-glow {
+            0%   { filter: drop-shadow(0 0 7px #ff00ff); }
+            25%  { filter: drop-shadow(0 0 10px #00ffff); }
+            50%  { filter: drop-shadow(0 0 7px #ff00ff); }
+            75%  { filter: drop-shadow(0 0 10px #ffff00); }
+            100% { filter: drop-shadow(0 0 7px #ff00ff); }
         }
         #model-selection-modal {
             background-color: rgba(0, 0, 0, 0.8);
@@ -32,23 +41,23 @@
 </head>
 <body class="h-dvh flex flex-col">
 
-    <header class="relative text-center pb-2 px-4" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
-        <button onclick="history.back()" class="back-button">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-        <h1 class="text-3xl font-extrabold tracking-wider iridescent-text">ProgressLab AI</h1>
-        <div class="flex justify-center items-center space-x-2 mt-2">
-            <button id="model-selection-button" class="text-xs text-gray-400 border border-gray-600 rounded-full px-3 py-1">
-                Выбор модели
+    <main class="flex-grow overflow-y-auto">
+        <header class="relative text-center pb-2 px-4" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
+            <button onclick="history.back()" class="back-button">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
             </button>
-            <p id="current-model-display" class="text-xs text-gray-500"></p>
-        </div>
-    </header>
+            <h1 class="text-3xl font-extrabold tracking-wider iridescent-text">ProgressLab AI</h1>
+            <div class="flex justify-center items-center space-x-2 mt-2">
+                <button id="model-selection-button" class="text-xs text-gray-400 border border-gray-600 rounded-full px-3 py-1">
+                    Выбор модели
+                </button>
+                <p id="current-model-display" class="text-xs text-gray-500"></p>
+            </div>
+        </header>
 
-    <main class="flex-grow flex flex-col min-h-0">
-        <div id="chat-history" class="overflow-y-auto flex flex-col-reverse gap-4 p-4">
+        <div id="chat-history" class="flex flex-col gap-4 p-4">
             <!-- Сообщения чата будут здесь -->
         </div>
     </main>

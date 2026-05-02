@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modelListContainer = document.getElementById('model-list');
     const currentModelDisplay = document.getElementById('current-model-display');
     const refreshModelsButton = document.getElementById('refresh-models-button');
+    const mainContent = document.querySelector('main'); // Получаем основной контейнер
 
     const CURRENT_MODEL_KEY = 'aiHubCurrentModel';
 
@@ -120,6 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function scrollToBottom() {
+        mainContent.scrollTop = mainContent.scrollHeight;
+    }
+
     async function handleSend() {
         const text = chatInput.value.trim();
         if (text && currentModel) {
@@ -129,14 +134,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const userBubble = createBubble('user', userPrompt);
             const aiBubble = createBubble('ai', '...');
 
-            // Правильный порядок для flex-col-reverse:
-            // Сначала добавляем сообщение пользователя, оно "уходит" наверх.
-            // Затем добавляем сообщение ИИ, оно появляется внизу.
-            chatHistory.insertBefore(userBubble, chatHistory.firstChild);
-            chatHistory.insertBefore(aiBubble, chatHistory.firstChild);
+            // Добавляем сообщения в конец
+            chatHistory.appendChild(userBubble);
+            chatHistory.appendChild(aiBubble);
 
-            // Прокручиваем чат к последнему сообщению
-            chatHistory.scrollTop = 0;
+            // Прокручиваем к последнему сообщению
+            scrollToBottom();
 
             try {
                 const response = await fetchWithAuth('/ai-hub/chat', {
@@ -159,6 +162,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 aiBubble.innerHTML = `Ошибка: ${error.message}`.replace(/\n/g, '<br>');
+            } finally {
+                // Еще раз прокручиваем после получения ответа, если контент изменил высоту
+                scrollToBottom();
             }
         } else if (!currentModel) {
             chatInput.placeholder = "Сначала выберите модель";

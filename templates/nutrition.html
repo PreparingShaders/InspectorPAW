@@ -22,15 +22,17 @@
         .step.active { display: block; }
 
         /* --- СТИЛЬ ДЛЯ ПЕРЕЛИВАЮЩЕГОСЯ СВЕЧЕНИЯ --- */
-        @keyframes animated-glow {
-            0% { background-color: rgba(75, 0, 130, 0.4); } /* Indigo */
-            50% { background-color: rgba(0, 0, 255, 0.4); } /* Blue */
-            100% { background-color: rgba(75, 0, 130, 0.4); } /* Indigo */
+        @keyframes iridescent-glow-box {
+            0%   { box-shadow: 0 0 15px #ff00ff; }
+            25%  { box-shadow: 0 0 20px #00ffff; }
+            50%  { box-shadow: 0 0 15px #ff00ff; }
+            75%  { box-shadow: 0 0 20px #ffff00; }
+            100% { box-shadow: 0 0 15px #ff00ff; }
         }
         .ai-animated-glow-button {
+            background-color: rgba(138, 43, 226, 0.3); /* Фиолетовый фон */
             border: 1px solid rgba(138, 43, 226, 0.7);
-            animation: animated-glow 4s infinite ease-in-out;
-            box-shadow: 0 0 15px rgba(75, 0, 130, 0.6); /* Добавим статичную тень */
+            animation: iridescent-glow-box 4s infinite ease-in-out;
         }
         .slow-spin {
             animation: spin 1s linear infinite;

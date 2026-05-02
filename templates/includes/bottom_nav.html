@@ -11,29 +11,43 @@
 
     /* Стиль для текстовой иконки AI */
     .ai-icon-text {
-        font-size: 20px; /* Увеличено */
-        font-weight: 900; /* Сделано жирнее */
-        letter-spacing: -1.5px; /* Скорректировано */
-        width: 36px;   /* Увеличено (w-9) */
-        height: 36px;  /* Увеличено (h-9) */
+        font-size: 20px;
+        font-weight: 900;
+        letter-spacing: -1.5px;
+        width: 36px;
+        height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto; /* Центрирование как у SVG */
+        margin: 0 auto;
         line-height: 1;
+
+        /* Анимация градиента текста */
+        background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff, #ffff00);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+
+        /* Применяем ОБЕ анимации: для текста и для свечения */
+        animation:
+            iridescent-flow 4s linear infinite,
+            iridescent-glow 4s linear infinite;
     }
 
-    /* Стиль для активной кнопки AI HUB */
-    .ai-hub-active .ai-hub-icon {
-        animation: iridescent-glow 2s infinite linear;
+    /* Анимация прокрутки градиента текста */
+    @keyframes iridescent-flow {
+        to {
+            background-position: 200% center;
+        }
     }
 
+    /* Анимация переливающегося свечения */
     @keyframes iridescent-glow {
-        0% { filter: drop-shadow(0 0 4px #ff00ff); }
-        25% { filter: drop-shadow(0 0 6px #00ffff); }
-        50% { filter: drop-shadow(0 0 4px #ff00ff); }
-        75% { filter: drop-shadow(0 0 6px #ffff00); }
-        100% { filter: drop-shadow(0 0 4px #ff00ff); }
+        0%   { filter: drop-shadow(0 0 5px #ff00ff); }
+        25%  { filter: drop-shadow(0 0 7px #00ffff); }
+        50%  { filter: drop-shadow(0 0 5px #ff00ff); }
+        75%  { filter: drop-shadow(0 0 7px #ffff00); }
+        100% { filter: drop-shadow(0 0 5px #ff00ff); }
     }
 </style>
 
@@ -57,8 +71,8 @@
         <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">Тренировки</span>
     </a>
 
-    <a href="/ai-hub" class="nav-link text-center {% if active_page == 'ai_hub' %}ai-hub-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'ai_hub' %}#fff{% else %}var(--color-inactive-icon){% endif %};">
-        <div class="ai-icon-text nav-icon-base ai-hub-icon">AI</div>
+    <a href="/ai-hub" class="nav-link text-center" style="text-decoration: none; color: var(--color-inactive-icon);">
+        <div class="ai-icon-text">AI</div>
         <span style="font-size: 10px; font-weight: 700; margin-top: 4px; display: block; text-transform: uppercase;">AI HUB</span>
     </a>
 
