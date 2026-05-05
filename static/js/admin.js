@@ -12,17 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const usersTableBody = document.getElementById('users-table-body');
     let currentUserIdForPasswordReset = null;
+    let debounceTimer;
 
     async function fetchUsers() {
         try {
             const response = await fetch('/admin/users', { headers });
             if (response.status === 403) {
-                alert('Access Denied');
+                alert('Доступ запрещен. У вас нет прав администратора.');
                 window.location.href = '/dashboard';
                 return;
             }
             if (!response.ok) {
-                throw new Error('Failed to fetch users');
+                throw new Error('Не удалось загрузить пользователей');
             }
             const users = await response.json();
             renderUsers(users);
@@ -36,23 +37,27 @@ document.addEventListener('DOMContentLoaded', () => {
         usersTableBody.innerHTML = '';
         users.forEach(user => {
             const row = document.createElement('tr');
+            row.className = 'border-b border-gray-700/50';
+
+            const premiumDate = user.premium_expires_at ? new Date(user.premium_expires_at).toISOString().split('T')[0] : '';
+
             row.innerHTML = `
-                <td class="border-t border-gray-700 px-4 py-2">${user.id}</td>
-                <td class="border-t border-gray-700 px-4 py-2">${user.email}</td>
-                <td class="border-t border-gray-700 px-4 py-2">
-                    <select data-user-id="${user.id}" data-field="role" class="bg-gray-700 rounded p-1">
+                <td class="px-2 py-3 text-sm">${user.id}</td>
+                <td class="px-2 py-3 text-sm">${user.email}</td>
+                <td class="px-2 py-3">
+                    <select data-user-id="${user.id}" data-field="role" class="bg-gray-700 rounded p-1 text-sm w-full">
                         <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
                         <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
                     </select>
                 </td>
-                <td class="border-t border-gray-700 px-4 py-2">
-                    <input type="checkbox" data-user-id="${user.id}" data-field="is_premium" class="form-checkbox h-5 w-5 text-blue-600 bg-gray-700 border-gray-600" ${user.is_premium ? 'checked' : ''}>
+                <td class="px-2 py-3">
+                    <input type="date" data-user-id="${user.id}" data-field="premium_expires_at" value="${premiumDate}" class="bg-gray-700 rounded p-1 text-sm w-full">
                 </td>
-                <td class="border-t border-gray-700 px-4 py-2">
-                    <input type="checkbox" data-user-id="${user.id}" data-field="is_active" class="form-checkbox h-5 w-5 text-blue-600 bg-gray-700 border-gray-600" ${user.is_active ? 'checked' : ''}>
+                <td class="px-2 py-3 text-center">
+                    <input type="checkbox" data-user-id="${user.id}" data-field="is_active" class="form-checkbox h-5 w-5 text-blue-500 bg-gray-700 border-gray-600 rounded" ${user.is_active ? 'checked' : ''}>
                 </td>
-                <td class="border-t border-gray-700 px-4 py-2">
-                    <button data-user-id="${user.id}" data-user-email="${user.email}" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs reset-password-btn">Reset Password</button>
+                <td class="px-2 py-3">
+                    <button data-user-id="${user.id}" data-user-email="${user.email}" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs reset-password-btn">Пароль</button>
                 </td>
             `;
             usersTableBody.appendChild(row);
@@ -60,31 +65,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function updateUser(userId, field, value) {
+        // Если значение даты пустое, отправляем null
+        const bodyValue = (field === 'premium_expires_at' && value === '') ? null : value;
+
         try {
             const response = await fetch(`/admin/users/${userId}`, {
                 method: 'PUT',
                 headers,
-                body: JSON.stringify({ [field]: value })
+                body: JSON.stringify({ [field]: bodyValue })
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to update user');
+                throw new Error(errorData.detail || 'Не удалось обновить пользователя');
             }
-            // Optionally, show a success message
+            // Можно добавить небольшое уведомление об успехе
         } catch (error) {
             console.error(error);
             alert(error.message);
-            fetchUsers(); // Re-fetch to revert optimistic update
+            fetchUsers(); // Перезагружаем данные при ошибке
         }
     }
 
     usersTableBody.addEventListener('change', (event) => {
         const target = event.target;
-        if (target.matches('select[data-user-id]') || target.matches('input[type="checkbox"][data-user-id]')) {
+        if (target.matches('select[data-user-id]') || target.matches('input[data-user-id]')) {
             const userId = target.dataset.userId;
             const field = target.dataset.field;
-            const value = target.type === 'checkbox' ? target.checked : target.value;
-            updateUser(userId, field, value);
+            let value = target.type === 'checkbox' ? target.checked : target.value;
+
+            // Для полей с задержкой (например, дата)
+            if (target.type === 'date') {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    updateUser(userId, field, value);
+                }, 800); // Задержка в 800 мс
+            } else {
+                updateUser(userId, field, value);
+            }
         }
     });
 
@@ -110,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.submitPasswordReset = async function() {
         const newPassword = document.getElementById('new-password-input').value;
         if (!newPassword || newPassword.length < 8) {
-            alert('Password must be at least 8 characters long.');
+            alert('Пароль должен содержать не менее 8 символов.');
             return;
         }
 
@@ -125,9 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to reset password');
+                throw new Error(errorData.detail || 'Не удалось сбросить пароль');
             }
-            alert('Password has been reset successfully.');
+            alert('Пароль успешно сброшен.');
             closeModal();
         } catch (error) {
             console.error(error);

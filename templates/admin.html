@@ -1,38 +1,59 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Админ Панель - ProgressLab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ProgressLab">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png">
 </head>
-<body class="bg-gray-900 text-white p-8">
-    <h1 class="text-2xl font-bold mb-6">Admin Panel</h1>
-    <div class="overflow-x-auto">
-        <table class="min-w-full bg-gray-800 rounded-lg">
-            <thead>
-                <tr>
-                    <th class="px-4 py-2">ID</th>
-                    <th class="px-4 py-2">Email</th>
-                    <th class="px-4 py-2">Role</th>
-                    <th class="px-4 py-2">Premium</th>
-                    <th class="px-4 py-2">Active</th>
-                    <th class="px-4 py-2">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="users-table-body">
-                <!-- User rows will be inserted here -->
-            </tbody>
-        </table>
-    </div>
+<body class="h-dvh flex flex-col bg-gray-900 text-white">
+
+    <header class="text-center pb-2" style="padding-top: calc(0.01rem + env(safe-area-inset-top));">
+        <h1 class="text-3xl font-extrabold tracking-wider">Админ Панель</h1>
+        <p class="text-xs text-gray-500">ProgressLab Beta 0.1</p>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-4 pb-24">
+        <div class="w-full overflow-x-auto glassmorphism neon-glow-pantone-gray rounded-2xl p-4">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="text-gray-400 text-sm">
+                        <th class="px-2 py-2 text-left">ID</th>
+                        <th class="px-2 py-2 text-left">Email</th>
+                        <th class="px-2 py-2 text-left">Роль</th>
+                        <th class="px-2 py-2 text-left">Премиум до</th>
+                        <th class="px-2 py-2 text-left">Активен</th>
+                        <th class="px-2 py-2 text-left">Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body">
+                    <!-- User rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    {% set active_page = 'admin' %}
+    {% include 'includes/bottom_nav.html' %}
 
     <!-- Modal for password reset -->
-    <div id="password-reset-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
-            <h2 class="text-xl mb-4">Reset Password for <span id="reset-user-email"></span></h2>
-            <input type="password" id="new-password-input" class="bg-gray-700 text-white w-full p-2 rounded mb-4" placeholder="Enter new password">
-            <div class="flex justify-end">
-                <button onclick="closeModal()" class="bg-gray-600 px-4 py-2 rounded mr-2">Cancel</button>
-                <button onclick="submitPasswordReset()" class="bg-blue-600 px-4 py-2 rounded">Reset</button>
+    <div id="password-reset-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl glassmorphism neon-glow-pantone-gray">
+            <h2 class="text-xl mb-4">Сброс пароля для <span id="reset-user-email" class="font-bold"></span></h2>
+            <input type="password" id="new-password-input" class="bg-gray-700 text-white w-full p-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Введите новый пароль">
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeModal()" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors">Отмена</button>
+                <button onclick="submitPasswordReset()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">Сбросить</button>
             </div>
         </div>
     </div>

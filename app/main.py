@@ -386,7 +386,7 @@ async def analyze_meal(
         file: Optional[UploadFile] = File(None),
         ai_model: Optional[str] = Form(None),
         db: Session = Depends(get_db),
-        current_user: models.User = Depends(auth.check_free_user_upload_limit)
+        current_user: models.User = Depends(auth.get_current_user) # Убрана зависимость check_free_user_upload_limit
 ):
     if not file and not description:
         raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
@@ -474,6 +474,15 @@ def confirm_and_create_meal(
         db: Session = Depends(get_db),
         current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Проверка лимита для бесплатных пользователей
+    if not auth.is_premium_user(current_user):
+        meals_today_count = crud.count_meals_today(db, user_id=current_user.id)
+        if meals_today_count >= 5:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Лимит на 5 приемов пищи в день для бесплатного аккаунта исчерпан. Оформите премиум-подписку для снятия ограничений."
+            )
+
     if meal_data.ai_coach_advice:
         meal_data.food_name = f"{meal_data.food_name}\n\n{meal_data.ai_coach_advice}"
 

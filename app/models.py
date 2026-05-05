@@ -16,13 +16,11 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
 
-    # Новые поля для ролей и премиум-статуса
+    # Поля для ролей и премиум-статуса
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
-    is_premium = Column(Boolean, default=False)
+    premium_expires_at = Column(DateTime(timezone=True), nullable=True) # Заменено is_premium на premium_expires_at
 
-    # Поля для отслеживания лимитов бесплатных пользователей
-    photo_uploads_today = Column(Integer, default=0, nullable=False)
-    last_upload_date = Column(Date, server_default=func.current_date(), nullable=False) # Изменено с func.now() на func.current_date()
+    # Удалены photo_uploads_today и last_upload_date
 
     # Профиль пользователя
     date_of_birth = Column(Date, nullable=True)

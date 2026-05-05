@@ -183,7 +183,7 @@ class User(UserBase):
     id: int
     is_active: bool
     role: UserRole
-    is_premium: bool
+    premium_expires_at: Optional[datetime] = None # Изменено с is_premium на premium_expires_at
     metrics: List[UserMetrics] = []
     meals: List[Meal] = []
     class Config:
@@ -194,12 +194,13 @@ class UserWithTargets(User):
 
 # --- Admin Schemas ---
 class UserAdminView(User):
-    photo_uploads_today: int
-    last_upload_date: date
+    # photo_uploads_today: int # Удалено
+    # last_upload_date: date   # Удалено
+    pass # Теперь UserAdminView наследует все поля из User, включая premium_expires_at
 
 class UserUpdateAdmin(BaseModel):
     role: Optional[UserRole] = None
-    is_premium: Optional[bool] = None
+    premium_expires_at: Optional[datetime] = None # Изменено с is_premium на premium_expires_at
     is_active: Optional[bool] = None
 
 class PasswordResetRequest(BaseModel):

@@ -123,6 +123,14 @@ def get_user_stats_by_period(db: Session, user_id: int, start_date: date, end_da
 
 # --- Meal CRUD ---
 
+def count_meals_today(db: Session, user_id: int) -> int:
+    """Считает количество приемов пищи пользователя за текущий день."""
+    today = date.today()
+    return db.query(models.Meal).filter(
+        models.Meal.user_id == user_id,
+        func.date(models.Meal.timestamp) == today
+    ).count()
+
 def get_meal_by_id(db: Session, meal_id: int):
     """Находит прием пищи по ID."""
     return db.query(models.Meal).filter(models.Meal.id == meal_id).first()
