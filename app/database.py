@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker, Session
 SQLALCHEMY_DATABASE_URL = "sqlite:///./inspector_paw.db"
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
+    SQLALCHEMY_DATABASE_URL,
     # Этот аргумент нужен только для SQLite для поддержки асинхронности FastAPI
     connect_args={"check_same_thread": False}
 )

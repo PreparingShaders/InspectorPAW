@@ -35,6 +35,10 @@ def get_user_by_email(db: Session, email: str):
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
+    
+    # Проверяем, есть ли уже пользователи в базе данных
+    is_first_user = db.query(models.User).count() == 0
+    
     db_user = models.User(
         email=user.email,
         hashed_password=hashed_password,
@@ -42,7 +46,8 @@ def create_user(db: Session, user: schemas.UserCreate):
         gender=user.gender,
         height_cm=user.height_cm,
         goal=user.goal,
-        goal_intensity=user.goal_intensity
+        goal_intensity=user.goal_intensity,
+        role=models.UserRole.ADMIN if is_first_user else models.UserRole.USER # Назначаем ADMIN, если это первый пользователь
     )
     db.add(db_user)
     db.commit()
