@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
+from .models import UserRole
 
 # --- AI Hub Chat Schema ---
 class AIChatRequest(BaseModel):
@@ -181,6 +182,8 @@ class UserUpdate(UserBase):
 class User(UserBase):
     id: int
     is_active: bool
+    role: UserRole
+    is_premium: bool
     metrics: List[UserMetrics] = []
     meals: List[Meal] = []
     class Config:
@@ -188,3 +191,17 @@ class User(UserBase):
 
 class UserWithTargets(User):
     calculated_targets: Optional[CalculatedTargets] = None
+
+# --- Admin Schemas ---
+class UserAdminView(User):
+    photo_uploads_today: int
+    last_upload_date: date
+
+class UserUpdateAdmin(BaseModel):
+    role: Optional[UserRole] = None
+    is_premium: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+class PasswordResetRequest(BaseModel):
+    user_id: int
+    new_password: str = Field(..., min_length=8, max_length=72)

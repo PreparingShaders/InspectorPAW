@@ -355,6 +355,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`/users/me/stats/summary-by-period?days=${days}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
 
+            // --- Расчет и отображение среднего балла ---
+            const scores = data.daily_breakdown.map(d => d.daily_score).filter(s => s !== null && s !== undefined);
+            const avgLabel = document.getElementById('average-score-label');
+            if (scores.length > 0) {
+                const averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+                if (avgLabel) {
+                    avgLabel.textContent = averageScore;
+                    avgLabel.classList.remove('hidden');
+                }
+            } else {
+                if (avgLabel) {
+                    avgLabel.classList.add('hidden');
+                }
+            }
+            // --- Конец расчета ---
+
             // Sort to find the latest day for the summary score
             const sortedForSummary = data.daily_breakdown.length > 0 ? [...data.daily_breakdown].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
             const latestDay = sortedForSummary.length > 0 ? sortedForSummary[0] : null;

@@ -1,7 +1,12 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
+import enum
+
+class UserRole(enum.Enum):
+    USER = "user"
+    ADMIN = "admin"
 
 class User(Base):
     __tablename__ = "users"
@@ -10,6 +15,14 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+
+    # Новые поля для ролей и премиум-статуса
+    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    is_premium = Column(Boolean, default=False)
+
+    # Поля для отслеживания лимитов бесплатных пользователей
+    photo_uploads_today = Column(Integer, default=0, nullable=False)
+    last_upload_date = Column(Date, server_default=func.current_date(), nullable=False) # Изменено с func.now() на func.current_date()
 
     # Профиль пользователя
     date_of_birth = Column(Date, nullable=True)

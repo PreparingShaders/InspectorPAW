@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <h1 class="text-2xl font-bold mb-6">Admin Panel</h1>
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-gray-800 rounded-lg">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2">ID</th>
+                    <th class="px-4 py-2">Email</th>
+                    <th class="px-4 py-2">Role</th>
+                    <th class="px-4 py-2">Premium</th>
+                    <th class="px-4 py-2">Active</th>
+                    <th class="px-4 py-2">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="users-table-body">
+                <!-- User rows will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal for password reset -->
+    <div id="password-reset-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl">
+            <h2 class="text-xl mb-4">Reset Password for <span id="reset-user-email"></span></h2>
+            <input type="password" id="new-password-input" class="bg-gray-700 text-white w-full p-2 rounded mb-4" placeholder="Enter new password">
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="bg-gray-600 px-4 py-2 rounded mr-2">Cancel</button>
+                <button onclick="submitPasswordReset()" class="bg-blue-600 px-4 py-2 rounded">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>

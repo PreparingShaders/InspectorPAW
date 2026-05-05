@@ -14,6 +14,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
+def get_user(db: Session, user_id: int):
+    """
+    Получает пользователя по ID.
+    """
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+def get_users(db: Session, skip: int = 0, limit: int = 100):
+    """
+    Получает список пользователей.
+    """
+    return db.query(models.User).offset(skip).limit(limit).all()
+
 def get_user_by_email(db: Session, email: str):
     """
     Получает пользователя по email. Для аутентификации не требуется загружать

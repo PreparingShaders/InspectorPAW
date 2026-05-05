@@ -20,12 +20,16 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
 from . import crud, models, schemas, auth, utils
-from .database import SessionLocal, engine
+from .database import SessionLocal, engine, get_db
 from .config import settings, Settings
+from .admin import router as admin_router
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="InspectorPAW API")
+
+# Подключаем роутер админки
+app.include_router(admin_router)
 
 # Монтируем статическую директорию
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -42,14 +46,6 @@ templates = Jinja2Templates(directory="templates")
 
 # Инициализируем httpx клиент для всех запросов к воркеру
 httpx_client = httpx.AsyncClient(base_url=settings.AI_WORKER_URL)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # --- Веб-страницы ---
@@ -80,6 +76,10 @@ async def read_ai_hub_page(request: Request):
 @app.get("/workouts")
 async def read_workouts_page(request: Request):
     return templates.TemplateResponse(name="workouts.html", request=request)
+
+@app.get("/admin")
+async def read_admin_page(request: Request):
+    return templates.TemplateResponse(name="admin.html", request=request)
 
 
 # --- AI Логика ---
@@ -386,7 +386,7 @@ async def analyze_meal(
         file: Optional[UploadFile] = File(None),
         ai_model: Optional[str] = Form(None),
         db: Session = Depends(get_db),
-        current_user: models.User = Depends(auth.get_current_user)
+        current_user: models.User = Depends(auth.check_free_user_upload_limit)
 ):
     if not file and not description:
         raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
