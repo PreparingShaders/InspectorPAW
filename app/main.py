@@ -60,8 +60,8 @@ async def read_dashboard_page(request: Request):
 
 
 @app.get("/profile")
-async def read_profile_page(request: Request):
-    return templates.TemplateResponse(name="profile.html", request=request)
+async def read_profile_page(request: Request, current_user: models.User = Depends(auth.get_current_user_from_cookie)):
+    return templates.TemplateResponse(request=request, name="profile.html", context={"user": current_user})
 
 
 @app.get("/nutrition")
@@ -299,13 +299,16 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
 
 
-@app.post("/token", response_model=schemas.Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@app.post("/token")
+async def login_for_access_token(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = crud.get_user_by_email(db, email=form_data.username)
     if not user or not crud.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
+    
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
+    
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite='lax')
     return {"access_token": access_token, "token_type": "bearer"}
 
 

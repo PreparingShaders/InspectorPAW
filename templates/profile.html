@@ -163,6 +163,13 @@
             <button type="button" id="logout-button" class="w-full py-3 text-lg font-semibold rounded-xl bg-transparent neon-glow-pantone-gray mt-4">
                 Выйти
             </button>
+
+            {% if user.role.value == 'admin' %}
+            <button type="button" id="admin-button" class="w-full py-3 text-lg font-semibold rounded-xl bg-purple-600 hover:bg-purple-700 text-white mt-4" onclick="window.location.href='/admin'">
+                Админка
+            </button>
+            {% endif %}
+
             <p id="error-message" class="text-red-500 text-center mt-4"></p>
             <p id="success-message" class="text-green-500 text-center mt-4"></p>
         </div>
