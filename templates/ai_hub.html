@@ -64,13 +64,18 @@
 
     <footer class="p-4" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
         <div class="chat-input-container">
-            <input type="text" id="chat-input" placeholder="Сообщение...">
-            <button id="send-button">
+            <input type="text" id="chat-input" placeholder="Сообщение..." {% if not features.can_use_ai_chat %}disabled{% endif %}>
+            <button id="send-button" {% if not features.can_use_ai_chat %}disabled{% endif %}>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
                     <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
                 </svg>
             </button>
         </div>
+        {% if not features.can_use_ai_chat %}
+        <p class="text-red-500 text-xs text-center mt-2">
+            AI чат доступен только для <a href="/profile" class="underline">премиум-пользователей</a>.
+        </p>
+        {% endif %}
     </footer>
 
     <!-- Модальное окно выбора модели -->

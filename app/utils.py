@@ -7,6 +7,9 @@ import requests
 from openai import AsyncOpenAI
 from . import models
 from .config import settings
+from . import auth, crud
+from sqlalchemy.orm import Session
+from .models import User
 
 async def test_model(model_id: str) -> Optional[str]:
     """
@@ -316,4 +319,28 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         "probability_of_success": probability_of_success,
         "danger_status": danger_status,
         "pace_recommendation": pace_recommendation,
+    }
+
+def get_user_features(user: User, db: Session) -> dict:
+    """
+    Возвращает словарь с флагами доступных пользователю функций.
+    """
+    is_premium = auth.is_premium_user(user)
+
+    # Ограничение на чат
+    can_use_ai_chat = is_premium
+
+    # Ограничение на анализ еды
+    can_analyze_meal = False
+    if is_premium:
+        can_analyze_meal = True
+    else:
+        meals_today = crud.count_meals_today(db, user_id=user.id)
+        if meals_today < 5:
+            can_analyze_meal = True
+            
+    return {
+        "is_premium": is_premium,
+        "can_use_ai_chat": can_use_ai_chat,
+        "can_analyze_meal": can_analyze_meal,
     }

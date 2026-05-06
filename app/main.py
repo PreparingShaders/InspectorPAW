@@ -65,13 +65,15 @@ async def read_profile_page(request: Request, current_user: models.User = Depend
 
 
 @app.get("/nutrition")
-async def read_nutrition_page(request: Request):
-    return templates.TemplateResponse(name="nutrition.html", request=request)
+async def read_nutrition_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_from_cookie)):
+    features = utils.get_user_features(current_user, db)
+    return templates.TemplateResponse(request=request, name="nutrition.html", context={"features": features})
 
 
 @app.get("/ai-hub")
-async def read_ai_hub_page(request: Request):
-    return templates.TemplateResponse(name="ai_hub.html", request=request)
+async def read_ai_hub_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_from_cookie)):
+    features = utils.get_user_features(current_user, db)
+    return templates.TemplateResponse(request=request, name="ai_hub.html", context={"features": features})
 
 @app.get("/workouts")
 async def read_workouts_page(request: Request):

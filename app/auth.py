@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
@@ -19,7 +19,7 @@ def is_premium_user(user: models.User) -> bool:
     """Проверяет, активна ли у пользователя премиум-подписка."""
     if user.role == models.UserRole.ADMIN:
         return True
-    if user.premium_expires_at and user.premium_expires_at > datetime.now(datetime.timezone.utc):
+    if user.premium_expires_at and user.premium_expires_at > datetime.utcnow():
         return True
     return False
 
