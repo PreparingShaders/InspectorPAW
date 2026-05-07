@@ -4,6 +4,7 @@ from passlib.context import CryptContext
 from datetime import date, datetime, timedelta, timezone
 from . import models, schemas
 from typing import List, Optional
+import secrets
 
 # Создаем контекст для хеширования паролей
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -64,6 +65,29 @@ def update_user(db: Session, user: models.User, user_update: schemas.UserUpdate)
             setattr(user, "hashed_password", hashed_password)
         else:
             setattr(user, key, value)
+    db.commit()
+    db.refresh(user)
+    return user
+
+# --- Password Reset CRUD ---
+
+def create_password_reset_token(db: Session, user: models.User) -> str:
+    """Генерирует и сохраняет токен сброса пароля."""
+    token = secrets.token_urlsafe(32)
+    user.password_reset_token = token
+    user.password_reset_expires_at = datetime.utcnow() + timedelta(hours=1)
+    db.commit()
+    return token
+
+def get_user_by_password_reset_token(db: Session, token: str) -> Optional[models.User]:
+    """Находит пользователя по токену сброса пароля."""
+    return db.query(models.User).filter(models.User.password_reset_token == token).first()
+
+def reset_password(db: Session, user: models.User, new_password: str) -> models.User:
+    """Сбрасывает пароль пользователя и удаляет токен."""
+    user.hashed_password = get_password_hash(new_password)
+    user.password_reset_token = None
+    user.password_reset_expires_at = None
     db.commit()
     db.refresh(user)
     return user

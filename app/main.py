@@ -18,6 +18,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
+from pydantic import BaseModel, Field, validator
 
 from . import crud, models, schemas, auth, utils
 from .database import SessionLocal, engine, get_db
@@ -263,20 +264,20 @@ async def get_nutrition_analysis_and_advice(
         response.raise_for_status()
         
         res_data = response.json()
-        
-        # Обработка ответа
-        if model_to_use in settings.NATIVE_GEMINI_MODELS:
+        response_text = ""
+
+        if model_name in settings.NATIVE_GEMINI_MODELS:
             if res_data.get('candidates') and res_data['candidates'][0].get('content') and res_data['candidates'][0]['content'].get('parts'):
                 response_text = res_data['candidates'][0]['content']['parts'][0]['text']
             else:
                 response_text = "Ответ не был получен от модели Gemini. Возможно, запрос был заблокирован из-за настроек безопасности или ответ пуст."
-        elif model_to_use in settings.OPEN_ROUTER_MODELS:
+        elif model_name in settings.OPEN_ROUTER_MODELS:
             if res_data.get('choices') and res_data['choices'][0].get('message') and res_data['choices'][0]['message'].get('content'):
                 response_text = res_data['choices'][0]['message']['content']
             else:
                 response_text = "Ответ не был получен от модели OpenRouter. Ответ пуст."
-        
-        return json.loads(response_text), model_to_use
+
+        return {"response": response_text}
 
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 429:
@@ -301,17 +302,28 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
 
 
-@app.post("/token")
+class TokenWithPasswordChange(schemas.Token):
+    force_password_change_on_login: bool = False
+
+@app.post("/token", response_model=TokenWithPasswordChange)
 async def login_for_access_token(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = crud.get_user_by_email(db, email=form_data.username)
     if not user or not crud.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
     
+    # Проверка активности пользователя
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Пользователь неактивен")
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     
     response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite='lax')
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "force_password_change_on_login": user.force_password_change_on_login
+    }
 
 
 @app.get("/users/me/", response_model=schemas.UserWithTargets)
@@ -374,6 +386,31 @@ def update_current_user(
         current_user: models.User = Depends(auth.get_current_user)
 ):
     return crud.update_user(db, user=current_user, user_update=user_update)
+
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=8, max_length=72)
+    new_password_confirm: str = Field(..., min_length=8, max_length=72)
+
+    @validator('new_password_confirm')
+    def passwords_match(cls, v, values, **kwargs):
+        if 'new_password' in values and v != values['new_password']:
+            raise ValueError('Passwords do not match')
+        return v
+
+@app.post("/users/me/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    request: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Позволяет пользователю сменить свой пароль.
+    """
+    crud.reset_password(db, current_user, request.new_password)
+    current_user.force_password_change_on_login = False
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post("/users/me/metrics", response_model=schemas.UserMetrics)
@@ -717,4 +754,62 @@ async def get_dashboard_stats(
         consumed_protein=consumed_protein,
         consumed_fat=consumed_fat,
         consumed_carbohydrates=consumed_carbohydrates,
+    )
+
+# --- Password Reset Endpoints ---
+@app.post("/admin/generate-reset-token", response_model=schemas.PasswordResetTokenResponse)
+async def admin_generate_password_reset_token(
+    email: str,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(auth.get_current_admin_user)
+):
+    """
+    Генерирует токен сброса пароля для указанного пользователя (только для админов).
+    """
+    user = crud.get_user_by_email(db, email=email)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+    
+    token = crud.create_password_reset_token(db, user)
+    return schemas.PasswordResetTokenResponse(email=user.email, reset_token=token, expires_at=user.password_reset_expires_at)
+
+
+@app.get("/reset-password/{token}")
+async def reset_password_form(request: Request, token: str, db: Session = Depends(get_db)):
+    """
+    Отображает форму для сброса пароля.
+    """
+    user = crud.get_user_by_password_reset_token(db, token)
+    if not user or user.password_reset_expires_at < datetime.utcnow():
+        return templates.TemplateResponse(
+            "message.html", 
+            {"request": request, "message": "Неверный или просроченный токен сброса пароля."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token})
+
+
+@app.post("/reset-password")
+async def reset_password_submit(
+    request: Request,
+    token: str = Form(...),
+    new_password: str = Form(..., min_length=8, max_length=72),
+    db: Session = Depends(get_db)
+):
+    """
+    Обрабатывает отправку формы сброса пароля.
+    """
+    user = crud.get_user_by_password_reset_token(db, token)
+    if not user or user.password_reset_expires_at < datetime.utcnow():
+        return templates.TemplateResponse(
+            "message.html", 
+            {"request": request, "message": "Неверный или просроченный токен сброса пароля."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    crud.reset_password(db, user, new_password)
+    return templates.TemplateResponse(
+        "message.html", 
+        {"request": request, "message": "Пароль успешно изменен. Теперь вы можете войти в систему."},
+        status_code=status.HTTP_200_OK
     )

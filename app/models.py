@@ -15,12 +15,15 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    force_password_change_on_login = Column(Boolean, default=False, nullable=False)
 
     # Поля для ролей и премиум-статуса
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     premium_expires_at = Column(DateTime(timezone=True), nullable=True) # Заменено is_premium на premium_expires_at
 
-    # Удалены photo_uploads_today и last_upload_date
+    # Поля для сброса пароля
+    password_reset_token = Column(String, nullable=True, unique=True)
+    password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     # Профиль пользователя
     date_of_birth = Column(Date, nullable=True)

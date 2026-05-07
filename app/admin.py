@@ -44,7 +44,7 @@ def update_user_by_admin(user_id: int, user_update: schemas.UserUpdateAdmin, db:
 @router.post("/users/reset-password", status_code=status.HTTP_204_NO_CONTENT)
 def reset_user_password(request: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
     """
-    Сбросить пароль пользователя.
+    Сбросить пароль пользователя и установить флаг принудительной смены пароля.
     """
     db_user = crud.get_user(db, user_id=request.user_id)
     if not db_user:
@@ -52,6 +52,7 @@ def reset_user_password(request: schemas.PasswordResetRequest, db: Session = Dep
         
     hashed_password = pwd_context.hash(request.new_password)
     db_user.hashed_password = hashed_password
+    db_user.force_password_change_on_login = True
     db.commit()
     
     return

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 from .models import UserRole
@@ -184,6 +184,7 @@ class User(UserBase):
     is_active: bool
     role: UserRole
     premium_expires_at: Optional[datetime] = None # Изменено с is_premium на premium_expires_at
+    force_password_change_on_login: bool = False
     metrics: List[UserMetrics] = []
     meals: List[Meal] = []
     class Config:
@@ -194,15 +195,23 @@ class UserWithTargets(User):
 
 # --- Admin Schemas ---
 class UserAdminView(User):
-    # photo_uploads_today: int # Удалено
-    # last_upload_date: date   # Удалено
-    pass # Теперь UserAdminView наследует все поля из User, включая premium_expires_at
+    pass
 
 class UserUpdateAdmin(BaseModel):
     role: Optional[UserRole] = None
-    premium_expires_at: Optional[datetime] = None # Изменено с is_premium на premium_expires_at
+    premium_expires_at: Optional[datetime] = None
     is_active: Optional[bool] = None
 
 class PasswordResetRequest(BaseModel):
     user_id: int
     new_password: str = Field(..., min_length=8, max_length=72)
+
+# --- Password Reset Schemas ---
+class PasswordResetRequestPayload(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=72)
+
+class PasswordResetTokenResponse(BaseModel):
+    email: EmailStr
+    reset_token: str
+    expires_at: datetime
