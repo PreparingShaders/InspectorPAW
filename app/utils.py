@@ -96,15 +96,29 @@ async def prepare_ai_context(
     return context
 
 
-def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float], latest_body_fat_percentage: Optional[float]):
+from datetime import date
+from typing import Optional, Dict
+
+
+def calculate_user_targets(
+        user: models.User,
+        latest_weight_kg: Optional[float],
+        latest_body_fat_percentage: Optional[float]
+) -> Dict[str, int]:
     """
-    Рассчитывает целевые КБЖУ по продвинутому алгоритму.
+    Рассчитывает целевые КБЖУ по продвинутому алгоритму с защитой от экстремальных значений.
     """
+    if not latest_weight_kg or latest_weight_kg <= 0:
+        return {"target_calories": 0, "target_protein": 0, "target_fat": 0, "target_carbohydrates": 0}
+
     bmr = 0
-    if latest_weight_kg and latest_body_fat_percentage and latest_body_fat_percentage > 0:
+    lean_body_mass: Optional[float] = None
+
+    # 1. Расчет BMR
+    if latest_body_fat_percentage and latest_body_fat_percentage > 0:
         lean_body_mass = latest_weight_kg * (1 - (latest_body_fat_percentage / 100))
         bmr = 370 + (21.6 * lean_body_mass)
-    elif user.date_of_birth and latest_weight_kg and user.height_cm and user.gender:
+    elif user.date_of_birth and user.height_cm and user.gender:
         age = (date.today() - user.date_of_birth).days / 365.25
         if user.gender == 'male':
             bmr = (10 * latest_weight_kg) + (6.25 * user.height_cm) - (5 * age) + 5
@@ -114,6 +128,7 @@ def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float],
     if bmr <= 0:
         bmr = 1800
 
+    # 2. Расчет TDEE
     activity_multipliers = {
         'sedentary': 1.2, 'light': 1.375, 'moderate': 1.55,
         'active': 1.725, 'very_active': 1.9
@@ -121,29 +136,55 @@ def calculate_user_targets(user: models.User, latest_weight_kg: Optional[float],
     multiplier = activity_multipliers.get(user.activity_level, 1.2)
     tdee = bmr * multiplier
 
+    # 3. Корректировка калорий под цель (с безопасными лимитами)
+    # Предполагаем, что goal_intensity это коэф. от 0.0 до 1.0
+    intensity = max(0.0, min(float(user.goal_intensity), 1.0))
+
     if user.goal == 'fat_loss':
-        adjustment = 1.0 - (0.10 + (user.goal_intensity * 0.15))
-        target_calories = tdee * adjustment
+        # Дефицит от 10% до 25% максимум
+        pct_decrease = 0.10 + (intensity * 0.15)
+        target_calories = tdee * (1.0 - pct_decrease)
+        # Страховка: не опускаем калории ниже BMR без жесткой необходимости
+        if target_calories < bmr:
+            target_calories = bmr
     elif user.goal == 'mass_gain':
-        adjustment = 1.0 + (0.10 + (user.goal_intensity * 0.15))
-        target_calories = tdee * adjustment
+        # Профицит от 5% до 15% (для чистого набора)
+        pct_increase = 0.05 + (intensity * 0.10)
+        target_calories = tdee * (1.0 + pct_increase)
     else:
         target_calories = tdee
 
-    if not latest_weight_kg or latest_weight_kg <= 0:
-        return {"target_calories": 0, "target_protein": 0, "target_fat": 0, "target_carbohydrates": 0}
-
-    target_protein = 2.0 * latest_weight_kg
-    calories_from_protein = target_protein * 4
-    target_fat = 1.0 * latest_weight_kg
-    calories_from_fat = target_fat * 9
-    min_calories_from_macros = calories_from_protein + calories_from_fat
-
-    if target_calories < min_calories_from_macros:
-        target_calories = min_calories_from_macros
-        target_carbohydrates = 0
+    # 4. Расчет БЖУ с поправкой на состав тела (LBM)
+    # Если знаем LBM, считаем от нее (более точно), если нет — от общего веса
+    if lean_body_mass:
+        target_protein = 2.3 * lean_body_mass  # Около 2.3г на сухую массу
+        target_fat = 1.0 * lean_body_mass  # Около 1.0г на сухую массу
     else:
-        remaining_calories = target_calories - min_calories_from_macros
+        # Защита от овер-трансляции макросов на избыточный вес
+        # Ограничиваем расчетный вес, если у пользователя ожирение (для расчета БЖУ)
+        base_weight = latest_weight_kg
+        target_protein = 2.0 * base_weight
+        target_fat = 1.0 * base_weight
+
+    # Минимальный порог углеводов для нормальной работы мозга и тренировок (хотя бы 1.5г на кг)
+    min_carbs = 1.5 * (lean_body_mass if lean_body_mass else latest_weight_kg)
+
+    # Считаем остаток калорий
+    current_macros_calories = (target_protein * 4) + (target_fat * 9)
+    remaining_calories = target_calories - current_macros_calories
+
+    if remaining_calories < (min_carbs * 4):
+        # Если калорий не хватает на минимальные углеводы, аккуратно поджимаем жиры (но не ниже 0.7г/кг)
+        min_fat_allowed = 0.7 * (lean_body_mass if lean_body_mass else latest_weight_kg)
+        if target_fat > min_fat_allowed:
+            # Высвобождаем калории из жиров в пользу углеводов
+            fat_pool = (target_fat - min_fat_allowed) * 9
+            target_fat = min_fat_allowed
+            remaining_calories += fat_pool
+
+        # Пересчитываем углеводы по остаточному принципу
+        target_carbohydrates = max(20.0, remaining_calories / 4)  # Финальный пол — 20г (кето-минимум)
+    else:
         target_carbohydrates = remaining_calories / 4
 
     return {
