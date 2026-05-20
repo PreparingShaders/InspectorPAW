@@ -17,6 +17,11 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     force_password_change_on_login = Column(Boolean, default=False, nullable=False)
 
+    # Поля для верификации email
+    is_verified = Column(Boolean, default=False, nullable=False)
+    verification_token = Column(String, nullable=True, unique=True)
+    verification_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+
     # Поля для ролей и премиум-статуса
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     premium_expires_at = Column(DateTime(timezone=True), nullable=True) # Заменено is_premium на premium_expires_at

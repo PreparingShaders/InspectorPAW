@@ -182,6 +182,9 @@ class UserUpdate(UserBase):
 class User(UserBase):
     id: int
     is_active: bool
+    is_verified: bool # Добавлено
+    verification_token: Optional[str] = None # Добавлено
+    verification_token_expires_at: Optional[datetime] = None # Добавлено
     role: UserRole
     premium_expires_at: Optional[datetime] = None # Изменено с is_premium на premium_expires_at
     force_password_change_on_login: bool = False
@@ -215,3 +218,7 @@ class PasswordResetTokenResponse(BaseModel):
     email: EmailStr
     reset_token: str
     expires_at: datetime
+
+# --- Email Verification Schemas ---
+class EmailVerificationResponse(BaseModel):
+    message: str

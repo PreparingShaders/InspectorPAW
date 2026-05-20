@@ -18,7 +18,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, EmailStr, validator
 
 from . import crud, models, schemas, auth, utils
 from .database import SessionLocal, engine, get_db
@@ -296,12 +296,76 @@ async def get_nutrition_analysis_and_advice(
 
 
 # --- API эндпоинты ---
-@app.post("/users/", response_model=schemas.User)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+@app.post("/users/", response_model=schemas.EmailVerificationResponse, status_code=status.HTTP_202_ACCEPTED)
+async def create_user(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_user(db=db, user=user)
+    
+    new_user = crud.create_user(db=db, user=user)
+
+    verification_link = str(request.base_url) + f"verify-email/{new_user.verification_token}"
+    
+    email_html_content = f"""
+    <html>
+        <body>
+            <p>Здравствуйте, {new_user.email}!</p>
+            <p>Спасибо за регистрацию в InspectorPAW.</p>
+            <p>Пожалуйста, подтвердите свой адрес электронной почты, перейдя по следующей ссылке:</p>
+            <p><a href="{verification_link}">Подтвердить Email</a></p>
+            <p>Если вы не регистрировались на нашем сайте, просто проигнорируйте это письмо.</p>
+            <p>С уважением,<br>Команда InspectorPAW</p>
+        </body>
+    </html>
+    """
+    
+    try:
+        await utils.send_email_brevo(
+            to_email=new_user.email,
+            subject="Подтверждение регистрации в InspectorPAW",
+            html_content=email_html_content
+        )
+    except Exception as e:
+        # В случае ошибки отправки email, можно удалить пользователя или пометить его как требующего повторной отправки
+        # Для простоты пока просто логируем и продолжаем
+        print(f"Ошибка при отправке письма верификации пользователю {new_user.email}: {e}")
+        # Можно добавить логику для повторной отправки или уведомления администратора
+
+    return {"message": "Пользователь успешно зарегистрирован. Пожалуйста, проверьте свою электронную почту для подтверждения."}
+
+
+@app.get("/verify-email/{token}", response_class=Response)
+async def verify_email(request: Request, token: str, db: Session = Depends(get_db)):
+    user = crud.get_user_by_verification_token(db, token)
+
+    if not user:
+        return templates.TemplateResponse(
+            "message.html",
+            {"request": request, "message": "Неверный токен верификации."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if user.is_verified:
+        return templates.TemplateResponse(
+            "message.html",
+            {"request": request, "message": "Ваш email уже подтвержден. Вы можете войти в систему."},
+            status_code=status.HTTP_200_OK
+        )
+
+    if user.verification_token_expires_at < datetime.now(timezone.utc):
+        # Здесь можно добавить логику для генерации нового токена и отправки нового письма
+        return templates.TemplateResponse(
+            "message.html",
+            {"request": request, "message": "Срок действия токена верификации истек. Пожалуйста, запросите новый."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    crud.verify_user_email(db, user)
+    return templates.TemplateResponse(
+        "message.html",
+        {"request": request, "message": "Ваш email успешно подтвержден! Теперь вы можете войти в систему."},
+        status_code=status.HTTP_200_OK
+    )
 
 
 class TokenWithPasswordChange(schemas.Token):
@@ -313,6 +377,10 @@ async def login_for_access_token(response: Response, form_data: OAuth2PasswordRe
     if not user or not crud.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
     
+    # Дополнительная проверка: email должен быть верифицирован
+    if not user.is_verified:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Пожалуйста, подтвердите свой email, перейдя по ссылке в письме.")
+
     # Проверка активности пользователя
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Пользователь неактивен")
@@ -693,7 +761,7 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
             total_consumed["calories"] += consumed_calories
             total_consumed["protein"] += consumed_protein
             total_consumed["fat"] += consumed_fat
-            total_consumed["carbohydrates"] += consumed_carbohydrates # Исправленная строка
+            total_carbohydrates += consumed_carbohydrates # Исправленная строка
 
     avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0
@@ -759,6 +827,43 @@ async def get_dashboard_stats(
     )
 
 # --- Password Reset Endpoints ---
+@app.post("/forgot-password", response_model=schemas.EmailVerificationResponse, status_code=status.HTTP_202_ACCEPTED)
+async def forgot_password(request: Request, email: EmailStr = Form(...), db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, email=email)
+    if not user:
+        # Для безопасности всегда возвращаем одинаковое сообщение, чтобы не выдавать информацию о существовании email
+        return {"message": "Если ваш email зарегистрирован, вы получите письмо со ссылкой для сброса пароля."}
+
+    reset_token = crud.create_password_reset_token(db, user)
+    reset_link = str(request.base_url) + f"reset-password/{reset_token}"
+
+    email_html_content = f"""
+    <html>
+        <body>
+            <p>Здравствуйте, {user.email}!</p>
+            <p>Вы запросили сброс пароля для вашего аккаунта InspectorPAW.</p>
+            <p>Пожалуйста, перейдите по следующей ссылке, чтобы сбросить пароль:</p>
+            <p><a href="{reset_link}">Сбросить пароль</a></p>
+            <p>Эта ссылка действительна в течение 1 часа.</p>
+            <p>Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+            <p>С уважением,<br>Команда InspectorPAW</p>
+        </body>
+    </html>
+    """
+
+    try:
+        await utils.send_email_brevo(
+            to_email=user.email,
+            subject="Сброс пароля InspectorPAW",
+            html_content=email_html_content
+        )
+    except Exception as e:
+        print(f"Ошибка при отправке письма для сброса пароля пользователю {user.email}: {e}")
+        # Можно добавить логику для повторной отправки или уведомления администратора
+
+    return {"message": "Если ваш email зарегистрирован, вы получите письмо со ссылкой для сброса пароля."}
+
+
 @app.post("/admin/generate-reset-token", response_model=schemas.PasswordResetTokenResponse)
 async def admin_generate_password_reset_token(
     email: str,

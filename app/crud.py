@@ -34,15 +34,23 @@ def get_user_by_email(db: Session, email: str):
     """
     return db.query(models.User).filter(models.User.email == email).first()
 
-def create_user(db: Session, user: schemas.UserCreate):
+def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     hashed_password = get_password_hash(user.password)
     
     # Проверяем, есть ли уже пользователи в базе данных
     is_first_user = db.query(models.User).count() == 0
     
+    # Генерируем токен верификации
+    verification_token = secrets.token_urlsafe(32)
+    verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24) # Токен действует 24 часа
+
     db_user = models.User(
         email=user.email,
         hashed_password=hashed_password,
+        is_active=False,  # Пользователь неактивен до верификации email
+        is_verified=False, # Email не верифицирован
+        verification_token=verification_token,
+        verification_token_expires_at=verification_token_expires_at,
         date_of_birth=user.date_of_birth,
         gender=user.gender,
         height_cm=user.height_cm,
@@ -69,13 +77,37 @@ def update_user(db: Session, user: models.User, user_update: schemas.UserUpdate)
     db.refresh(user)
     return user
 
+# --- Email Verification CRUD ---
+def create_verification_token(db: Session, user: models.User) -> str:
+    """Генерирует и сохраняет новый токен верификации для пользователя."""
+    token = secrets.token_urlsafe(32)
+    user.verification_token = token
+    user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    db.commit()
+    db.refresh(user)
+    return token
+
+def get_user_by_verification_token(db: Session, token: str) -> Optional[models.User]:
+    """Находит пользователя по токену верификации."""
+    return db.query(models.User).filter(models.User.verification_token == token).first()
+
+def verify_user_email(db: Session, user: models.User) -> models.User:
+    """Верифицирует email пользователя и активирует аккаунт."""
+    user.is_verified = True
+    user.is_active = True
+    user.verification_token = None
+    user.verification_token_expires_at = None
+    db.commit()
+    db.refresh(user)
+    return user
+
 # --- Password Reset CRUD ---
 
 def create_password_reset_token(db: Session, user: models.User) -> str:
     """Генерирует и сохраняет токен сброса пароля."""
     token = secrets.token_urlsafe(32)
     user.password_reset_token = token
-    user.password_reset_expires_at = datetime.utcnow() + timedelta(hours=1)
+    user.password_reset_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     db.commit()
     return token
 

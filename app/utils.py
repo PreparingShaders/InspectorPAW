@@ -10,6 +10,50 @@ from .config import settings
 from . import auth, crud
 from sqlalchemy.orm import Session
 from .models import User
+import httpx # Убедимся, что httpx импортирован
+
+async def send_email_brevo(
+    to_email: str,
+    subject: str,
+    html_content: str,
+    sender_name: str = "InspectorPAW",
+    sender_email: str = "classname1984@gmail.com"
+):
+    """
+    Отправляет email через Brevo API.
+    """
+    if not settings.BREVO_API_KEY:
+        print("BREVO_API_KEY не установлен. Отправка email пропущена.")
+        return
+
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": settings.BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"name": sender_name, "email": sender_email},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_content
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            print(f"Email успешно отправлен на {to_email}. Brevo Response: {response.json()}")
+    except httpx.HTTPStatusError as e:
+        print(f"Ошибка HTTP при отправке email через Brevo: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при отправке email: {e.response.text}")
+    except httpx.RequestError as e:
+        print(f"Ошибка запроса при отправке email через Brevo: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сети при отправке email: {e}")
+    except Exception as e:
+        print(f"Неизвестная ошибка при отправке email через Brevo: {e}")
+        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера при отправке email: {e}")
+
 
 async def test_model(model_id: str) -> Optional[str]:
     """

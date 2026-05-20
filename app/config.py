@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     # Ключ для OpenRouter теперь опционален, т.к. может быть не нужен при работе через воркер
     OPEN_ROUTER_API_KEY: Optional[str] = None
+    BREVO_API_KEY: str
     SECRET_KEY: str
 
     # --- URL Воркера ---
