@@ -226,6 +226,7 @@ async def get_nutrition_analysis_and_advice(
     headers = {"Content-Type": "application/json"}
     payload = {}
     url_path = ""
+    response_text = ""
     
     try:
         if model_to_use in settings.NATIVE_GEMINI_MODELS:
@@ -264,20 +265,21 @@ async def get_nutrition_analysis_and_advice(
         response.raise_for_status()
         
         res_data = response.json()
-        response_text = ""
 
-        if model_name in settings.NATIVE_GEMINI_MODELS:
+        if model_to_use in settings.NATIVE_GEMINI_MODELS:
             if res_data.get('candidates') and res_data['candidates'][0].get('content') and res_data['candidates'][0]['content'].get('parts'):
                 response_text = res_data['candidates'][0]['content']['parts'][0]['text']
             else:
                 response_text = "Ответ не был получен от модели Gemini. Возможно, запрос был заблокирован из-за настроек безопасности или ответ пуст."
-        elif model_name in settings.OPEN_ROUTER_MODELS:
+        elif model_to_use in settings.OPEN_ROUTER_MODELS:
             if res_data.get('choices') and res_data['choices'][0].get('message') and res_data['choices'][0]['message'].get('content'):
                 response_text = res_data['choices'][0]['message']['content']
             else:
                 response_text = "Ответ не был получен от модели OpenRouter. Ответ пуст."
 
-        return {"response": response_text}
+        response_text = response_text.strip().removeprefix("```json").strip().removeprefix("```").strip().removesuffix("```").strip()
+        parsed_data = json.loads(response_text)
+        return parsed_data, model_to_use
 
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 429:
