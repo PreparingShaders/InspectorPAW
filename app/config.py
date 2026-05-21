@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
-
+from datetime import timezone, timedelta
 
 class Settings(BaseSettings):
     # --- API Ключи (загружаются из .env) ---
@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # --- Настройки JWT ---
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # --- Настройки часового пояса ---
+    MSK_TZ: timezone = timezone(timedelta(hours=3))
 
     # --- Списки моделей, разделенные по API ---
 

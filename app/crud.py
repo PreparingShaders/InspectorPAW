@@ -3,6 +3,7 @@ from sqlalchemy import func, desc, asc
 from passlib.context import CryptContext
 from datetime import date, datetime, timedelta
 from . import models, schemas, utils
+from .config import settings
 from typing import List, Optional
 import secrets
 
@@ -42,7 +43,7 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     
     # Генерируем код верификации
     verification_code = utils.generate_verification_code()
-    verification_expires_at = datetime.utcnow() + timedelta(minutes=15)
+    verification_expires_at = datetime.now(settings.MSK_TZ) + timedelta(minutes=15)
 
     db_user = models.User(
         email=user.email,
@@ -103,7 +104,7 @@ def create_password_reset_token(db: Session, user: models.User) -> str:
     """Генерирует и сохраняет токен сброса пароля."""
     token = secrets.token_urlsafe(32)
     user.password_reset_token = token
-    user.password_reset_expires_at = datetime.utcnow() + timedelta(hours=1)
+    user.password_reset_expires_at = datetime.now(settings.MSK_TZ) + timedelta(hours=1)
     db.commit()
     return token
 
@@ -218,7 +219,7 @@ def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.M
 
 def get_meals_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     """Получает историю приемов пищи пользователя за последние 7 дней."""
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    seven_days_ago = datetime.now(settings.MSK_TZ) - timedelta(days=7)
     return db.query(models.Meal).filter(
         models.Meal.user_id == user_id,
         models.Meal.timestamp >= seven_days_ago

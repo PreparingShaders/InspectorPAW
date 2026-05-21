@@ -48,6 +48,10 @@ httpx_client = httpx.AsyncClient(base_url=settings.AI_WORKER_URL)
 async def read_login_page(request: Request):
     return templates.TemplateResponse(request, "login.html")
 
+@app.get("/login")
+async def redirect_to_root():
+    return RedirectResponse(url="/")
+
 
 @app.get("/dashboard")
 async def read_dashboard_page(request: Request):
@@ -337,7 +341,7 @@ async def verify_email_and_login(
             status_code=status.HTTP_400_BAD_REQUEST
         )
     
-    if user.email_verification_expires_at < datetime.utcnow():
+    if user.email_verification_expires_at < datetime.now(settings.MSK_TZ):
         # TODO: Добавить логику для повторной отправки кода
         return templates.TemplateResponse(
             request,
@@ -366,7 +370,7 @@ async def resend_verification_code(email: EmailStr = Form(...), db: Session = De
     # Генерируем новый код
     new_code = utils.generate_verification_code()
     user.email_verification_code = new_code
-    user.email_verification_expires_at = datetime.utcnow() + timedelta(minutes=15)
+    user.email_verification_expires_at = datetime.now(settings.MSK_TZ) + timedelta(minutes=15)
     db.commit()
 
     try:
@@ -789,20 +793,17 @@ async def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    msk_tz = timezone(timedelta(hours=3))
-    now_msk = datetime.now(msk_tz)
+    now_msk = datetime.now(settings.MSK_TZ)
 
     start_msk = now_msk.replace(hour=0, minute=0, second=0, microsecond=0)
     end_msk = start_msk + timedelta(days=1)
-    start_utc = start_msk.astimezone(timezone.utc)
-    end_utc = end_msk.astimezone(timezone.utc)
-
+    
     meals = (
         db.query(models.Meal)
         .filter(
             models.Meal.user_id == current_user.id,
-            models.Meal.timestamp >= start_utc,
-            models.Meal.timestamp < end_utc
+            models.Meal.timestamp >= start_msk,
+            models.Meal.timestamp < end_msk
         )
         .all()
     )
@@ -889,7 +890,7 @@ async def reset_password_form(request: Request, token: str, db: Session = Depend
     Отображает форму для сброса пароля.
     """
     user = crud.get_user_by_password_reset_token(db, token)
-    if not user or user.password_reset_expires_at < datetime.utcnow():
+    if not user or user.password_reset_expires_at < datetime.now(settings.MSK_TZ):
         return templates.TemplateResponse(
             request,
             "message.html", 
@@ -910,7 +911,7 @@ async def reset_password_submit(
     Обрабатывает отправку формы сброса пароля.
     """
     user = crud.get_user_by_password_reset_token(db, token)
-    if not user or user.password_reset_expires_at < datetime.utcnow():
+    if not user or user.password_reset_expires_at < datetime.now(settings.MSK_TZ):
         return templates.TemplateResponse(
             request,
             "message.html", 
