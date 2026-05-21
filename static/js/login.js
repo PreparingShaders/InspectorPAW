@@ -88,6 +88,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
+        const passwordConfirm = document.getElementById('register-password-confirm').value;
+
+        if (password !== passwordConfirm) {
+            errorMessage.textContent = 'Пароли не совпадают.';
+            errorMessage.style.display = 'block';
+            return;
+        }
 
         try {
             const response = await fetch('/users/', {
@@ -98,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     email: email,
                     password: password,
+                    password_confirm: passwordConfirm
                 }),
             });
 

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
+import re
 from .models import UserRole
 
 # --- AI Hub Chat Schema ---
@@ -174,6 +175,23 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=72)
+    password_confirm: str = Field(..., min_length=8, max_length=72)
+
+    @validator('password')
+    def validate_password_strength(cls, v):
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Пароль должен содержать хотя бы одну заглавную букву')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Пароль должен содержать хотя бы одну строчную букву')
+        if not re.search(r'\d', v):
+            raise ValueError('Пароль должен содержать хотя бы одну цифру')
+        return v
+
+    @validator('password_confirm')
+    def passwords_match(cls, v, values, **kwargs):
+        if 'password' in values and v != values['password']:
+            raise ValueError('Пароли не совпадают')
+        return v
 
 class UserUpdate(UserBase):
     email: Optional[EmailStr] = None
