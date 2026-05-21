@@ -102,9 +102,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (response.ok) {
-                successMessage.textContent = 'Аккаунт успешно создан! Теперь вы можете войти.';
-                successMessage.style.display = 'block';
-                showLoginLink.click(); // Switch to login view
+                // Сервер должен вернуть редирект, но если JS перехватывает,
+                // мы можем сделать редирект вручную.
+                // Проверяем, есть ли URL для редиректа в ответе
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    // Если редиректа нет, пытаемся построить URL сами
+                    window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+                }
             } else {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'Не удалось создать аккаунт.');

@@ -12,7 +12,7 @@ import httpx # Добавляем импорт httpx
 from PIL import Image
 import json
 
-from datetime import timedelta, date, datetime, timezone
+from datetime import timedelta, date, datetime
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -291,7 +291,7 @@ async def get_nutrition_analysis_and_advice(
 
 # --- API эндпоинты ---
 @app.post("/users/", status_code=status.HTTP_202_ACCEPTED)
-async def create_user_and_send_verification(user: schemas.UserCreate, db: Session = Depends(get_db)):
+async def create_user_and_send_verification(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user and db_user.is_active:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -312,12 +312,12 @@ async def create_user_and_send_verification(user: schemas.UserCreate, db: Sessio
         print(f"Ошибка при отправке письма верификации пользователю {new_user.email}: {e}")
 
     # Перенаправляем на страницу верификации
-    return RedirectResponse(url=f"/verify-email?email={new_user.email}", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request, "verify_email.html", {"email": new_user.email})
 
 
 @app.get("/verify-email")
 async def get_verify_email_page(request: Request, email: EmailStr):
-    return templates.TemplateResponse(request, "verify-email.html", {"email": email})
+    return templates.TemplateResponse(request, "verify_email.html", {"email": email})
 
 
 @app.post("/verify-email")
@@ -332,16 +332,16 @@ async def verify_email_and_login(
     if not user:
         return templates.TemplateResponse(
             request,
-            "verify-email.html",
+            "verify_email.html",
             {"email": email, "error": "Неверный код верификации."},
             status_code=status.HTTP_400_BAD_REQUEST
         )
     
-    if user.email_verification_expires_at < datetime.now(timezone.utc):
+    if user.email_verification_expires_at < datetime.utcnow():
         # TODO: Добавить логику для повторной отправки кода
         return templates.TemplateResponse(
             request,
-            "verify-email.html",
+            "verify_email.html",
             {"email": email, "error": "Срок действия кода истек. Пожалуйста, зарегистрируйтесь снова."},
             status_code=status.HTTP_400_BAD_REQUEST
         )
@@ -352,14 +352,30 @@ async def verify_email_and_login(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     
-    response = templates.TemplateResponse(
-        request,
-        "message.html",
-        {"message": "Поздравляем, ваш аккаунт успешно создан! Вы авторизованы."},
-        status_code=status.HTTP_200_OK
-    )
+    response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite='lax')
     return response
+
+
+@app.post("/resend-verification-code", status_code=status.HTTP_200_OK)
+async def resend_verification_code(email: EmailStr = Form(...), db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, email=email)
+    if not user or user.is_active:
+        raise HTTPException(status_code=404, detail="Пользователь не найден или уже активен.")
+    
+    # Генерируем новый код
+    new_code = utils.generate_verification_code()
+    user.email_verification_code = new_code
+    user.email_verification_expires_at = datetime.utcnow() + timedelta(minutes=15)
+    db.commit()
+
+    try:
+        await utils.send_verification_email(to_email=user.email, code=new_code)
+    except Exception as e:
+        print(f"Ошибка при повторной отправке письма верификации пользователю {user.email}: {e}")
+        raise HTTPException(status_code=500, detail="Не удалось отправить код. Попробуйте позже.")
+
+    return {"message": "Новый код верификации отправлен."}
 
 
 class TokenWithPasswordChange(schemas.Token):
