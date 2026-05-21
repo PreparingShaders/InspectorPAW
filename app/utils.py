@@ -52,6 +52,39 @@ async def send_verification_email(to_email: str, code: str):
     """
     await send_email_brevo(to_email=to_email, subject=subject, html_content=html_content)
 
+async def send_password_reset_email(to_email: str, code: str):
+    """
+    Отправляет email с кодом сброса пароля через Brevo.
+    """
+    subject = "Код для сброса пароля в ProgressLAB"
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Сброс пароля</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #E0E0E0; margin: 0; padding: 0;">
+        <div style="max-width: 600px; margin: 40px auto; padding: 20px; background-color: #1E1E1E; border-radius: 12px; border: 1px solid #333; box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);">
+            <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #333;">
+                <h1 style="margin: 0; font-size: 28px; color: #FFFFFF; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.5);">ProgressLAB</h1>
+            </div>
+            <div style="padding: 20px 0; text-align: center; line-height: 1.6; color: #E0E0E0;">
+                <p>Вы запросили сброс пароля. Используйте этот код для продолжения:</p>
+                <div style="display: inline-block; margin: 20px 0; padding: 15px 30px; font-size: 36px; font-weight: bold; letter-spacing: 5px; color: #121212; background-color: #FFFFFF; border-radius: 8px; box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);">{code}</div>
+                <p>Этот код действителен в течение 15 минут.</p>
+                <p>Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+            </div>
+            <div style="text-align: center; padding-top: 20px; border-top: 1px solid #333; font-size: 12px; color: #777;">
+                <p>&copy; {datetime.datetime.now().year} ProgressLAB. Все права защищены.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    await send_email_brevo(to_email=to_email, subject=subject, html_content=html_content)
+
 
 async def send_email_brevo(
     to_email: str,

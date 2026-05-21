@@ -830,41 +830,63 @@ async def get_dashboard_stats(
     )
 
 # --- Password Reset Endpoints ---
-@app.post("/forgot-password", response_model=schemas.EmailVerificationResponse, status_code=status.HTTP_202_ACCEPTED)
+@app.post("/forgot-password", status_code=status.HTTP_303_SEE_OTHER)
 async def forgot_password(request: Request, email: EmailStr = Form(...), db: Session = Depends(get_db)):
     user = crud.get_user_by_email(db, email=email)
-    if not user:
-        # Для безопасности всегда возвращаем одинаковое сообщение, чтобы не выдавать информацию о существовании email
-        return {"message": "Если ваш email зарегистрирован, вы получите письмо со ссылкой для сброса пароля."}
+    if user:
+        reset_code = crud.create_password_reset_code(db, user)
+        try:
+            await utils.send_password_reset_email(to_email=user.email, code=reset_code)
+        except Exception as e:
+            print(f"Ошибка при отправке письма для сброса пароля пользователю {user.email}: {e}")
+            # Несмотря на ошибку, перенаправляем, чтобы не раскрывать информацию
+    
+    # Всегда перенаправляем на форму сброса, чтобы не показывать, существует ли email
+    return RedirectResponse(url=f"/reset-password-form?email={email}", status_code=status.HTTP_303_SEE_OTHER)
 
-    reset_token = crud.create_password_reset_token(db, user)
-    reset_link = str(request.base_url) + f"reset-password/{reset_token}"
 
-    email_html_content = f"""
-    <html>
-        <body>
-            <p>Здравствуйте, {user.email}!</p>
-            <p>Вы запросили сброс пароля для вашего аккаунта InspectorPAW.</p>
-            <p>Пожалуйста, перейдите по следующей ссылке, чтобы сбросить пароль:</p>
-            <p><a href="{reset_link}">Сбросить пароль</a></p>
-            <p>Эта ссылка действительна в течение 1 часа.</p>
-            <p>Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
-            <p>С уважением,<br>Команда InspectorPAW</p>
-        </body>
-    </html>
-    """
+@app.get("/reset-password-form")
+async def get_reset_password_page(request: Request, email: EmailStr):
+    return templates.TemplateResponse(request, "reset_password_form.html", {"email": email})
 
-    try:
-        await utils.send_email_brevo(
-            to_email=user.email,
-            subject="Сброс пароля InspectorPAW",
-            html_content=email_html_content
+
+@app.post("/reset-password-form")
+async def handle_reset_password(
+    request: Request,
+    email: EmailStr = Form(...),
+    code: str = Form(...),
+    new_password: str = Form(...),
+    new_password_confirm: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    if new_password != new_password_confirm:
+        return templates.TemplateResponse(
+            request, "reset_password_form.html",
+            {"email": email, "error": "Пароли не совпадают."},
+            status_code=status.HTTP_400_BAD_REQUEST
         )
-    except Exception as e:
-        print(f"Ошибка при отправке письма для сброса пароля пользователю {user.email}: {e}")
-        # Можно добавить логику для повторной отправки или уведомления администратора
 
-    return {"message": "Если ваш email зарегистрирован, вы получите письмо со ссылкой для сброса пароля."}
+    user = crud.get_user_by_password_reset_code(db, email=email, code=code)
+
+    if not user:
+        return templates.TemplateResponse(
+            request, "reset_password_form.html",
+            {"email": email, "error": "Неверный код сброса."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    if user.password_reset_expires_at.replace(tzinfo=None) < datetime.utcnow():
+        return templates.TemplateResponse(
+            request, "reset_password_form.html",
+            {"email": email, "error": "Срок действия кода истек. Запросите новый."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    crud.reset_password(db, user, new_password)
+    return templates.TemplateResponse(
+        request, "message.html",
+        {"message": "Пароль успешно изменен. Теперь вы можете войти."}
+    )
 
 
 @app.post("/admin/generate-reset-token", response_model=schemas.PasswordResetTokenResponse)
@@ -880,7 +902,7 @@ async def admin_generate_password_reset_token(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
     
-    token = crud.create_password_reset_token(db, user)
+    token = crud.create_password_reset_code(db, user)
     return schemas.PasswordResetTokenResponse(email=user.email, reset_token=token, expires_at=user.password_reset_expires_at)
 
 
@@ -890,7 +912,7 @@ async def reset_password_form(request: Request, token: str, db: Session = Depend
     Отображает форму для сброса пароля.
     """
     user = crud.get_user_by_password_reset_token(db, token)
-    if not user or user.password_reset_expires_at < datetime.now(settings.MSK_TZ):
+    if not user or user.password_reset_expires_at.replace(tzinfo=None) < datetime.utcnow():
         return templates.TemplateResponse(
             request,
             "message.html", 
@@ -911,7 +933,7 @@ async def reset_password_submit(
     Обрабатывает отправку формы сброса пароля.
     """
     user = crud.get_user_by_password_reset_token(db, token)
-    if not user or user.password_reset_expires_at < datetime.now(settings.MSK_TZ):
+    if not user or user.password_reset_expires_at.replace(tzinfo=None) < datetime.utcnow():
         return templates.TemplateResponse(
             request,
             "message.html", 

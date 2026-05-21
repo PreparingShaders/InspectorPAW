@@ -100,17 +100,20 @@ def activate_user(db: Session, user: models.User) -> models.User:
 
 # --- Password Reset CRUD ---
 
-def create_password_reset_token(db: Session, user: models.User) -> str:
-    """Генерирует и сохраняет токен сброса пароля."""
-    token = secrets.token_urlsafe(32)
-    user.password_reset_token = token
-    user.password_reset_expires_at = datetime.now(settings.MSK_TZ) + timedelta(hours=1)
+def create_password_reset_code(db: Session, user: models.User) -> str:
+    """Генерирует и сохраняет 6-значный код сброса пароля."""
+    code = utils.generate_verification_code()
+    user.password_reset_token = code # Используем поле токена для хранения кода
+    user.password_reset_expires_at = datetime.now(settings.MSK_TZ) + timedelta(minutes=15)
     db.commit()
-    return token
+    return code
 
-def get_user_by_password_reset_token(db: Session, token: str) -> Optional[models.User]:
-    """Находит пользователя по токену сброса пароля."""
-    return db.query(models.User).filter(models.User.password_reset_token == token).first()
+def get_user_by_password_reset_code(db: Session, email: str, code: str) -> Optional[models.User]:
+    """Находит пользователя по email и коду сброса пароля."""
+    return db.query(models.User).filter(
+        models.User.email == email,
+        models.User.password_reset_token == code
+    ).first()
 
 def reset_password(db: Session, user: models.User, new_password: str) -> models.User:
     """Сбрасывает пароль пользователя и удаляет токен."""
