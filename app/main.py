@@ -341,7 +341,7 @@ async def verify_email_and_login(
             status_code=status.HTTP_400_BAD_REQUEST
         )
     
-    if user.email_verification_expires_at < datetime.now(settings.MSK_TZ):
+    if user.email_verification_expires_at.replace(tzinfo=None) < datetime.utcnow():
         # TODO: Добавить логику для повторной отправки кода
         return templates.TemplateResponse(
             request,
@@ -767,7 +767,7 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
             total_consumed["calories"] += consumed_calories
             total_consumed["protein"] += consumed_protein
             total_consumed["fat"] += consumed_fat
-            total_carbohydrates += consumed_carbohydrates # Исправленная строка
+            total_consumed["carbohydrates"] += consumed_carbohydrates
 
     avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0
