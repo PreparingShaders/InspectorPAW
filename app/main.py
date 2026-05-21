@@ -14,6 +14,7 @@ import json
 
 from datetime import timedelta, date, datetime, timezone
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response, Request
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -39,50 +40,43 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # --- API Клиенты ---
-# gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY) # Удаляем инициализацию gemini_client
-# unified_ai_client = AsyncOpenAI( # Удаляем инициализацию AsyncOpenAI
-#     base_url=settings.AI_WORKER_URL,
-#     api_key=settings.OPEN_ROUTER_API_KEY,
-# )
-
-# Инициализируем httpx клиент для всех запросов к воркеру
 httpx_client = httpx.AsyncClient(base_url=settings.AI_WORKER_URL)
 
 
 # --- Веб-страницы ---
 @app.get("/")
 async def read_login_page(request: Request):
-    return templates.TemplateResponse(name="login.html", request=request)
+    return templates.TemplateResponse(request, "login.html")
 
 
 @app.get("/dashboard")
 async def read_dashboard_page(request: Request):
-    return templates.TemplateResponse(name="index.html", request=request)
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/profile")
 async def read_profile_page(request: Request, current_user: models.User = Depends(auth.get_current_user_from_cookie)):
-    return templates.TemplateResponse(request=request, name="profile.html", context={"user": current_user})
+    return templates.TemplateResponse(request, "profile.html", {"user": current_user})
 
 
 @app.get("/nutrition")
 async def read_nutrition_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_from_cookie)):
     features = utils.get_user_features(current_user, db)
-    return templates.TemplateResponse(request=request, name="nutrition.html", context={"features": features})
+    return templates.TemplateResponse(request, "nutrition.html", {"features": features})
 
 
 @app.get("/ai-hub")
 async def read_ai_hub_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_from_cookie)):
     features = utils.get_user_features(current_user, db)
-    return templates.TemplateResponse(request=request, name="ai_hub.html", context={"features": features})
+    return templates.TemplateResponse(request, "ai_hub.html", {"features": features})
 
 @app.get("/workouts")
 async def read_workouts_page(request: Request):
-    return templates.TemplateResponse(name="workouts.html", request=request)
+    return templates.TemplateResponse(request, "workouts.html")
 
 @app.get("/admin")
 async def read_admin_page(request: Request):
-    return templates.TemplateResponse(name="admin.html", request=request)
+    return templates.TemplateResponse(request, "admin.html")
 
 
 # --- AI Логика ---
@@ -296,76 +290,76 @@ async def get_nutrition_analysis_and_advice(
 
 
 # --- API эндпоинты ---
-@app.post("/users/", response_model=schemas.EmailVerificationResponse, status_code=status.HTTP_202_ACCEPTED)
-async def create_user(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
+@app.post("/users/", status_code=status.HTTP_202_ACCEPTED)
+async def create_user_and_send_verification(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
-    if db_user:
+    if db_user and db_user.is_active:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    new_user = crud.create_user(db=db, user=user)
+    if not db_user:
+        new_user = crud.create_user(db=db, user=user)
+    else:
+        # Пользователь существует, но не активен, возможно, повторная регистрация
+        new_user = db_user
 
-    verification_link = str(request.base_url) + f"verify-email/{new_user.verification_token}"
-    
-    email_html_content = f"""
-    <html>
-        <body>
-            <p>Здравствуйте, {new_user.email}!</p>
-            <p>Спасибо за регистрацию в InspectorPAW.</p>
-            <p>Пожалуйста, подтвердите свой адрес электронной почты, перейдя по следующей ссылке:</p>
-            <p><a href="{verification_link}">Подтвердить Email</a></p>
-            <p>Если вы не регистрировались на нашем сайте, просто проигнорируйте это письмо.</p>
-            <p>С уважением,<br>Команда InspectorPAW</p>
-        </body>
-    </html>
-    """
-    
     try:
-        await utils.send_email_brevo(
+        await utils.send_verification_email(
             to_email=new_user.email,
-            subject="Подтверждение регистрации в InspectorPAW",
-            html_content=email_html_content
+            code=new_user.email_verification_code
         )
     except Exception as e:
-        # В случае ошибки отправки email, можно удалить пользователя или пометить его как требующего повторной отправки
-        # Для простоты пока просто логируем и продолжаем
+        # Логируем ошибку, но не останавливаем процесс
         print(f"Ошибка при отправке письма верификации пользователю {new_user.email}: {e}")
-        # Можно добавить логику для повторной отправки или уведомления администратора
 
-    return {"message": "Пользователь успешно зарегистрирован. Пожалуйста, проверьте свою электронную почту для подтверждения."}
+    # Перенаправляем на страницу верификации
+    return RedirectResponse(url=f"/verify-email?email={new_user.email}", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.get("/verify-email/{token}", response_class=Response)
-async def verify_email(request: Request, token: str, db: Session = Depends(get_db)):
-    user = crud.get_user_by_verification_token(db, token)
+@app.get("/verify-email")
+async def get_verify_email_page(request: Request, email: EmailStr):
+    return templates.TemplateResponse(request, "verify-email.html", {"email": email})
+
+
+@app.post("/verify-email")
+async def verify_email_and_login(
+    request: Request,
+    email: EmailStr = Form(...),
+    code: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = crud.get_user_by_verification_code(db, email=email, code=code)
 
     if not user:
         return templates.TemplateResponse(
-            "message.html",
-            {"request": request, "message": "Неверный токен верификации."},
+            request,
+            "verify-email.html",
+            {"email": email, "error": "Неверный код верификации."},
             status_code=status.HTTP_400_BAD_REQUEST
         )
     
-    if user.is_verified:
+    if user.email_verification_expires_at < datetime.now(timezone.utc):
+        # TODO: Добавить логику для повторной отправки кода
         return templates.TemplateResponse(
-            "message.html",
-            {"request": request, "message": "Ваш email уже подтвержден. Вы можете войти в систему."},
-            status_code=status.HTTP_200_OK
-        )
-
-    if user.verification_token_expires_at < datetime.now(timezone.utc):
-        # Здесь можно добавить логику для генерации нового токена и отправки нового письма
-        return templates.TemplateResponse(
-            "message.html",
-            {"request": request, "message": "Срок действия токена верификации истек. Пожалуйста, запросите новый."},
+            request,
+            "verify-email.html",
+            {"email": email, "error": "Срок действия кода истек. Пожалуйста, зарегистрируйтесь снова."},
             status_code=status.HTTP_400_BAD_REQUEST
         )
     
-    crud.verify_user_email(db, user)
-    return templates.TemplateResponse(
+    crud.activate_user(db, user)
+    
+    # Автоматический вход пользователя
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
+    
+    response = templates.TemplateResponse(
+        request,
         "message.html",
-        {"request": request, "message": "Ваш email успешно подтвержден! Теперь вы можете войти в систему."},
+        {"message": "Поздравляем, ваш аккаунт успешно создан! Вы авторизованы."},
         status_code=status.HTTP_200_OK
     )
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite='lax')
+    return response
 
 
 class TokenWithPasswordChange(schemas.Token):
@@ -377,11 +371,9 @@ async def login_for_access_token(response: Response, form_data: OAuth2PasswordRe
     if not user or not crud.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
     
-    # Дополнительная проверка: email должен быть верифицирован
     if not user.is_verified:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Пожалуйста, подтвердите свой email, перейдя по ссылке в письме.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Пожалуйста, подтвердите свой email.")
 
-    # Проверка активности пользователя
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Пользователь неактивен")
 
@@ -544,12 +536,6 @@ async def analyze_meal(
         except Exception as e:
             last_error = e
             print(f"Model {model} failed: {e}. Trying next model.")
-            # Если файл был прочитан, нужно перемотать его для следующей попытки,
-            # но так как мы читаем его один раз в начале, это не требуется
-            # для текущей реализации get_nutrition_analysis_and_advice.
-            # Если бы file_content читался внутри цикла, то нужно было бы:
-            # if file and file.file:
-            #     await file.seek(0) # Перемотка UploadFile
 
     if not ai_response_data:
         raise HTTPException(status_code=503, detail=f"All AI models are currently unavailable. Last error: {last_error}")
@@ -889,11 +875,12 @@ async def reset_password_form(request: Request, token: str, db: Session = Depend
     user = crud.get_user_by_password_reset_token(db, token)
     if not user or user.password_reset_expires_at < datetime.utcnow():
         return templates.TemplateResponse(
+            request,
             "message.html", 
-            {"request": request, "message": "Неверный или просроченный токен сброса пароля."},
+            {"message": "Неверный или просроченный токен сброса пароля."},
             status_code=status.HTTP_400_BAD_REQUEST
         )
-    return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token})
+    return templates.TemplateResponse(request, "reset_password.html", {"token": token})
 
 
 @app.post("/reset-password")
@@ -909,14 +896,16 @@ async def reset_password_submit(
     user = crud.get_user_by_password_reset_token(db, token)
     if not user or user.password_reset_expires_at < datetime.utcnow():
         return templates.TemplateResponse(
+            request,
             "message.html", 
-            {"request": request, "message": "Неверный или просроченный токен сброса пароля."},
+            {"message": "Неверный или просроченный токен сброса пароля."},
             status_code=status.HTTP_400_BAD_REQUEST
         )
     
     crud.reset_password(db, user, new_password)
     return templates.TemplateResponse(
+        request,
         "message.html", 
-        {"request": request, "message": "Пароль успешно изменен. Теперь вы можете войти в систему."},
+        {"message": "Пароль успешно изменен. Теперь вы можете войти в систему."},
         status_code=status.HTTP_200_OK
     )

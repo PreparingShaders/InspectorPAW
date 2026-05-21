@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey, Enum
+from datetime import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -19,8 +20,8 @@ class User(Base):
 
     # Поля для верификации email
     is_verified = Column(Boolean, default=False, nullable=False)
-    verification_token = Column(String, nullable=True, unique=True)
-    verification_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    email_verification_code = Column(String, nullable=True)
+    email_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     # Поля для ролей и премиум-статуса
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
@@ -77,3 +78,12 @@ class Meal(Base):
     total_carbohydrates = Column(Float, default=0.0)
 
     user = relationship("User", back_populates="meals")
+
+class TelegramPasswordResetToken(Base):
+    __tablename__ = 'telegram_password_reset_tokens'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    token = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_used = Column(Boolean, default=False, nullable=False)
+    user = relationship("User")

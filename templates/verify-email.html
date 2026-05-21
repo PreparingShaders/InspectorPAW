@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Подтверждение Email</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold text-center text-gray-900">Подтвердите ваш Email</h2>
+        <p class="text-center text-gray-600">
+            Мы отправили 6-значный код на <span class="font-medium">{{ email }}</span>. Пожалуйста, введите его ниже.
+        </p>
+
+        {% if error %}
+            <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form class="space-y-6" action="/verify-email" method="POST">
+            <input type="hidden" name="email" value="{{ email }}">
+            <div>
+                <label for="code" class="text-sm font-medium text-gray-700 sr-only">Код верификации</label>
+                <input id="code" name="code" type="text" required
+                       class="block w-full px-3 py-2 text-center text-lg tracking-widest border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="------" maxlength="6" pattern="\d{6}">
+            </div>
+
+            <div>
+                <button type="submit"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Подтвердить
+                </button>
+            </div>
+        </form>
+        <div class="text-sm text-center">
+            <a href="/?resend_email={{ email }}" class="font-medium text-indigo-600 hover:text-indigo-500">
+                Отправить код еще раз
+            </a>
+        </div>
+    </div>
+</body>
+</html>

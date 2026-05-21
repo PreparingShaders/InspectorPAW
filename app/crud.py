@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc, asc
 from passlib.context import CryptContext
 from datetime import date, datetime, timedelta, timezone
-from . import models, schemas
+from . import models, schemas, utils
 from typing import List, Optional
 import secrets
 
@@ -40,17 +40,17 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     # Проверяем, есть ли уже пользователи в базе данных
     is_first_user = db.query(models.User).count() == 0
     
-    # Генерируем токен верификации
-    verification_token = secrets.token_urlsafe(32)
-    verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24) # Токен действует 24 часа
+    # Генерируем код верификации
+    verification_code = utils.generate_verification_code()
+    verification_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     db_user = models.User(
         email=user.email,
         hashed_password=hashed_password,
         is_active=False,  # Пользователь неактивен до верификации email
         is_verified=False, # Email не верифицирован
-        verification_token=verification_token,
-        verification_token_expires_at=verification_token_expires_at,
+        email_verification_code=verification_code,
+        email_verification_expires_at=verification_expires_at,
         date_of_birth=user.date_of_birth,
         gender=user.gender,
         height_cm=user.height_cm,
@@ -78,28 +78,24 @@ def update_user(db: Session, user: models.User, user_update: schemas.UserUpdate)
     return user
 
 # --- Email Verification CRUD ---
-def create_verification_token(db: Session, user: models.User) -> str:
-    """Генерирует и сохраняет новый токен верификации для пользователя."""
-    token = secrets.token_urlsafe(32)
-    user.verification_token = token
-    user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-    db.commit()
-    db.refresh(user)
-    return token
+def get_user_by_verification_code(db: Session, email: str, code: str) -> Optional[models.User]:
+    """Находит неактивного пользователя по email и коду верификации."""
+    return db.query(models.User).filter(
+        models.User.email == email,
+        models.User.email_verification_code == code,
+        models.User.is_active == False
+    ).first()
 
-def get_user_by_verification_token(db: Session, token: str) -> Optional[models.User]:
-    """Находит пользователя по токену верификации."""
-    return db.query(models.User).filter(models.User.verification_token == token).first()
-
-def verify_user_email(db: Session, user: models.User) -> models.User:
-    """Верифицирует email пользователя и активирует аккаунт."""
-    user.is_verified = True
+def activate_user(db: Session, user: models.User) -> models.User:
+    """Активирует пользователя и очищает код верификации."""
     user.is_active = True
-    user.verification_token = None
-    user.verification_token_expires_at = None
+    user.is_verified = True
+    user.email_verification_code = None
+    user.email_verification_expires_at = None
     db.commit()
     db.refresh(user)
     return user
+
 
 # --- Password Reset CRUD ---
 

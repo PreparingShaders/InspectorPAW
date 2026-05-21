@@ -4,6 +4,8 @@ import math
 import datetime
 import asyncio
 import requests
+import random
+import string
 from openai import AsyncOpenAI
 from . import models
 from .config import settings
@@ -11,6 +13,29 @@ from . import auth, crud
 from sqlalchemy.orm import Session
 from .models import User
 import httpx # Убедимся, что httpx импортирован
+
+def generate_verification_code(length: int = 6) -> str:
+    """Генерирует случайный числовой код указанной длины."""
+    return "".join(random.choices(string.digits, k=length))
+
+async def send_verification_email(to_email: str, code: str):
+    """
+    Отправляет email с кодом верификации через Brevo.
+    """
+    subject = "Код подтверждения регистрации в InspectorPAW"
+    html_content = f"""
+    <html>
+        <body>
+            <h1>Добро пожаловать в InspectorPAW!</h1>
+            <p>Ваш код для завершения регистрации:</p>
+            <p style="font-size: 24px; font-weight: bold; letter-spacing: 2px;">{code}</p>
+            <p>Этот код действителен в течение 15 минут.</p>
+            <p>Если вы не запрашивали регистрацию, просто проигнорируйте это письмо.</p>
+        </body>
+    </html>
+    """
+    await send_email_brevo(to_email=to_email, subject=subject, html_content=html_content)
+
 
 async def send_email_brevo(
     to_email: str,
@@ -327,7 +352,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         t_val = target.get(param, 0)
         a_val = actual.get(param, 0)
         if t_val == 0: continue
-        expected_now = t_val * max(time_factor, tolerance_threshold)
+        expected_now = t_val * max(max(time_factor, tolerance_threshold), 0.1)
         ratio = a_val / expected_now if expected_now > 0 else 1.0
         param_score = max_weight
         if ratio < 0.8: param_score *= (a_val / (t_val * time_factor + 1e-6))
