@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # --- Настройки JWT ---
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 5760
 
     # --- Настройки часового пояса ---
     MSK_TZ: timezone = timezone(timedelta(hours=3))

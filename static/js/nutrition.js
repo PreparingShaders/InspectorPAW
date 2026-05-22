@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) { window.location.href = '/'; return; }
+    // Убираем проверку токена здесь, т.к. fetchWithAuth будет делать это при каждом запросе
+    // const token = localStorage.getItem('accessToken');
+    // if (!token) { window.location.href = '/'; return; }
 
     // --- Элементы UI ---
     const mealImageInput = document.getElementById('meal-image');
@@ -82,10 +83,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (aiModel) formData.append('ai_model', aiModel);
 
         try {
-            const res = await fetch('/analyze-meal/', {
+            // Используем fetchWithAuth вместо fetch
+            const res = await fetchWithAuth('/analyze-meal/', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
+                // Заголовки Authorization и Content-Type для FormData устанавливаются автоматически
             });
 
             if (!res.ok) {
@@ -135,9 +137,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             ai_coach_advice: aiCoachAdvice.textContent,
         };
         try {
-            await fetch('/meals/', {
+            // Используем fetchWithAuth вместо fetch
+            await fetchWithAuth('/meals/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(mealData)
             });
             resetWizard();
@@ -279,7 +282,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAndDisplayAverageStats() {
         try {
-            const res = await fetch('/users/me/average-stats', { headers: { 'Authorization': `Bearer ${token}` } });
+            // Используем fetchWithAuth вместо fetch
+            const res = await fetchWithAuth('/users/me/average-stats');
             if (res.ok) {
                 const s = await res.json();
                 updateRing('avg-calories-ring', s.avg_calories, s.target_calories);
@@ -293,7 +297,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAndDisplayMealHistory() {
         try {
-            const res = await fetch('/meals/', { headers: { 'Authorization': `Bearer ${token}` } });
+            // Используем fetchWithAuth вместо fetch
+            const res = await fetchWithAuth('/meals/');
             const meals = await res.json();
             const targets = JSON.parse(mealLogsContainer.dataset.targets || '{}');
             mealLogsContainer.innerHTML = '';
@@ -364,7 +369,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchScoreGraphData(days) {
         try {
-            const res = await fetch(`/users/me/stats/summary-by-period?days=${days}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            // Используем fetchWithAuth вместо fetch
+            const res = await fetchWithAuth(`/users/me/stats/summary-by-period?days=${days}`);
             const data = await res.json();
 
             // --- Расчет и отображение среднего балла ---
@@ -427,8 +433,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Первоначальная загрузка данных ---
-    await fetchAndDisplayAverageStats();
-    await fetchAndDisplayMealHistory();
-    await fetchScoreGraphData(30);
+    // Убираем await отсюда, т.к. fetchWithAuth не блокирует выполнение, если происходит редирект
+    fetchAndDisplayAverageStats();
+    fetchAndDisplayMealHistory();
+    fetchScoreGraphData(30);
     resetWizard();
 });

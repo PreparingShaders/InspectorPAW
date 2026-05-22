@@ -59,18 +59,18 @@ async def read_dashboard_page(request: Request):
 
 
 @app.get("/profile")
-async def read_profile_page(request: Request, current_user: models.User = Depends(auth.get_current_user_from_cookie)):
+async def read_profile_page(request: Request, current_user: models.User = Depends(auth.get_current_active_user)):
     return templates.TemplateResponse(request, "profile.html", {"user": current_user})
 
 
 @app.get("/nutrition")
-async def read_nutrition_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_from_cookie)):
+async def read_nutrition_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     features = utils.get_user_features(current_user, db)
     return templates.TemplateResponse(request, "nutrition.html", {"features": features})
 
 
 @app.get("/ai-hub")
-async def read_ai_hub_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_from_cookie)):
+async def read_ai_hub_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     features = utils.get_user_features(current_user, db)
     return templates.TemplateResponse(request, "ai_hub.html", {"features": features})
 
@@ -85,7 +85,7 @@ async def read_admin_page(request: Request):
 
 # --- AI Логика ---
 @app.post("/ai-hub/chat")
-async def ai_hub_chat(chat_request: schemas.AIChatRequest, current_user: models.User = Depends(auth.get_current_user)):
+async def ai_hub_chat(chat_request: schemas.AIChatRequest, current_user: models.User = Depends(auth.get_current_active_user)):
     model_name = chat_request.model
     headers = {"Content-Type": "application/json"}
     payload = {}
@@ -353,7 +353,13 @@ async def verify_email_and_login(
     access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     
     response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
-    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite='lax')
+    response.set_cookie(
+        key="access_token", 
+        value=f"Bearer {access_token}", 
+        httponly=True, 
+        samesite='lax',
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
     return response
 
 
@@ -396,7 +402,13 @@ async def login_for_access_token(response: Response, form_data: OAuth2PasswordRe
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     
-    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, samesite='lax')
+    response.set_cookie(
+        key="access_token", 
+        value=f"Bearer {access_token}", 
+        httponly=True, 
+        samesite='lax',
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -405,7 +417,7 @@ async def login_for_access_token(response: Response, form_data: OAuth2PasswordRe
 
 
 @app.get("/users/me/", response_model=schemas.UserWithTargets)
-async def read_users_me(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+async def read_users_me(current_user: models.User = Depends(auth.get_current_active_user), db: Session = Depends(get_db)):
     user_from_db = db.query(models.User).options(
         joinedload(models.User.meals),
         joinedload(models.User.metrics)
@@ -461,7 +473,7 @@ async def calculate_targets(request: schemas.TargetCalculationRequest):
 def update_current_user(
         user_update: schemas.UserUpdate,
         db: Session = Depends(get_db),
-        current_user: models.User = Depends(auth.get_current_user)
+        current_user: models.User = Depends(auth.get_current_active_user)
 ):
     return crud.update_user(db, user=current_user, user_update=user_update)
 
@@ -480,7 +492,7 @@ class ChangePasswordRequest(BaseModel):
 def change_password(
     request: ChangePasswordRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
+    current_user: models.User = Depends(auth.get_current_active_user)
 ):
     """
     Позволяет пользователю сменить свой пароль.
@@ -495,7 +507,7 @@ def change_password(
 def create_metric_for_current_user(
         metric: schemas.UserMetricsCreate,
         db: Session = Depends(get_db),
-        current_user: models.User = Depends(auth.get_current_user)
+        current_user: models.User = Depends(auth.get_current_active_user)
 ):
     return crud.create_user_metric(db, metric=metric, user_id=current_user.id)
 
@@ -506,7 +518,7 @@ async def analyze_meal(
         file: Optional[UploadFile] = File(None),
         ai_model: Optional[str] = Form(None),
         db: Session = Depends(get_db),
-        current_user: models.User = Depends(auth.get_current_user) # Убрана зависимость check_free_user_upload_limit
+        current_user: models.User = Depends(auth.get_current_active_user) 
 ):
     if not file and not description:
         raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
@@ -586,7 +598,7 @@ async def analyze_meal(
 def confirm_and_create_meal(
         meal_data: schemas.MealCreate,
         db: Session = Depends(get_db),
-        current_user: models.User = Depends(auth.get_current_user)
+        current_user: models.User = Depends(auth.get_current_active_user)
 ):
     # Проверка лимита для бесплатных пользователей
     if not auth.is_premium_user(current_user):
@@ -606,14 +618,14 @@ def confirm_and_create_meal(
 @app.get("/meals/", response_model=List[schemas.Meal])
 def read_user_meals(
         skip: int = 0, limit: int = 100, db: Session = Depends(get_db),
-        current_user: models.User = Depends(auth.get_current_user)
+        current_user: models.User = Depends(auth.get_current_active_user)
 ):
     return crud.get_meals_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
 
 
 @app.delete("/meals/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_meal(
-        meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)
+        meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)
 ):
     db_meal = crud.get_meal_by_id(db, meal_id)
     if not db_meal:
@@ -627,7 +639,7 @@ def delete_meal(
 @app.get("/users/me/stats", response_model=schemas.StatsSummary)
 def get_user_stats(
         start_date: date, end_date: date, db: Session = Depends(get_db),
-        current_user: models.User = Depends(auth.get_current_user)
+        current_user: models.User = Depends(auth.get_current_active_user)
 ):
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="Start date cannot be after end date")
@@ -643,7 +655,7 @@ def get_user_stats(
 
 
 @app.get("/users/me/average-stats", response_model=schemas.AverageSummary)
-def get_average_stats(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def get_average_stats(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     end_date = date.today()
     start_date = end_date - timedelta(days=20)
     
@@ -674,12 +686,12 @@ def get_average_stats(db: Session = Depends(get_db), current_user: models.User =
 
 
 @app.get("/users/me/stats/weekly-summary", response_model=schemas.WeeklySummaryResponse)
-def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def get_weekly_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     return get_summary_for_period(days=7, db=db, current_user=current_user)
 
 
 @app.get("/users/me/stats/summary-by-period", response_model=schemas.WeeklySummaryResponse)
-def get_summary_by_period(days: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def get_summary_by_period(days: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     return get_summary_for_period(days=days, db=db, current_user=current_user)
 
 
@@ -787,7 +799,7 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
 @app.get("/users/me/dashboard-stats", response_model=schemas.DashboardStats)
 async def get_dashboard_stats(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
+    current_user: models.User = Depends(auth.get_current_active_user)
 ):
     now_msk = datetime.now(settings.MSK_TZ)
 
