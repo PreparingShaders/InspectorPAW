@@ -301,7 +301,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             meals.forEach(m => {
                 const card = document.createElement('div');
                 card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray mb-4';
-                card.innerHTML = `<div class="text-center mb-2"><h4 class="font-bold">${trans[m.meal_type]}</h4><p class="text-[10px] text-gray-400">${m.food_name}</p></div><div class="flex justify-around">${createMiniRing(m.id, 'calories', m.total_calories, targets.target_calories, 'amber')}${createMiniRing(m.id, 'protein', m.total_protein, targets.target_protein, 'protein-white')}${createMiniRing(m.id, 'fat', m.total_fat, targets.target_fat, 'golden-orange')}${createMiniRing(m.id, 'carbs', m.total_carbohydrates, targets.target_carbohydrates, 'muted-teal')}</div>`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="font-bold text-lg">${trans[m.meal_type]}</h4>
+                    </div>
+                    <p class="text-sm text-gray-300 mb-3 text-left">${m.food_name.replace(/\n/g, '<br>')}</p>
+                    <div class="border-t border-white/10 my-3"></div>
+                    <div class="flex justify-around">
+                        ${createMiniRing(m.id, 'calories', m.total_calories, targets.target_calories, 'amber')}
+                        ${createMiniRing(m.id, 'protein', m.total_protein, targets.target_protein, 'protein-white')}
+                        ${createMiniRing(m.id, 'fat', m.total_fat, targets.target_fat, 'golden-orange')}
+                        ${createMiniRing(m.id, 'carbs', m.total_carbohydrates, targets.target_carbohydrates, 'muted-teal')}
+                    </div>
+                `;
                 mealLogsContainer.appendChild(card);
                 ['calories', 'protein', 'fat', 'carbs'].forEach(type => {
                     updateRing(`log-${m.id}-${type}-ring`, m[`total_${type === 'carbs' ? 'carbohydrates' : type}`], targets[`target_${type === 'carbs' ? 'carbohydrates' : type}`]);
