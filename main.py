@@ -1,12 +1,8 @@
-from fastapi import FastAPI
+import uvicorn
+from app.main import app
 
-app = FastAPI(title="InspectorPAW API")
-
-@app.get("/")
-def read_root():
-    return {"message": "InspectorPAW is online!", "status": "Gym ready"}
-
-@app.get("/check_progress")
-def get_progress():
-    # Сюда мы потом прикрутим логику из SQLAlchemy
-    return {"latest_workout": "Leg Press", "weight": 205, "reps": 12}
+if __name__ == "__main__":
+    # Запускаем uvicorn сервер, который будет обслуживать наше FastAPI приложение "app"
+    # host="0.0.0.0" делает сервер доступным в локальной сети
+    # reload=True автоматически перезапускает сервер при изменениях в коде
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

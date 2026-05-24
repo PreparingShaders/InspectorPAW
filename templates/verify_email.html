@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Подтверждение Email - ProgressLab</title>
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div id="verify-view">
+            <h1 class="auth-title">Подтвердите ваш Email</h1>
+            <p class="auth-subtitle">
+                Мы отправили 6-значный код на <strong class="font-medium">{{ email }}</strong>. Пожалуйста, введите его ниже.
+            </p>
+
+            <form id="verify-form" class="space-y-6" action="/verify-email" method="post">
+                <input type="hidden" name="email" value="{{ email }}">
+                <div class="form-group">
+                    <label for="code">Код подтверждения</label>
+                    <input id="code" name="code" type="text" required
+                           class="auth-input text-center tracking-widest"
+                           placeholder="------" maxlength="6" pattern="[0-9]{6}">
+                </div>
+
+                <div id="error-message" class="error-message" style="display: none;">{{ error }}</div>
+
+                <button type="submit" class="auth-button">Подтвердить</button>
+            </form>
+
+            <div class="switch-form-link">
+                <p>Не получили код?</p>
+                <button id="resend-btn" disabled class="resend-button">
+                    Отправить снова (<span id="timer">40</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const resendBtn = document.getElementById('resend-btn');
+            const timerSpan = document.getElementById('timer');
+            const errorMessageDiv = document.getElementById('error-message');
+
+            // Если была ошибка со стороны сервера, показать ее
+            if (errorMessageDiv.textContent.trim()) {
+                errorMessageDiv.style.display = 'block';
+            }
+
+            let countdown = 40;
+
+            function startTimer() {
+                resendBtn.disabled = true;
+                timerSpan.parentElement.style.color = '#9ca3af'; // gray-400
+
+                const interval = setInterval(() => {
+                    countdown--;
+                    timerSpan.textContent = countdown;
+                    if (countdown <= 0) {
+                        clearInterval(interval);
+                        resendBtn.disabled = false;
+                        resendBtn.innerHTML = 'Отправить снова';
+                        timerSpan.parentElement.style.color = ''; // reset color
+                    }
+                }, 1000);
+            }
+
+            resendBtn.addEventListener('click', async () => {
+                if (resendBtn.disabled) return;
+
+                countdown = 40;
+                startTimer();
+                errorMessageDiv.style.display = 'none';
+
+                try {
+                    const response = await fetch('/resend-verification-code', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ email: '{{ email }}' })
+                    });
+
+                    if (!response.ok) {
+                        const result = await response.json();
+                        errorMessageDiv.textContent = result.detail || 'Произошла ошибка. Попробуйте позже.';
+                        errorMessageDiv.style.display = 'block';
+                    } else {
+                        errorMessageDiv.textContent = 'Новый код отправлен!';
+                        errorMessageDiv.style.display = 'block';
+                        errorMessageDiv.style.color = '#28a745'; // green
+                    }
+                } catch (error) {
+                    errorMessageDiv.textContent = 'Ошибка сети. Пожалуйста, проверьте ваше подключение.';
+                    errorMessageDiv.style.display = 'block';
+                }
+            });
+
+            startTimer();
+        });
+    </script>
+</body>
+</html>

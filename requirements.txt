@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlalchemy
+passlib[bcrypt]
+pydantic-settings
+asyncpg
+python-multipart
+email-validator
+bcrypt==4.0.1
+pydantic
+Jinja2
+python-jose[cryptography]==3.3.0
+google-genai
+Pillow
+openai
+pytest
+httpx

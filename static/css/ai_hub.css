@@ -1,0 +1,143 @@
+body {
+    background-image: url('/static/images/nebula_background.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* Стили для кнопки "Назад" */
+.back-button {
+    position: absolute;
+    top: calc(1.5rem + env(safe-area-inset-top));
+    left: 1rem;
+    color: white;
+    z-index: 10;
+}
+
+#chat-history {
+    padding-top: 1rem;
+    /* padding-bottom убран, т.к. footer теперь в потоке документа */
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.chat-bubble {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 20px;
+    position: relative;
+    word-wrap: break-word;
+    margin: 0 1rem;
+}
+
+.chat-bubble.user {
+    background-color: #333;
+    color: white;
+    align-self: flex-end;
+    margin-left: auto;
+    border-radius: 20px 20px 5px 20px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+}
+
+.chat-bubble.ai {
+    background-color: #555;
+    color: white;
+    align-self: flex-start;
+    margin-right: auto;
+    border-radius: 20px 20px 20px 5px;
+    box-shadow: 0 0 12px rgba(173, 97, 255, 0.9);
+}
+
+.chat-input-container {
+    /* Убрано position: fixed. Теперь это обычный блочный элемент. */
+    margin: 0 auto; /* Центрируем в футере */
+    width: 95%;
+    max-width: 500px;
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#chat-input {
+    flex-grow: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 16px;
+    padding: 0 12px;
+}
+
+#chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+#send-button {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 8px;
+}
+
+/* --- Стили для модального окна --- */
+
+#model-selection-modal .modal-content {
+    background: rgba(26, 27, 30, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1.5rem;
+}
+
+#model-list .model-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+#model-list .model-item:last-child {
+    border-bottom: none;
+}
+
+#model-list .model-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+#model-list .model-item.selected {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+#model-list .model-item .checkmark {
+    display: none;
+    color: #3b82f6;
+}
+
+#model-list .model-item.selected .checkmark {
+    display: inline;
+}
+
+#close-modal-button {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    margin-top: 1rem;
+    cursor: pointer;
+    transition: color 0.2s ease-in-out;
+}
+
+#close-modal-button:hover {
+    color: white;
+}

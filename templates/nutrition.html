@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
+    <title>Питание - ProgressLab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ProgressLab">
+    <link rel="apple-touch-icon" href="/static/images/apple-touch-icon_1.png">
+    <link rel="manifest" href="/static/manifest.json">
+    <style>
+        .ai-coach-container {
+            border-radius: 1.5rem; padding: 1rem; position: relative; overflow: hidden;
+            background: rgba(41, 41, 56, 0.6); border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        }
+        .period-btn { transition: all 0.3s ease-in-out; }
+        .period-btn.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            color: #fff;
+        }
+        .step { display: none; }
+        .step.active { display: block; }
+
+        /* --- СТИЛЬ ДЛЯ ПЕРЕЛИВАЮЩЕГОСЯ СВЕЧЕНИЯ --- */
+        @keyframes iridescent-glow-box {
+            0%   { box-shadow: 0 0 15px #ff00ff; }
+            25%  { box-shadow: 0 0 20px #00ffff; }
+            50%  { box-shadow: 0 0 15px #ff00ff; }
+            75%  { box-shadow: 0 0 20px #ffff00; }
+            100% { box-shadow: 0 0 15px #ff00ff; }
+        }
+        .ai-animated-glow-button {
+            background-color: rgba(138, 43, 226, 0.3); /* Фиолетовый фон */
+            border: 1px solid rgba(138, 43, 226, 0.7);
+            animation: iridescent-glow-box 4s infinite ease-in-out;
+        }
+        .slow-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Стили для вертикальных полос */
+        .pace-bar-bg {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .pace-bar-fill {
+            transition: height 0.5s ease-out;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body class="h-dvh flex flex-col">
+
+    <header class="text-center pb-2" style="padding-top: calc(0.01rem + env(safe-area-inset-top));">
+        <h1 class="text-3xl font-extrabold tracking-wider">ProgressLab</h1>
+        <p class="text-xs text-gray-500">Beta 0.1</p>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-2 pb-24">
+
+        <!-- ... (остальные блоки без изменений) ... -->
+        <div class="w-full">
+            <div id="average-stats" class="pt-0">
+                <h3 class="text-lg font-semibold text-center mb-2">Средние показатели</h3>
+                <div class="flex justify-center w-full space-x-4">
+                    <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-amber relative"><svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-calories-value" class="font-bold text-base" style="color: var(--color-amber);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Ккал</p></div>
+                    <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-protein-white relative"><svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-protein-value" class="font-bold text-base" style="color: var(--color-protein-white);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Б</p></div>
+                    <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-golden-orange relative"><svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-fat-value" class="font-bold text-base" style="color: var(--color-golden-orange);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Ж</p></div>
+                    <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-muted-teal relative"><svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-carbs-value" class="font-bold text-base" style="color: var(--color-muted-teal);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">У</p></div>
+                </div>
+            </div>
+        </div>
+        <div class="w-full space-y-3">
+            <div class="w-full flex justify-center">
+                <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
+                    <button id="one-month-btn" class="period-btn active w-1/2 rounded-full py-1 text-sm font-semibold">1 месяц</button>
+                    <button id="three-months-btn" class="period-btn w-1/2 rounded-full py-1 text-sm font-semibold text-gray-400">3 месяца</button>
+                </div>
+            </div>
+            <div class="relative h-40 w-full glassmorphism neon-glow-pantone-gray rounded-2xl flex items-end justify-around pb-2 pt-2 px-2">
+                <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-[#F0F0F0]/80 -translate-y-1/2"></div>
+                <span id="average-score-label" class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-[#F0F0F0] hidden px-2" style="background-color: #1a202c; text-shadow: 0 0 8px #F0F0F0;"></span>
+                <div id="score-graph-container" class="flex justify-around w-full h-full items-center relative z-10"></div>
+            </div>
+        </div>
+
+        <div id="analysis-wizard" class="w-full flex-grow flex flex-col min-h-[375px]">
+            <div id="step-1" class="step active ai-section w-full flex-grow">
+                <div class="flex flex-col h-full justify-start">
+
+                    <div id="initial-view" class="flex flex-col h-full justify-start space-y-1">
+                        <div id="progress-lab-summary" class="w-full bg-white/5 border border-white/20 rounded-2xl p-4 flex flex-col neon-glow-pantone-gray">
+                            <h4 id="summary-title" class="text-white font-bold text-lg text-center">Анализ дня</h4>
+                            <div id="summary-content-default" class="w-full flex-grow flex items-center justify-center">
+                                <p id="summary-advice" class="text-sm text-gray-200 leading-relaxed text-left font-medium w-full"></p>
+                            </div>
+                            <div id="summary-content-gamified" class="hidden w-full flex-grow flex flex-col justify-center">
+                                <p id="pace-advice-text" class="text-xs text-gray-200 leading-relaxed text-center font-medium w-full px-2 mb-3"></p>
+                                <div id="all-rings-container" class="flex justify-around items-center w-full">
+                                    <div id="score-ring-container" class="w-1/5">
+                                        <!-- Score ring will be injected here by JS -->
+                                    </div>
+                                    <div id="pace-bars-container" class="flex justify-around items-center w-4/5">
+                                        <!-- Nutrient rings will be injected here by JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-full pb-2 pt-2">
+                            <label for="meal-image" class="upload-button-label neon-glow-pantone-gray block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95 {% if not features.can_analyze_meal %}opacity-50 cursor-not-allowed{% endif %}">
+                                Добавить фото
+                            </label>
+                            <input type="file" id="meal-image" accept="image/*" class="hidden" {% if not features.can_analyze_meal %}disabled{% endif %}>
+                            {% if not features.can_analyze_meal %}
+                            <p class="text-red-500 text-xs text-center mt-2">
+                                Вы исчерпали дневной лимит (5). Оформите <a href="/profile" class="underline">премиум-подписку</a> для снятия ограничений.
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div id="image-added-view" class="hidden flex-grow flex flex-col justify-start space-y-4">
+                        <textarea id="meal-description" class="w-full bg-gray-800/50 text-white rounded-xl p-3 h-48 placeholder-gray-400 neon-glow-pantone-gray" placeholder="Например: каша на кокосовом молоке с ложкой масла.&#10;&#10;Это поможет AI точнее определить КБЖУ." {% if not features.can_analyze_meal %}disabled{% endif %}></textarea>
+                        <div class="w-full pb-2 pt-2">
+                            <button id="send-to-ai-btn" class="w-full py-4 text-lg font-semibold rounded-xl text-white ai-animated-glow-button transition-all active:scale-95 {% if not features.can_analyze_meal %}opacity-50 cursor-not-allowed{% endif %}" {% if not features.can_analyze_meal %}disabled{% endif %}>
+                                Фото добавлено. Отправить в AI
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-center hidden">
+                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 flex flex-col justify-center items-center space-y-4 neon-glow-pantone-gray mb-16">
+                    <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full slow-spin"></div>
+                    <p class="text-center text-gray-300 leading-relaxed">Ваше фото отправлено в AI модель.<br>Процесс распознавания занимает до 10 секунд.<br>Не переходите на другие страницы и ожидайте ответа.</p>
+                </div>
+            </div>
+
+            <div id="step-3" class="step ai-section w-full flex-grow"><div id="ai-coach-section" class="w-full ai-coach-container mb-4"><h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4><p id="ai-coach-advice" class="text-white text-left text-sm leading-relaxed"></p></div><div id="ai-response-text" class="hidden"></div><form id="confirm-form" class="space-y-4"><div class="form-group"><label for="meal-type">Прием пищи</label><select id="meal-type" class="w-full bg-white/5 border border-white/10 rounded-xl p-2 text-white"><option value="breakfast">Завтрак</option><option value="lunch" selected>Обед</option><option value="dinner">Ужин</option><option value="snack">Перекус</option></select></div><div id="interactive-rings-container" class="grid grid-cols-2 gap-3"><div class="flex flex-col"><label class="text-xs text-amber-500">Ккал</label><input type="number" id="calories" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-blue-300">Белки</label><input type="number" id="protein" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-orange-400">Жиры</label><input type="number" id="fat" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-teal-400">Углев.</label><input type="number" id="carbohydrates" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div></div><div class="flex space-x-3 pt-2"><button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button><button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button></div></form></div>
+        </div>
+
+        <div class="w-full mt-4">
+            <h3 class="text-xl font-bold text-center mb-3">Логи приемов пищи</h3>
+            <div id="meal-logs-container" class="w-full space-y-4"></div>
+        </div>
+        <div id="error-message" class="text-red-500 text-center mt-4"></div>
+    </main>
+
+    {% set active_page = 'nutrition' %}
+    {% include 'includes/bottom_nav.html' %}
+
+    <div id="score-tooltip" class="absolute z-50 p-3 rounded-2xl glassmorphism neon-glow-pantone-gray text-white opacity-0 transition-all duration-300 pointer-events-none shadow-2xl" style="min-width: 180px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transform: scale(0.9);"><p class="font-black text-base mb-1.5 tracking-wide border-b border-white/10 pb-1" id="tooltip-date"></p><div class="space-y-1 text-sm"><div class="flex justify-between items-center"><span class="text-gray-400">Score:</span><span id="tooltip-score" class="font-bold text-lg"></span></div><div class="flex justify-between items-center"><span style="color: var(--color-amber);">Ккал:</span><span class="font-medium"><span id="tooltip-calories"></span> / <span id="tooltip-target-calories"></span></span></div><div class="flex justify-between items-center"><span style="color: var(--color-protein-white);">Белки:</span><span class="font-medium"><span id="tooltip-protein"></span>г / <span id="tooltip-target-protein"></span>г</span></div><div class="flex justify-between items-center"><span style="color: var(--color-golden-orange);">Жиры:</span><span class="font-medium"><span id="tooltip-fat"></span>г / <span id="tooltip-target-fat"></span>г</span></div><div class="flex justify-between items-center"><span style="color: var(--color-muted-teal);">Углеводы:</span><span class="font-medium"><span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</span></div></div><div class="mt-2 text-xs italic font-medium leading-tight opacity-90" id="tooltip-message"></div></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/nutrition.js"></script>
+</body>
+</html>
