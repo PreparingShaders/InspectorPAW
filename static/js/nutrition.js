@@ -275,7 +275,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p class="text-xs font-semibold text-gray-400 mt-1">Score</p>
                     </div>
                 `;
-                updateRing(scoreRingId, score, 100);
+                // Передаем найденный SVG-элемент напрямую
+                const summaryScoreRingSvg = scoreRingContainer.querySelector(`#${scoreRingId}`);
+                if (summaryScoreRingSvg) {
+                    updateRing(summaryScoreRingSvg, score, 100);
+                }
                 const scoreValueSpan = document.getElementById(scoreValueId);
                 if (scoreValueSpan) scoreValueSpan.style.color = scoreColor;
             }
@@ -296,43 +300,55 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const ringId = `pace-${key}-ring`;
                 const valueId = `pace-${key}-value`;
 
-                const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
-                let ringColor = config.color;
-                let glowClass = config.neon;
-
-                if (percentage > 100) {
-                    if (key === 'protein') {
-                        ringColor = '#22c55e';
-                        glowClass = 'overflow-glow-green';
-                    } else {
-                        ringColor = '#e11d48';
-                        glowClass = 'overflow-glow-red';
-                    }
-                }
-
                 const ringWrapper = document.createElement('div');
                 ringWrapper.className = 'text-center flex flex-col items-center space-y-1';
                 ringWrapper.innerHTML = `
-                    <div class="ring-container w-12 aspect-square ${glowClass} relative">
+                    <div class="ring-container w-12 aspect-square ${config.neon} relative">
                         <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
                             <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${ringColor};" />
+                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${config.color};" />
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="${valueId}" class="font-bold text-base" style="color: ${ringColor};">0</span>
+                            <span id="${valueId}" class="font-bold text-base" style="color: ${config.color};">0</span>
                         </div>
                     </div>
                     <p class="text-xs font-semibold text-gray-400 mt-1">${config.label}</p>
                 `;
 
                 paceBarsContainer.appendChild(ringWrapper);
-                updateRing(ringId, pace.actual, pace.expected);
-                const ringBar = document.querySelector(`#${ringId} .progress-ring-bar`);
-                if(ringBar) ringBar.style.stroke = ringColor;
-                const valueSpan = document.getElementById(valueId);
-                if(valueSpan) {
-                    valueSpan.style.color = ringColor;
-                    valueSpan.textContent = Math.round(pace.actual);
+
+                // Находим SVG-элемент внутри только что созданного ringWrapper
+                const paceRingSvg = ringWrapper.querySelector(`#${ringId}`);
+                if (paceRingSvg) {
+                    updateRing(paceRingSvg, pace.actual, pace.expected);
+                    // Обновляем цвет обводки после updateRing, если он изменился
+                    const ringBar = paceRingSvg.querySelector('.progress-ring-bar');
+                    if(ringBar) {
+                        let ringColor = config.color;
+                        const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
+                        if (percentage > 100) {
+                            if (key === 'protein') {
+                                ringColor = '#22c55e';
+                            } else {
+                                ringColor = '#e11d48';
+                            }
+                        }
+                        ringBar.style.stroke = ringColor;
+                    }
+                    const valueSpan = ringWrapper.querySelector(`#${valueId}`);
+                    if(valueSpan) {
+                        let ringColor = config.color;
+                        const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
+                        if (percentage > 100) {
+                            if (key === 'protein') {
+                                ringColor = '#22c55e';
+                            } else {
+                                ringColor = '#e11d48';
+                            }
+                        }
+                        valueSpan.style.color = ringColor;
+                        valueSpan.textContent = Math.round(pace.actual);
+                    }
                 }
             }
 
@@ -350,17 +366,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Функции отрисовки (без изменений) ---
-    function updateRing(ringId, value, maxValue) {
-        const ring = document.getElementById(ringId);
-        if (!ring) return;
-        const bar = ring.querySelector('.progress-ring-bar');
+    // Изменена для приема элемента SVG напрямую
+    function updateRing(ringSvgElement, value, maxValue) {
+        if (!ringSvgElement) return;
+        const bar = ringSvgElement.querySelector('.progress-ring-bar');
+        if (!bar) return;
         const radius = bar.r.baseVal.value;
         const circum = 2 * Math.PI * radius;
         bar.style.strokeDasharray = `${circum} ${circum}`;
         const pct = maxValue > 0 ? Math.min(value / maxValue, 1) : 0;
         bar.style.strokeDashoffset = circum - (pct * circum);
-        const valEl = document.getElementById(ringId.replace('-ring', '-value'));
-        if (valEl) valEl.textContent = Math.round(value);
+
+        // Находим span для значения внутри контейнера SVG
+        const ringContainer = ringSvgElement.closest('.ring-container');
+        if (ringContainer) {
+            const valEl = ringContainer.querySelector(`#${ringSvgElement.id.replace('-ring', '-value')}`);
+            if (valEl) valEl.textContent = Math.round(value);
+        }
     }
 
     async function fetchAndDisplayAverageStats() {
@@ -369,10 +391,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetchWithAuth('/users/me/average-stats');
             if (res.ok) {
                 const s = await res.json();
-                updateRing('avg-calories-ring', s.avg_calories, s.target_calories);
-                updateRing('avg-protein-ring', s.avg_protein, s.target_protein);
-                updateRing('avg-fat-ring', s.avg_fat, s.target_fat);
-                updateRing('avg-carbs-ring', s.avg_carbohydrates, s.target_carbohydrates);
+                // Обновляем вызовы updateRing для средних показателей
+                updateRing(document.getElementById('avg-calories-ring'), s.avg_calories, s.target_calories);
+                updateRing(document.getElementById('avg-protein-ring'), s.avg_protein, s.target_protein);
+                updateRing(document.getElementById('avg-fat-ring'), s.avg_fat, s.target_fat);
+                updateRing(document.getElementById('avg-carbs-ring'), s.avg_carbohydrates, s.target_carbohydrates);
                 mealLogsContainer.dataset.targets = JSON.stringify(s);
             }
         } catch (e) { console.error("Ошибка статистики:", e); }
@@ -403,8 +426,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 `;
                 mealLogsContainer.appendChild(card);
+
+                // Теперь находим SVG-элементы внутри только что добавленной карточки
                 ['calories', 'protein', 'fat', 'carbs'].forEach(type => {
-                    updateRing(`log-${m.id}-${type}-ring`, m[`total_${type === 'carbs' ? 'carbohydrates' : type}`], targets[`target_${type === 'carbs' ? 'carbohydrates' : type}`]);
+                    const ringId = `log-${m.id}-${type}-ring`;
+                    const ringSvgElement = card.querySelector(`#${ringId}`); // Ищем внутри card
+                    if (ringSvgElement) {
+                        updateRing(ringSvgElement, m[`total_${type === 'carbs' ? 'carbohydrates' : type}`], targets[`target_${type === 'carbs' ? 'carbohydrates' : type}`]);
+                    } else {
+                        console.warn(`SVG ring element with ID ${ringId} not found in card for meal ${m.id}`);
+                    }
                 });
             });
         } catch (e) { console.error("Ошибка истории:", e); }
@@ -429,7 +460,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('tooltip-fat').textContent = Math.round(dayData.consumed_fat);
         document.getElementById('tooltip-target-fat').textContent = Math.round(dayData.target_fat);
         document.getElementById('tooltip-carbs').textContent = Math.round(dayData.consumed_carbohydrates);
-        document.getElementById('tooltip-target-carbs').textContent = Math.round(dayData.target_carbohydrates);
+        document.getElementById('tooltip-target-carbs').textContent = Math.round(data.target_carbohydrates);
         const rect = element.getBoundingClientRect();
         scoreTooltip.classList.remove('opacity-0', 'pointer-events-none');
         scoreTooltip.classList.add('opacity-100');
