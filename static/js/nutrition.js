@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sendToAiBtn = document.getElementById('send-to-ai-btn');
     const initialView = document.getElementById('initial-view');
     const imageAddedView = document.getElementById('image-added-view');
+    const imagePreview = document.getElementById('image-preview'); // Добавляем ссылку на элемент предпросмотра
 
     const mealLogsContainer = document.getElementById('meal-logs-container');
     const aiCoachTitle = document.getElementById('ai-coach-title');
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelAnalysisBtn = document.getElementById('cancel-analysis-btn');
 
     let currentFoodName = '';
+    let compressedFile = null; // Для хранения сжатого файла
     let tooltipTimeout;
     const scoreTooltip = document.getElementById('score-tooltip');
 
@@ -26,6 +28,59 @@ document.addEventListener('DOMContentLoaded', async () => {
         2: document.getElementById('step-2'),
         3: document.getElementById('step-3')
     };
+
+    // --- Функция сжатия изображения ---
+    function compressImage(file, maxWidth = 1280, quality = 0.85) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let { width, height } = img;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxWidth) {
+                            width = Math.round((width * maxWidth) / height);
+                            height = maxWidth;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob(
+                        (blob) => {
+                            if (blob) {
+                                // Создаем новый File объект, чтобы сохранить имя файла
+                                const newFile = new File([blob], file.name, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now(),
+                                });
+                                resolve(newFile);
+                            } else {
+                                reject(new Error('Canvas to Blob conversion failed'));
+                            }
+                        },
+                        'image/jpeg',
+                        quality
+                    );
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    }
+
 
     // --- Управление состоянием UI ---
     function goToStep(stepNumber) {
@@ -55,18 +110,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         mealImageInput.value = '';
         mealDescriptionInput.value = '';
         confirmForm.reset();
+        compressedFile = null; // Сбрасываем сжатый файл
+        if (imagePreview) { // Очищаем предпросмотр изображения
+            imagePreview.src = '';
+        }
         showInitialView();
         goToStep(1);
     }
 
     // --- Логика анализа ---
-    mealImageInput.addEventListener('change', () => {
+    mealImageInput.addEventListener('change', async () => {
         if (!mealImageInput.files || mealImageInput.files.length === 0) return;
-        showImageAddedView();
+
+        // Опционально: можно добавить индикатор загрузки/сжатия здесь
+
+        try {
+            const originalFile = mealImageInput.files[0];
+            compressedFile = await compressImage(originalFile); // Сжимаем изображение
+            console.log(`Изображение сжато с ${Math.round(originalFile.size / 1024)}KB до ${Math.round(compressedFile.size / 1024)}KB`);
+
+            // Отображаем сжатое изображение для предпросмотра
+            if (imagePreview && compressedFile) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                };
+                reader.readAsDataURL(compressedFile);
+            }
+
+            showImageAddedView(); // Показываем следующий шаг после успешного сжатия
+        } catch (error) {
+            console.error('Ошибка сжатия изображения:', error);
+            alert('Не удалось обработать изображение. Попробуйте другое.');
+            resetWizard();
+        }
+
+        // Опционально: убрать индикатор загрузки
     });
 
     sendToAiBtn.addEventListener('click', async () => {
-        if (!mealImageInput.files || mealImageInput.files.length === 0) {
+        if (!compressedFile) {
             alert('Сначала выберите фото.');
             return;
         }
@@ -74,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         goToStep(2);
 
         const formData = new FormData();
-        formData.append('file', mealImageInput.files[0]);
+        formData.append('file', compressedFile, compressedFile.name); // Используем сжатый файл
         if (mealDescriptionInput.value.trim()) {
             formData.append('description', mealDescriptionInput.value.trim());
         }
