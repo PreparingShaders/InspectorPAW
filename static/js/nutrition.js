@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Находим span для значения внутри контейнера SVG
         const ringContainer = ringSvgElement.closest('.ring-container');
         if (ringContainer) {
-            const valEl = ringContainer.querySelector(`#${ringSvgElement.id.replace('-ring', '-value')}`);
+            const valEl = ringContainer.querySelector(`span`); // Ищем span внутри ring-container
             if (valEl) valEl.textContent = Math.round(value);
         }
     }
@@ -401,20 +401,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { console.error("Ошибка статистики:", e); }
     }
 
+    // --- Вспомогательная функция для форматирования даты ---
+    function formatDateForLogs(dateString) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+
+        const mealDate = new Date(dateString);
+        mealDate.setHours(0, 0, 0, 0);
+
+        if (mealDate.getTime() === today.getTime()) {
+            return "Сегодня";
+        } else if (mealDate.getTime() === yesterday.getTime()) {
+            return "Вчера";
+        } else {
+            return mealDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+    }
+
+    // --- Метки для макронутриентов ---
+    const nutrientLabels = {
+        calories: 'Ккал',
+        protein: 'Б',
+        fat: 'Ж',
+        carbs: 'У'
+    };
+
     async function fetchAndDisplayMealHistory() {
         try {
             // Используем fetchWithAuth вместо fetch
             const res = await fetchWithAuth('/meals/');
-            const meals = await res.json();
+            let meals = await res.json(); // Используем let, так как будем сортировать
             const targets = JSON.parse(mealLogsContainer.dataset.targets || '{}');
             mealLogsContainer.innerHTML = '';
             const trans = { breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин', snack: 'Перекус' };
+
+            // Сортируем приемы пищи по timestamp в убывающем порядке (самые свежие сверху)
+            meals.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            let lastDate = null;
+
             meals.forEach(m => {
+                const mealTimestamp = new Date(m.timestamp);
+                const mealDateString = mealTimestamp.toISOString().split('T')[0]; // YYYY-MM-DD
+
+                if (mealDateString !== lastDate) {
+                    // Добавляем заголовок даты
+                    const dateHeader = document.createElement('h3');
+                    dateHeader.className = 'text-lg font-bold text-center mt-6 mb-3 text-white';
+                    dateHeader.textContent = formatDateForLogs(m.timestamp);
+                    mealLogsContainer.appendChild(dateHeader);
+
+                    // Добавляем разделитель (кроме самого первого дня)
+                    if (lastDate !== null) {
+                        const separator = document.createElement('div');
+                        separator.className = 'border-t border-white/10 my-4'; // Tailwind классы для тонкого разделителя
+                        mealLogsContainer.appendChild(separator);
+                    }
+                    lastDate = mealDateString;
+                }
+
                 const card = document.createElement('div');
                 card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray mb-4';
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-bold text-lg">${trans[m.meal_type]}</h4>
+                        <span class="text-sm text-gray-400">${new Date(m.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <p class="text-sm text-gray-300 mb-3 text-left">${m.food_name.replace(/\n/g, '<br>')}</p>
                     <div class="border-t border-white/10 my-3"></div>
@@ -442,7 +495,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function createMiniRing(id, type, val, target, color) {
-        return `<div class="text-center flex flex-col items-center"><div class="ring-container w-10 h-10 relative"><svg id="log-${id}-${type}-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54"/><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-${color});"/></svg><div class="absolute inset-0 flex items-center justify-center"><span id="log-${id}-${type}-value" class="text-[9px] font-bold">${Math.round(val)}</span></div></div></div>`;
+        const label = nutrientLabels[type]; // Получаем метку из глобального объекта
+        return `<div class="text-center flex flex-col items-center">
+                    <div class="ring-container w-10 h-10 relative">
+                        <svg id="log-${id}-${type}-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                            <circle class="progress-ring-bg" cx="60" cy="60" r="54"/>
+                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-${color});"/>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span id="log-${id}-${type}-value" class="text-xs font-bold">${Math.round(val)}</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">${label}</p>
+                </div>`;
     }
 
     function showTooltip(element, dayData) {
@@ -460,7 +525,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('tooltip-fat').textContent = Math.round(dayData.consumed_fat);
         document.getElementById('tooltip-target-fat').textContent = Math.round(dayData.target_fat);
         document.getElementById('tooltip-carbs').textContent = Math.round(dayData.consumed_carbohydrates);
-        document.getElementById('tooltip-target-carbs').textContent = Math.round(data.target_carbohydrates);
+        document.getElementById('tooltip-target-carbs').textContent = Math.round(dayData.target_carbohydrates); // ИСПРАВЛЕНО: data.target_carbohydrates на dayData.target_carbohydrates
         const rect = element.getBoundingClientRect();
         scoreTooltip.classList.remove('opacity-0', 'pointer-events-none');
         scoreTooltip.classList.add('opacity-100');
