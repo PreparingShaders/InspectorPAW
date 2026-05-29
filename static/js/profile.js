@@ -73,54 +73,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     function populateDatePickers() {
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth() + 1; // JavaScript месяцы 0-индексированы
-        const startYear = currentYear - 100;
+        const currentDay = new Date().getDate(); // Текущий день
 
         // Годы
-        yearSelect.innerHTML = '<option value="">Год</option>'; // Добавляем пустую опцию по умолчанию
-        for (let i = currentYear; i >= startYear; i--) {
+        yearSelect.innerHTML = ''; // Очищаем, но не добавляем пустую опцию
+        for (let i = currentYear; i >= currentYear - 100; i--) {
             yearSelect.add(new Option(i, i));
+        }
+        // Устанавливаем текущий год по умолчанию, если не выбран
+        if (!yearSelect.value) {
+            yearSelect.value = currentYear;
         }
 
         // Месяцы
-        monthSelect.innerHTML = '<option value="">Месяц</option>'; // Добавляем пустую опцию по умолчанию
+        monthSelect.innerHTML = ''; // Очищаем, но не добавляем пустую опцию
         const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
         monthNames.forEach((name, index) => {
             monthSelect.add(new Option(name, index + 1));
         });
-
-        // Если значения года или месяца не были установлены из данных пользователя,
-        // устанавливаем текущий год и месяц по умолчанию.
-        // Это будет выполнено только если user.date_of_birth не был установлен ранее
-        if (!yearSelect.value) {
-            yearSelect.value = currentYear;
-        }
+        // Устанавливаем текущий месяц по умолчанию, если не выбран
         if (!monthSelect.value) {
             monthSelect.value = currentMonth;
         }
 
         // Дни
-        updateDaysInMonth();
+        updateDaysInMonth(currentDay); // Передаем текущий день для установки по умолчанию
     }
 
-    function updateDaysInMonth() {
+    function updateDaysInMonth(defaultDay = 1) { // Добавляем defaultDay
         const selectedYear = parseInt(yearSelect.value, 10);
         const selectedMonth = parseInt(monthSelect.value, 10);
-        const currentDay = daySelect.value;
+        const currentSelectedDay = daySelect.value; // Сохраняем текущий выбранный день
 
         if (!selectedYear || !selectedMonth) {
-            daySelect.innerHTML = '<option value="">День</option>';
+            daySelect.innerHTML = ''; // Очищаем, если год или месяц не выбраны
             return;
         }
 
         const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
-        daySelect.innerHTML = '<option value="">День</option>'; // Сброс
+        daySelect.innerHTML = ''; // Сброс
 
         for (let i = 1; i <= daysInMonth; i++) {
             daySelect.add(new Option(i, i));
         }
 
-        if (currentDay && currentDay <= daysInMonth) {
-            daySelect.value = currentDay;
+        // Пытаемся установить ранее выбранный день, если он валиден
+        if (currentSelectedDay && parseInt(currentSelectedDay, 10) <= daysInMonth) {
+            daySelect.value = currentSelectedDay;
+        } else {
+            // Иначе устанавливаем defaultDay (текущий день при инициализации) или 1
+            daySelect.value = defaultDay;
         }
     }
 
@@ -171,8 +173,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            console.log('Request Body for calculate-targets:', requestBody); // ДОБАВЛЕНО ДЛЯ ОТЛАДКИ
-
             try {
                 const response = await fetchWithAuth('/users/me/calculate-targets', {
                     method: 'POST',
@@ -181,7 +181,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 const targets = await response.json();
 
-                console.log('Calculated targets response:', targets); // ДОБАВЛЕНО ДЛЯ ОТЛАДКИ
 
                 if (!response.ok) {
                     console.error('Server Error:', targets);
@@ -213,8 +212,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const [year, month, day] = user.date_of_birth.split('-').map(Number);
             yearSelect.value = year;
             monthSelect.value = month;
-            updateDaysInMonth(); // Важно обновить дни до установки значения
+            updateDaysInMonth(day); // Передаем день из данных пользователя
             daySelect.value = day;
+        } else {
+            // Если даты рождения нет, устанавливаем текущий день по умолчанию
+            const today = new Date();
+            daySelect.value = today.getDate();
+            monthSelect.value = today.getMonth() + 1;
+            yearSelect.value = today.getFullYear();
+            updateDaysInMonth(today.getDate());
         }
 
         if (user.gender) document.getElementById('gender').value = user.gender;

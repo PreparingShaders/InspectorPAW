@@ -26,14 +26,11 @@
                 <div class="form-group">
                     <label for="date_of_birth_day">Дата рождения</label>
                     <div class="grid grid-cols-3 gap-2">
-                        <select id="date_of_birth_day" required>
-                            <option value="">День</option>
+                        <select id="date_of_birth_day" required size="10">
                         </select>
-                        <select id="date_of_birth_month" required>
-                            <option value="">Месяц</option>
+                        <select id="date_of_birth_month" required size="10">
                         </select>
-                        <select id="date_of_birth_year" required>
-                            <option value="">Год</option>
+                        <select id="date_of_birth_year" required size="10">
                         </select>
                     </div>
                 </div>
@@ -44,7 +41,6 @@
                         <option value="">Выберите пол</option>
                         <option value="male">Мужской</option>
                         <option value="female">Женский</option>
-                        <option value="other">Другой</option>
                     </select>
                 </div>
 
@@ -98,9 +94,9 @@
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                                     <span id="profile-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
-                                    <span class="label-text text-xs -mt-1">ккал</span>
                                 </div>
                             </div>
+                            <span class="label-text text-xs mt-1">Калории</span>
                         </div>
                         <!-- Белки -->
                         <div class="text-center flex flex-col items-center space-y-1">
@@ -111,9 +107,9 @@
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                                     <span id="profile-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
-                                    <span class="label-text text-xs -mt-1">г</span>
                                 </div>
                             </div>
+                            <span class="label-text text-xs mt-1">Белки</span>
                         </div>
                         <!-- Жиры -->
                         <div class="text-center flex flex-col items-center space-y-1">
@@ -124,9 +120,9 @@
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                                     <span id="profile-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
-                                    <span class="label-text text-xs -mt-1">г</span>
                                 </div>
                             </div>
+                            <span class="label-text text-xs mt-1">Жиры</span>
                         </div>
                         <!-- Углеводы -->
                         <div class="text-center flex flex-col items-center space-y-1">
@@ -137,9 +133,9 @@
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                                     <span id="profile-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
-                                    <span class="label-text text-xs -mt-1">г</span>
                                 </div>
                             </div>
+                            <span class="label-text text-xs mt-1">Углеводы</span>
                         </div>
                     </div>
                 </div>
