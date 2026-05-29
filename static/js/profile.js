@@ -136,55 +136,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Функция для преобразования значения интенсивности цели ---
     function getDisplayIntensity(sliderValue) {
-        let displayValue;
-        if (sliderValue < 0) {
-            // Линейное отображение от [-1, 0) к [-2, 0)
-            displayValue = Math.round(sliderValue * 2);
-        } else if (sliderValue > 0) {
-            // Линейное отображение от (0, 1] к (0, +3]
-            displayValue = Math.round(sliderValue * 3);
-        } else { // sliderValue === 0
-            displayValue = 0;
-        }
-
-        if (displayValue > 0) {
-            return "+" + displayValue.toString();
-        }
-        return displayValue.toString();
+        const intensityMap = {
+            '-3': 'Очень медленно',
+            '-2': 'Медленно',
+            '-1': 'Чуть медленнее',
+            '0': 'Без изменений',
+            '1': 'Чуть быстрее',
+            '2': 'Быстро',
+            '3': 'Очень быстро'
+        };
+        return intensityMap[sliderValue.toString()] || sliderValue.toString();
     }
-
-    // --- Функция для позиционирования значения интенсивности над ползунком ---
-    function updateIntensityValuePosition() {
-        const slider = intensitySlider;
-        const valueSpan = intensityValue;
-
-        // Проверяем, что элементы существуют и видимы
-        if (!slider || !valueSpan || slider.offsetWidth === 0) {
-            return;
-        }
-
-        const min = parseFloat(slider.min);
-        const max = parseFloat(slider.max);
-        const val = parseFloat(slider.value);
-
-        // Вычисляем процентное положение ползунка
-        const percentage = (val - min) / (max - min);
-
-        // Получаем ширину ползунка
-        const sliderWidth = slider.offsetWidth;
-
-        // Примерное смещение для центрирования над "кружком" ползунка
-        // Это значение может потребовать точной настройки в зависимости от стилей ползунка
-        // 12px - это половина ширины "thumb" ползунка по умолчанию в Chrome
-        const thumbOffset = 12;
-
-        // Вычисляем позицию для valueSpan
-        // Учитываем, что ползунок имеет отступы по краям
-        const position = percentage * (sliderWidth - 2 * thumbOffset) + thumbOffset;
-
-        valueSpan.style.left = `${position}px`;
-    }
-
 
     // --- Функция пересчета и обновления UI ---
     const recalculateTargets = () => {
@@ -209,6 +171,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
+            console.log('Request Body for calculate-targets:', requestBody); // ДОБАВЛЕНО ДЛЯ ОТЛАДКИ
+
             try {
                 const response = await fetchWithAuth('/users/me/calculate-targets', {
                     method: 'POST',
@@ -216,6 +180,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: JSON.stringify(requestBody)
                 });
                 const targets = await response.json();
+
+                console.log('Calculated targets response:', targets); // ДОБАВЛЕНО ДЛЯ ОТЛАДКИ
+
                 if (!response.ok) {
                     console.error('Server Error:', targets);
                     targetsDisplay.style.display = 'none';
@@ -257,8 +224,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (user.goal_intensity !== undefined && user.goal_intensity !== null) { // Проверяем на undefined/null
             intensitySlider.value = user.goal_intensity;
             intensityValue.textContent = getDisplayIntensity(parseFloat(user.goal_intensity)); // Используем новую функцию
-            // Вызываем с задержкой, чтобы убедиться, что ползунок отрисован
-            setTimeout(updateIntensityValuePosition, 0);
         }
         if (user.metrics && user.metrics.length > 0) {
             const latestMetric = user.metrics[user.metrics.length - 1];
@@ -278,10 +243,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateGoalIntensityUI() {
         const isGoalRelevant = (goalSelect.value === 'fat_loss' || goalSelect.value === 'mass_gain');
         intensityGroup.style.display = isGoalRelevant ? 'block' : 'none';
-        if (isGoalRelevant) {
-            // Если группа становится видимой, обновляем позицию
-            setTimeout(updateIntensityValuePosition, 0);
-        }
     }
 
     form.addEventListener('input', (event) => {
@@ -294,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     intensitySlider.addEventListener('input', () => {
         intensityValue.textContent = getDisplayIntensity(parseFloat(intensitySlider.value)); // Используем новую функцию
-        updateIntensityValuePosition(); // Вызываем при изменении ползунка
+        recalculateTargets();
     });
 
     // --- Отправка формы ---

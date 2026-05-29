@@ -255,19 +255,19 @@ def calculate_user_targets(
     tdee = bmr * multiplier
 
     # 3. Корректировка калорий под цель (с безопасными лимитами)
-    # Предполагаем, что goal_intensity это коэф. от 0.0 до 1.0
-    intensity = max(0.0, min(float(user.goal_intensity), 1.0))
+    # goal_intensity теперь в диапазоне от -3 до +3
+    intensity_scaled = (float(user.goal_intensity) + 3) / 6 # Масштабируем -3..+3 в 0.0..1.0
 
     if user.goal == 'fat_loss':
-        # Дефицит от 10% до 25% максимум
-        pct_decrease = 0.10 + (intensity * 0.15)
+        # Дефицит от 5% (intensity_scaled=0) до 25% (intensity_scaled=1)
+        pct_decrease = 0.05 + (intensity_scaled * 0.20) # 0.20 = 0.25 - 0.05
         target_calories = tdee * (1.0 - pct_decrease)
         # Страховка: не опускаем калории ниже BMR без жесткой необходимости
         if target_calories < bmr:
             target_calories = bmr
     elif user.goal == 'mass_gain':
-        # Профицит от 5% до 15% (для чистого набора)
-        pct_increase = 0.05 + (intensity * 0.10)
+        # Профицит от 2% (intensity_scaled=0) до 15% (intensity_scaled=1)
+        pct_increase = 0.02 + (intensity_scaled * 0.13) # 0.13 = 0.15 - 0.02
         target_calories = tdee * (1.0 + pct_increase)
     else:
         target_calories = tdee
