@@ -10,6 +10,8 @@
     --color-inactive-icon: rgba(255, 255, 255, 0.4);
     --color-over-limit-red: #FF6B6B; /* Нежно-красный для перебора */
     --color-over-limit-green: #50C878; /* Нежно-зелёный для белка */
+    --color-success-green: #10B981; /* Изумрудно-зеленый для успеха */
+    --color-error-red: #EF4444; /* Красный для ошибки */
 
     /* Фоны для колец */
     --bg-ring-amber: rgba(245, 225, 176, 0.1);
@@ -47,6 +49,8 @@ body {
 @keyframes neon-pulse-red { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-red); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-red); } }
 @keyframes neon-pulse-green-overflow { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-green), 0 0 20px 2px rgba(80,200,120,0.3); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-green), 0 0 30px 3px rgba(80,200,120,0.4); } }
 @keyframes neon-pulse-red-overflow { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-red), 0 0 20px 2px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-red), 0 0 30px 3px rgba(255,107,107,0.4); } }
+@keyframes neon-pulse-success { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-success-green); } 50% { box-shadow: 0 0 18px 3px var(--color-success-green); } }
+@keyframes neon-pulse-error { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-error-red); } 50% { box-shadow: 0 0 18px 3px var(--color-error-red); } }
 
 /* Новые классы для неонового свечения кругов Score */
 .neon-glow-emerald { box-shadow: 0 0 8px 1px #10b981, 0 0 15px 2px rgba(16, 185, 129, 0.4); }
@@ -67,6 +71,8 @@ body {
 .neon-glow-muted-teal { border: 1px solid var(--color-muted-teal); animation: neon-pulse-teal 2.5s infinite ease-in-out; }
 .neon-glow-pantone-gray { border: 1px solid var(--color-pantone-gray); animation: neon-pulse-gray 2.5s infinite ease-in-out; }
 .neon-glow-over-limit-red { border: 1px solid var(--color-over-limit-red); animation: neon-pulse-red 2.5s infinite ease-in-out; }
+.neon-glow-success { border: 1px solid var(--color-success-green); animation: neon-pulse-success 2.5s infinite ease-in-out; }
+.neon-glow-error { border: 1px solid var(--color-error-red); animation: neon-pulse-error 2.5s infinite ease-in-out; }
 /* Динамические классы overflow-свечения (добавляются через JS) */
 .overflow-glow-red { animation: neon-pulse-red-overflow 2.5s infinite ease-in-out !important; }
 .overflow-glow-green { animation: neon-pulse-green-overflow 2.5s infinite ease-in-out !important; }
@@ -262,7 +268,9 @@ input[type=range].styled-slider::-moz-range-thumb {
     .neon-glow-golden-orange,
     .neon-glow-muted-teal,
     .neon-glow-pantone-gray,
-    .neon-glow-over-limit-red {
+    .neon-glow-over-limit-red,
+    .neon-glow-success,
+    .neon-glow-error {
         animation: none;
     }
 
@@ -273,6 +281,8 @@ input[type=range].styled-slider::-moz-range-thumb {
     .neon-glow-muted-teal { box-shadow: 0 0 15px 2px var(--color-muted-teal); }
     .neon-glow-pantone-gray { box-shadow: 0 0 15px 2px var(--color-pantone-gray); }
     .neon-glow-over-limit-red { box-shadow: 0 0 15px 2px var(--color-over-limit-red); }
+    .neon-glow-success { box-shadow: 0 0 15px 2px var(--color-success-green); }
+    .neon-glow-error { box-shadow: 0 0 15px 2px var(--color-error-red); }
 
     .overflow-glow-red {
         animation: none !important;

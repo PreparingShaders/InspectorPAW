@@ -32,14 +32,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Элементы DOM ---
     const form = document.getElementById('profile-form');
-    const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message'); // Исправлено на success-message
     const goalSelect = document.getElementById('goal');
     const intensityGroup = document.getElementById('goal-intensity-group');
     const intensitySlider = document.getElementById('goal_intensity');
     const intensityValue = document.getElementById('goal-intensity-value');
     const targetsDisplay = document.getElementById('calculated-targets');
     const logoutButton = document.getElementById('logout-button'); // Добавлено
+    const saveProfileButton = form.querySelector('button[type="submit"]'); // Кнопка "Сохранить профиль"
+    const originalButtonText = saveProfileButton.textContent;
+    const originalButtonClass = saveProfileButton.className;
+
 
     // Элементы для выбора даты
     const daySelect = document.getElementById('date_of_birth_day');
@@ -241,7 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         recalculateTargets();
 
     } catch (error) {
-        errorMessage.textContent = `Ошибка загрузки данных: ${error.message}`;
+        // errorMessage.textContent = `Ошибка загрузки данных: ${error.message}`; // УДАЛЕНО
         targetsDisplay.style.display = 'none';
     }
 
@@ -267,12 +269,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Отправка формы ---
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        errorMessage.textContent = '';
-        successMessage.textContent = '';
+        // errorMessage.textContent = ''; // УДАЛЕНО
+        // successMessage.textContent = ''; // УДАЛЕНО
 
         const dateOfBirth = getAssembledDate();
         if (!dateOfBirth) {
-            errorMessage.textContent = 'Пожалуйста, выберите полную дату рождения.';
+            // errorMessage.textContent = 'Пожалуйста, выберите полную дату рождения.'; // УДАЛЕНО
+            saveProfileButton.textContent = 'Пожалуйста, выберите полную дату рождения.';
+            saveProfileButton.className = originalButtonClass.replace('neon-glow-pantone-gray', 'neon-glow-error');
+            setTimeout(() => {
+                saveProfileButton.textContent = originalButtonText;
+                saveProfileButton.className = originalButtonClass;
+            }, 2000);
             return;
         }
 
@@ -305,11 +313,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             if (!metricsResponse.ok) throw new Error('Ошибка сохранения метрик');
 
-            successMessage.textContent = 'Профиль успешно сохранен!';
-            setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+            // successMessage.textContent = 'Профиль успешно сохранен!'; // УДАЛЕНО
+            saveProfileButton.textContent = 'Профиль успешно сохранен!';
+            saveProfileButton.className = originalButtonClass.replace('neon-glow-pantone-gray', 'neon-glow-success');
+            setTimeout(() => {
+                saveProfileButton.textContent = originalButtonText;
+                saveProfileButton.className = originalButtonClass;
+                window.location.href = '/dashboard';
+            }, 1500);
 
         } catch (error) {
-            errorMessage.textContent = error.message;
+            // errorMessage.textContent = error.message; // УДАЛЕНО
+            saveProfileButton.textContent = `Ошибка: ${error.message}`;
+            saveProfileButton.className = originalButtonClass.replace('neon-glow-pantone-gray', 'neon-glow-error');
+            setTimeout(() => {
+                saveProfileButton.textContent = originalButtonText;
+                saveProfileButton.className = originalButtonClass;
+            }, 2000);
         }
     });
 
