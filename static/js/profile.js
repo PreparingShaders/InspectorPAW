@@ -32,14 +32,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Элементы DOM ---
     const form = document.getElementById('profile-form');
-    const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message'); // Исправлено на success-message
     const goalSelect = document.getElementById('goal');
     const intensityGroup = document.getElementById('goal-intensity-group');
     const intensitySlider = document.getElementById('goal_intensity');
     const intensityValue = document.getElementById('goal-intensity-value');
     const targetsDisplay = document.getElementById('calculated-targets');
     const logoutButton = document.getElementById('logout-button'); // Добавлено
+    const saveProfileButton = form.querySelector('button[type="submit"]'); // Кнопка "Сохранить профиль"
+    const originalButtonText = saveProfileButton.textContent;
+    const originalButtonClass = saveProfileButton.className;
+
 
     // Элементы для выбора даты
     const daySelect = document.getElementById('date_of_birth_day');
@@ -73,54 +75,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     function populateDatePickers() {
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth() + 1; // JavaScript месяцы 0-индексированы
-        const startYear = currentYear - 100;
+        const currentDay = new Date().getDate(); // Текущий день
 
         // Годы
-        yearSelect.innerHTML = '<option value="">Год</option>'; // Добавляем пустую опцию по умолчанию
-        for (let i = currentYear; i >= startYear; i--) {
+        yearSelect.innerHTML = ''; // Очищаем, но не добавляем пустую опцию
+        for (let i = currentYear; i >= currentYear - 100; i--) {
             yearSelect.add(new Option(i, i));
+        }
+        // Устанавливаем текущий год по умолчанию, если не выбран
+        if (!yearSelect.value) {
+            yearSelect.value = currentYear;
         }
 
         // Месяцы
-        monthSelect.innerHTML = '<option value="">Месяц</option>'; // Добавляем пустую опцию по умолчанию
+        monthSelect.innerHTML = ''; // Очищаем, но не добавляем пустую опцию
         const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
         monthNames.forEach((name, index) => {
             monthSelect.add(new Option(name, index + 1));
         });
-
-        // Если значения года или месяца не были установлены из данных пользователя,
-        // устанавливаем текущий год и месяц по умолчанию.
-        // Это будет выполнено только если user.date_of_birth не был установлен ранее
-        if (!yearSelect.value) {
-            yearSelect.value = currentYear;
-        }
+        // Устанавливаем текущий месяц по умолчанию, если не выбран
         if (!monthSelect.value) {
             monthSelect.value = currentMonth;
         }
 
         // Дни
-        updateDaysInMonth();
+        updateDaysInMonth(currentDay); // Передаем текущий день для установки по умолчанию
     }
 
-    function updateDaysInMonth() {
+    function updateDaysInMonth(defaultDay = 1) { // Добавляем defaultDay
         const selectedYear = parseInt(yearSelect.value, 10);
         const selectedMonth = parseInt(monthSelect.value, 10);
-        const currentDay = daySelect.value;
+        const currentSelectedDay = daySelect.value; // Сохраняем текущий выбранный день
 
         if (!selectedYear || !selectedMonth) {
-            daySelect.innerHTML = '<option value="">День</option>';
+            daySelect.innerHTML = ''; // Очищаем, если год или месяц не выбраны
             return;
         }
 
         const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
-        daySelect.innerHTML = '<option value="">День</option>'; // Сброс
+        daySelect.innerHTML = ''; // Сброс
 
         for (let i = 1; i <= daysInMonth; i++) {
             daySelect.add(new Option(i, i));
         }
 
-        if (currentDay && currentDay <= daysInMonth) {
-            daySelect.value = currentDay;
+        // Пытаемся установить ранее выбранный день, если он валиден
+        if (currentSelectedDay && parseInt(currentSelectedDay, 10) <= daysInMonth) {
+            daySelect.value = currentSelectedDay;
+        } else {
+            // Иначе устанавливаем defaultDay (текущий день при инициализации) или 1
+            daySelect.value = defaultDay;
         }
     }
 
@@ -136,55 +140,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Функция для преобразования значения интенсивности цели ---
     function getDisplayIntensity(sliderValue) {
-        let displayValue;
-        if (sliderValue < 0) {
-            // Линейное отображение от [-1, 0) к [-2, 0)
-            displayValue = Math.round(sliderValue * 2);
-        } else if (sliderValue > 0) {
-            // Линейное отображение от (0, 1] к (0, +3]
-            displayValue = Math.round(sliderValue * 3);
-        } else { // sliderValue === 0
-            displayValue = 0;
-        }
-
-        if (displayValue > 0) {
-            return "+" + displayValue.toString();
-        }
-        return displayValue.toString();
+        const intensityMap = {
+            '-3': 'Очень медленно',
+            '-2': 'Медленно',
+            '-1': 'Чуть медленнее',
+            '0': 'Без изменений',
+            '1': 'Чуть быстрее',
+            '2': 'Быстро',
+            '3': 'Очень быстро'
+        };
+        return intensityMap[sliderValue.toString()] || sliderValue.toString();
     }
-
-    // --- Функция для позиционирования значения интенсивности над ползунком ---
-    function updateIntensityValuePosition() {
-        const slider = intensitySlider;
-        const valueSpan = intensityValue;
-
-        // Проверяем, что элементы существуют и видимы
-        if (!slider || !valueSpan || slider.offsetWidth === 0) {
-            return;
-        }
-
-        const min = parseFloat(slider.min);
-        const max = parseFloat(slider.max);
-        const val = parseFloat(slider.value);
-
-        // Вычисляем процентное положение ползунка
-        const percentage = (val - min) / (max - min);
-
-        // Получаем ширину ползунка
-        const sliderWidth = slider.offsetWidth;
-
-        // Примерное смещение для центрирования над "кружком" ползунка
-        // Это значение может потребовать точной настройки в зависимости от стилей ползунка
-        // 12px - это половина ширины "thumb" ползунка по умолчанию в Chrome
-        const thumbOffset = 12;
-
-        // Вычисляем позицию для valueSpan
-        // Учитываем, что ползунок имеет отступы по краям
-        const position = percentage * (sliderWidth - 2 * thumbOffset) + thumbOffset;
-
-        valueSpan.style.left = `${position}px`;
-    }
-
 
     // --- Функция пересчета и обновления UI ---
     const recalculateTargets = () => {
@@ -216,6 +182,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: JSON.stringify(requestBody)
                 });
                 const targets = await response.json();
+
+
                 if (!response.ok) {
                     console.error('Server Error:', targets);
                     targetsDisplay.style.display = 'none';
@@ -246,8 +214,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const [year, month, day] = user.date_of_birth.split('-').map(Number);
             yearSelect.value = year;
             monthSelect.value = month;
-            updateDaysInMonth(); // Важно обновить дни до установки значения
+            updateDaysInMonth(day); // Передаем день из данных пользователя
             daySelect.value = day;
+        } else {
+            // Если даты рождения нет, устанавливаем текущий день по умолчанию
+            const today = new Date();
+            daySelect.value = today.getDate();
+            monthSelect.value = today.getMonth() + 1;
+            yearSelect.value = today.getFullYear();
+            updateDaysInMonth(today.getDate());
         }
 
         if (user.gender) document.getElementById('gender').value = user.gender;
@@ -257,8 +232,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (user.goal_intensity !== undefined && user.goal_intensity !== null) { // Проверяем на undefined/null
             intensitySlider.value = user.goal_intensity;
             intensityValue.textContent = getDisplayIntensity(parseFloat(user.goal_intensity)); // Используем новую функцию
-            // Вызываем с задержкой, чтобы убедиться, что ползунок отрисован
-            setTimeout(updateIntensityValuePosition, 0);
         }
         if (user.metrics && user.metrics.length > 0) {
             const latestMetric = user.metrics[user.metrics.length - 1];
@@ -270,7 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         recalculateTargets();
 
     } catch (error) {
-        errorMessage.textContent = `Ошибка загрузки данных: ${error.message}`;
+        // errorMessage.textContent = `Ошибка загрузки данных: ${error.message}`; // УДАЛЕНО
         targetsDisplay.style.display = 'none';
     }
 
@@ -278,10 +251,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateGoalIntensityUI() {
         const isGoalRelevant = (goalSelect.value === 'fat_loss' || goalSelect.value === 'mass_gain');
         intensityGroup.style.display = isGoalRelevant ? 'block' : 'none';
-        if (isGoalRelevant) {
-            // Если группа становится видимой, обновляем позицию
-            setTimeout(updateIntensityValuePosition, 0);
-        }
     }
 
     form.addEventListener('input', (event) => {
@@ -294,18 +263,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     intensitySlider.addEventListener('input', () => {
         intensityValue.textContent = getDisplayIntensity(parseFloat(intensitySlider.value)); // Используем новую функцию
-        updateIntensityValuePosition(); // Вызываем при изменении ползунка
+        recalculateTargets();
     });
 
     // --- Отправка формы ---
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        errorMessage.textContent = '';
-        successMessage.textContent = '';
+        // errorMessage.textContent = ''; // УДАЛЕНО
+        // successMessage.textContent = ''; // УДАЛЕНО
 
         const dateOfBirth = getAssembledDate();
         if (!dateOfBirth) {
-            errorMessage.textContent = 'Пожалуйста, выберите полную дату рождения.';
+            // errorMessage.textContent = 'Пожалуйста, выберите полную дату рождения.'; // УДАЛЕНО
+            saveProfileButton.textContent = 'Пожалуйста, выберите полную дату рождения.';
+            saveProfileButton.className = originalButtonClass.replace('neon-glow-pantone-gray', 'neon-glow-error');
+            setTimeout(() => {
+                saveProfileButton.textContent = originalButtonText;
+                saveProfileButton.className = originalButtonClass;
+            }, 2000);
             return;
         }
 
@@ -329,20 +304,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userUpdateData)
             });
-            if (!userUpdateResponse.ok) throw new Error('Ошибка обновления профиля');
+            if (!userUpdateResponse.ok) {
+                const errorData = await userUpdateResponse.json();
+                throw new Error(`Профиль: ${JSON.stringify(errorData.detail)}`);
+            }
 
             const metricsResponse = await fetchWithAuth('/users/me/metrics', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(metricsData)
             });
-            if (!metricsResponse.ok) throw new Error('Ошибка сохранения метрик');
+            if (!metricsResponse.ok) {
+                const errorData = await metricsResponse.json();
+                throw new Error(`Метрики: ${JSON.stringify(errorData.detail)}`);
+            }
 
-            successMessage.textContent = 'Профиль успешно сохранен!';
-            setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+            // successMessage.textContent = 'Профиль успешно сохранен!'; // УДАЛЕНО
+            saveProfileButton.textContent = 'Профиль успешно сохранен!';
+            saveProfileButton.className = originalButtonClass.replace('neon-glow-pantone-gray', 'neon-glow-success');
+            setTimeout(() => {
+                saveProfileButton.textContent = originalButtonText;
+                saveProfileButton.className = originalButtonClass;
+                window.location.href = '/dashboard';
+            }, 1500);
 
         } catch (error) {
-            errorMessage.textContent = error.message;
+            // errorMessage.textContent = error.message; // УДАЛЕНО
+            saveProfileButton.textContent = `Ошибка: ${error.message}`;
+            saveProfileButton.className = originalButtonClass.replace('neon-glow-pantone-gray', 'neon-glow-error');
+            setTimeout(() => {
+                saveProfileButton.textContent = originalButtonText;
+                saveProfileButton.className = originalButtonClass;
+            }, 3000);
         }
     });
 

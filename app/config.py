@@ -25,24 +25,14 @@ class Settings(BaseSettings):
     # 1. Модели для прямого вызова через Google Gemini API (дублирование исправлено)
     NATIVE_GEMINI_MODELS: List[str] = [
         # Топ-выбор: скорость, баланс и высокие лимиты
+        'gemini-3.1-flash-lite',
+        'gemini-2.5-flash-lite',
         'gemini-2.5-flash',
         'gemini-flash-latest',
         # Облегченные версии для максимальной экономии/скорости
-        'gemini-2.5-flash-lite',
-        'gemini-flash-lite-latest',
-        'gemini-3.1-flash-lite',
+        'gemini-flash-lite-latest'
         # Превью-версии (могут иметь более жесткие лимиты)
-        'gemini-3-flash-preview',
-        'gemini-3.1-flash-lite-preview',
-        # Семейство Gemma (Open Models), отсортированные по убыванию веса/возможностей
-        'gemma-4-31b-it',
-        'gemma-4-26b-a4b-it',
-        'gemma-3-27b-it',
-        'gemma-3-12b-it',
-        'gemma-3-4b-it',
-        'gemma-3-1b-it',
-        'gemma-3n-e4b-it',
-        'gemma-3n-e2b-it',
+        'gemini-3-flash-preview'
     ]
 
     # 2. Модели для вызова через OpenRouter
@@ -61,7 +51,6 @@ class Settings(BaseSettings):
     @property
     def NUTRITION_MODELS(self) -> List[str]:
         return [
-            'gemini-3.1-flash-lite-preview',
             'gemini-3.1-flash-lite',
             'gemini-2.5-flash-lite',
             'gemini-2.5-flash',

@@ -15,35 +15,31 @@ PROXY_URL = "https://inspectorgpt.classname1984.workers.dev"
 
 # --- ТВОИ СПИСКИ МОДЕЛЕЙ ---
 NATIVE_GEMINI_MODELS = [
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-2.5-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemini-3-flash-preview',
-    'gemini-3.1-flash-lite-preview',
-    'gemma-4-31b-it',
-    'gemma-4-26b-a4b-it',
-    'gemma-3-27b-it',
-    'gemma-3-12b-it',
-    'gemma-3-4b-it',
-    'gemma-3-1b-it',
-    'gemma-3n-e4b-it',
-    'gemma-3n-e2b-it',
-]
+        # Топ-выбор: скорость, баланс и высокие лимиты
+        'gemini-2.5-flash',
+        'gemini-flash-latest',
+        # Облегченные версии для максимальной экономии/скорости
+        'gemini-2.5-flash-lite',
+        'gemini-flash-lite-latest',
+        'gemini-3.1-flash-lite',
+        # Превью-версии (могут иметь более жесткие лимиты)
+        'gemini-3-flash-preview'
+    ]
 
 OPEN_ROUTER_MODELS = [
-    'nvidia/nemotron-3-nano-30b-a3b:free',
-    'nvidia/nemotron-nano-9b-v2:free',
-    'nvidia/nemotron-nano-12b-v2-vl:free',
-    'google/gemma-4-31b-it:free',
-    'z-ai/glm-4.5-air:free',
-    'minimax/minimax-m2.5:free',
-    'openai/gpt-oss-120b:free',
-    'nvidia/nemotron-3-super-120b-a12b:free',
-    'qwen/qwen3-vl-235b-a22b-thinking',
-    'qwen/qwen3-vl-30b-a3b-thinking'
-]
-
+        'nvidia/nemotron-3-super-120b-a12b:free',
+        'poolside/laguna-m.1:free',
+        'openai/gpt-oss-120b:free',
+        'z-ai/glm-4.5-air:free',
+        # old list
+        'nvidia/nemotron-3-nano-30b-a3b:free',
+        'nvidia/nemotron-nano-9b-v2:free',
+        'nvidia/nemotron-nano-12b-v2-vl:free',
+        'z-ai/glm-4.5-air:free',
+        'minimax/minimax-m2.5:free',
+        'openai/gpt-oss-120b:free',
+        'nvidia/nemotron-3-super-120b-a12b:free'
+    ]
 
 def test_model(model_name, is_gemini=True):
     print(f"Тестируем: {model_name:.<40}", end=" ", flush=True)

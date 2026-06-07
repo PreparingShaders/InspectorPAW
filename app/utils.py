@@ -197,7 +197,7 @@ async def prepare_ai_context(
         "progress_assessment": {
             "remaining_macros": remaining, # Теперь здесь полный расклад по БЖУ
             "danger_status": False,
-            "probability_of_success": "ВЫСОКИЙ"
+            "probability_of_success": 100 # Изначально 100%
         },
         "meta": {"monitoring_window": "05:00-23:50"}
     }
@@ -255,19 +255,19 @@ def calculate_user_targets(
     tdee = bmr * multiplier
 
     # 3. Корректировка калорий под цель (с безопасными лимитами)
-    # Предполагаем, что goal_intensity это коэф. от 0.0 до 1.0
-    intensity = max(0.0, min(float(user.goal_intensity), 1.0))
+    # goal_intensity теперь в диапазоне от -3 до +3
+    intensity_scaled = (float(user.goal_intensity) + 3) / 6 # Масштабируем -3..+3 в 0.0..1.0
 
     if user.goal == 'fat_loss':
-        # Дефицит от 10% до 25% максимум
-        pct_decrease = 0.10 + (intensity * 0.15)
+        # Дефицит от 5% (intensity_scaled=0) до 25% (intensity_scaled=1)
+        pct_decrease = 0.05 + (intensity_scaled * 0.20) # 0.20 = 0.25 - 0.05
         target_calories = tdee * (1.0 - pct_decrease)
         # Страховка: не опускаем калории ниже BMR без жесткой необходимости
         if target_calories < bmr:
             target_calories = bmr
     elif user.goal == 'mass_gain':
-        # Профицит от 5% до 15% (для чистого набора)
-        pct_increase = 0.05 + (intensity * 0.10)
+        # Профицит от 2% (intensity_scaled=0) до 15% (intensity_scaled=1)
+        pct_increase = 0.02 + (intensity_scaled * 0.13) # 0.13 = 0.15 - 0.02
         target_calories = tdee * (1.0 + pct_increase)
     else:
         target_calories = tdee
@@ -389,7 +389,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
             "y_axis_pos": 0, "time_progress": round(time_factor * 100, 1),
             "target_delta": {key: round(target.get(key, 0)) for key in ['calories', 'protein', 'fat', 'carbohydrates']},
             "nutrient_statuses": {"calories": "OK", "protein": "OK", "fat": "OK", "carbohydrates": "OK"},
-            "probability_of_success": "ВЫСОКИЙ",
+            "probability_of_success": 100, # Изначально 100%
             "danger_status": False,
             "pace_recommendation": pace_recommendation,
         }
@@ -443,7 +443,8 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
             nutrient_statuses[key] = "OK"
             continue
         ratio = a_val / t_val
-        if ratio > 1.05 and key != 'protein':
+        # Увеличиваем порог для CRITICAL_LIMIT с 1.05 до 1.10
+        if ratio > 1.10 and key != 'protein':
             nutrient_statuses[key] = "CRITICAL_LIMIT"
         elif ratio > 0.95 and key != 'protein':
             nutrient_statuses[key] = "WARNING"
@@ -453,19 +454,27 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     danger_status = False
     if nutrient_statuses['fat'] == "CRITICAL_LIMIT" or nutrient_statuses['calories'] == "CRITICAL_LIMIT":
         danger_status = True
-    if current_time < 12.0 and (actual.get('fat', 0) / (target.get('fat', 1))) > 0.8:
+    # Увеличиваем порог для раннего потребления жиров с 0.8 до 0.9
+    if current_time < 12.0 and (actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)) > 0.9:
         danger_status = True
-    if current_time < 18.0 and (actual.get('calories', 0) / (target.get('calories', 1))) > 0.9:
+    # Увеличиваем порог для раннего потребления калорий с 0.9 до 0.95
+    if current_time < 18.0 and (actual.get('calories', 0) / (target.get('calories', 1) + 1e-6)) > 0.95:
         danger_status = True
 
-    probability_of_success = "ВЫСОКИЙ"
+    # probability_of_success теперь числовое значение (процент)
+    # Изначально берем от final_score, но не более 100%
+    probability_of_success = min(100, final_score)
+
     remaining_time_factor = 1.0 - time_factor
+    
     if danger_status:
-        probability_of_success = "НИЗКИЙ"
+        probability_of_success = min(probability_of_success, 40) # Снижаем до 40% при опасности
     elif remaining_time_factor < 0.2 and target_delta['calories'] > target.get('calories', 1) * 0.3:
-        probability_of_success = "НИЗКИЙ"
+        probability_of_success = min(probability_of_success, 30) # Снижаем до 30% при критическом недоборе в конце дня
     elif target_delta['fat'] < 10 and remaining_time_factor > 0.25:
-        probability_of_success = "СРЕДНИЙ"
+        probability_of_success = min(probability_of_success, 60) # Снижаем до 60% при малом остатке жиров, но много времени
+
+    probability_of_success = round(max(0, probability_of_success)) # Убедимся, что не ниже 0
 
     return {
         "daily_score": final_score,
