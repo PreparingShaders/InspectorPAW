@@ -171,7 +171,7 @@ class UserBase(BaseModel):
     height_cm: Optional[int] = None
     activity_level: Optional[str] = None
     goal: Optional[str] = None
-    goal_intensity: Optional[float] = Field(None, ge=-1.0, le=1.0)
+    goal_intensity: Optional[float] = Field(None, ge=-3.0, le=3.0)
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=72)

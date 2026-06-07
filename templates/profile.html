@@ -18,6 +18,18 @@
 
     <header class="text-center pb-2" style="padding-top: calc(2.5rem + env(safe-area-inset-top));">
         <h1 class="text-3xl font-extrabold tracking-wider">Ваш профиль</h1>
+        <div class="mt-2 text-sm text-gray-400">
+            {% if user.role.value == 'admin' %}
+                <span class="font-semibold text-purple-400">Админ-доступ</span>
+            {% elif is_premium %}
+                <span class="font-semibold text-amber-400">Premium до {{ user.premium_expires_at.strftime('%d.%m.%Y') }}</span>
+            {% else %}
+                <div class="text-xs text-gray-500 px-4 py-2 rounded-lg">
+                    <p>У вас нет премиум аккаунта. Ваш лимит: {{ daily_limit }} фото для ИИ-анализа в день.</p>
+                    <p>Осталось на сегодня: <span class="font-bold">{{ remaining_analyses }}</span>. <a href="#" class="text-amber-400 underline">Купить премиум</a>.</p>
+                </div>
+            {% endif %}
+        </div>
     </header>
 
     <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
@@ -26,11 +38,11 @@
                 <div class="form-group">
                     <label for="date_of_birth_day">Дата рождения</label>
                     <div class="grid grid-cols-3 gap-2">
-                        <select id="date_of_birth_day" required size="10">
+                        <select id="date_of_birth_day" required>
                         </select>
-                        <select id="date_of_birth_month" required size="10">
+                        <select id="date_of_birth_month" required>
                         </select>
-                        <select id="date_of_birth_year" required size="10">
+                        <select id="date_of_birth_year" required>
                         </select>
                     </div>
                 </div>
@@ -142,7 +154,7 @@
 
                 <div class="form-group" id="goal-intensity-group" style="display: none;">
                     <label for="goal_intensity" class="text-center block">
-                        Интенсивность цели: <span id="goal-intensity-value" class="inline-block ml-2 font-bold">0</span>
+                        Скорость достижения цели: <span id="goal-intensity-value" class="inline-block ml-2 font-bold">0</span>
                     </label>
                     <input type="range" id="goal_intensity" min="-3" max="3" step="1" value="0" class="styled-slider w-full mt-2">
 

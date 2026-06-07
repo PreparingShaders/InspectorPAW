@@ -304,14 +304,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userUpdateData)
             });
-            if (!userUpdateResponse.ok) throw new Error('Ошибка обновления профиля');
+            if (!userUpdateResponse.ok) {
+                const errorData = await userUpdateResponse.json();
+                throw new Error(`Профиль: ${JSON.stringify(errorData.detail)}`);
+            }
 
             const metricsResponse = await fetchWithAuth('/users/me/metrics', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(metricsData)
             });
-            if (!metricsResponse.ok) throw new Error('Ошибка сохранения метрик');
+            if (!metricsResponse.ok) {
+                const errorData = await metricsResponse.json();
+                throw new Error(`Метрики: ${JSON.stringify(errorData.detail)}`);
+            }
 
             // successMessage.textContent = 'Профиль успешно сохранен!'; // УДАЛЕНО
             saveProfileButton.textContent = 'Профиль успешно сохранен!';
@@ -329,7 +335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => {
                 saveProfileButton.textContent = originalButtonText;
                 saveProfileButton.className = originalButtonClass;
-            }, 2000);
+            }, 3000);
         }
     });
 

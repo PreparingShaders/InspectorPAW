@@ -59,8 +59,18 @@ async def read_dashboard_page(request: Request):
 
 
 @app.get("/profile")
-async def read_profile_page(request: Request, current_user: models.User = Depends(auth.get_current_active_user)):
-    return templates.TemplateResponse(request, "profile.html", {"user": current_user})
+async def read_profile_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
+    meals_today = crud.count_meals_today(db, user_id=current_user.id)
+    daily_limit = 5  # Лимит для бесплатных пользователей
+    remaining_analyses = max(0, daily_limit - meals_today)
+
+    context = {
+        "user": current_user,
+        "is_premium": auth.is_premium_user(current_user),
+        "remaining_analyses": remaining_analyses,
+        "daily_limit": daily_limit
+    }
+    return templates.TemplateResponse(request, "profile.html", context)
 
 
 @app.get("/nutrition")
