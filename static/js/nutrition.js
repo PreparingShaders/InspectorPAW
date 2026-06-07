@@ -546,13 +546,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         scoreTooltip.style.transform = 'scale(0.9)';
     }
 
+    function isLightColor(color) {
+        if (!color) return false;
+        let r, g, b;
+        if (color.startsWith('#')) {
+            const hex = color.slice(1);
+            r = parseInt(hex.substring(0, 2), 16);
+            g = parseInt(hex.substring(2, 4), 16);
+            b = parseInt(hex.substring(4, 6), 16);
+        } else {
+            return false; // Не обрабатываем другие форматы для простоты
+        }
+        // Формула для определения яркости
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness > 155;
+    }
+
     async function fetchScoreGraphData(days) {
         try {
-            // Используем fetchWithAuth вместо fetch
             const res = await fetchWithAuth(`/users/me/stats/summary-by-period?days=${days}`);
             const data = await res.json();
 
-            // --- Расчет и отображение среднего балла ---
             const scores = data.daily_breakdown.map(d => d.daily_score).filter(s => s !== null && s !== undefined);
             const avgLabel = document.getElementById('average-score-label');
             if (scores.length > 0) {
@@ -566,33 +580,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                     avgLabel.classList.add('hidden');
                 }
             }
-            // --- Конец расчета ---
 
-            // Sort to find the latest day for the summary score
             const sortedForSummary = data.daily_breakdown.length > 0 ? [...data.daily_breakdown].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
             const latestDay = sortedForSummary.length > 0 ? sortedForSummary[0] : null;
 
-            // Call updateProgressLabSummary with the latest day's data.
-            // This is called regardless of whether progress_lab_summary exists to handle UI reset.
             updateProgressLabSummary(data.progress_lab_summary, latestDay);
 
-            const container = document.getElementById('score-graph-container');
-            container.innerHTML = '';
-            // Sort ascending for graph display
+            const graphContainer = document.getElementById('score-graph-container');
+            const labelsContainer = document.getElementById('x-axis-labels-container');
+            graphContainer.innerHTML = '';
+            labelsContainer.innerHTML = '';
+
             const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
-            sortedData.forEach(day => {
+
+            sortedData.forEach((day, index) => {
                 const col = document.createElement('div');
-                col.className = 'flex-1 h-full relative flex justify-center';
-                const yPos = day.y_axis_pos !== null ? ((120 - day.y_axis_pos) / 120) * 100 : 50;
-                const circle = document.createElement('div');
-                circle.className = 'absolute w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white score-circle cursor-pointer';
-                circle.style.top = `${yPos}%`;
-                circle.style.backgroundColor = day.status_color || '#F0F0F0';
-                circle.style.boxShadow = `0 0 8px ${day.status_color}`;
-                circle.textContent = day.daily_score || 0;
-                circle.onclick = (e) => { e.stopPropagation(); showTooltip(circle, day); };
-                col.appendChild(circle);
-                container.appendChild(col);
+                col.className = 'flex-1 h-full relative flex justify-center items-center';
+
+                if (day.daily_score !== null) {
+                    const yPos = day.y_axis_pos !== null ? ((120 - day.y_axis_pos) / 120) * 100 : 50;
+                    const circle = document.createElement('div');
+                    const bgColor = day.status_color || '#F0F0F0';
+                    const textColor = isLightColor(bgColor) ? 'text-black' : 'text-white';
+
+                    circle.className = `absolute w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${textColor} score-circle cursor-pointer`;
+                    circle.style.top = `${yPos}%`;
+                    circle.style.backgroundColor = bgColor;
+                    circle.style.boxShadow = `0 0 8px ${bgColor}`;
+                    circle.textContent = day.daily_score;
+                    circle.onclick = (e) => { e.stopPropagation(); showTooltip(circle, day); };
+                    col.appendChild(circle);
+                }
+                graphContainer.appendChild(col);
+
+                const label = document.createElement('div');
+                label.className = 'text-center w-full';
+
+                if (days === 7) {
+                    const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+                    label.textContent = dayNames[new Date(day.date).getDay()];
+                } else {
+                    const maxLabels = 5;
+                    const interval = Math.max(1, Math.floor(sortedData.length / (maxLabels -1)));
+                    if (index === 0 || index === sortedData.length - 1 || (index > 0 && index < sortedData.length -1 && index % interval === 0)) {
+                        label.textContent = new Date(day.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+                    }
+                }
+                labelsContainer.appendChild(label);
             });
         } catch (e) { console.error("Ошибка графика:", e); }
     }
@@ -600,21 +634,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Инициализация ---
     if (cancelAnalysisBtn) cancelAnalysisBtn.addEventListener('click', resetWizard);
     document.addEventListener('click', (e) => { if (scoreTooltip && !scoreTooltip.contains(e.target) && !e.target.closest('.score-circle')) hideTooltip(); });
+
+    const sevenDaysBtn = document.getElementById('seven-days-btn');
     const oneMonthBtn = document.getElementById('one-month-btn');
     const threeMonthsBtn = document.getElementById('three-months-btn');
-    if (oneMonthBtn && threeMonthsBtn) {
-        const updateBtns = (a, i) => {
-            a.classList.add('active'); a.classList.remove('text-gray-400');
-            i.classList.remove('active'); i.classList.add('text-gray-400');
+
+    if (sevenDaysBtn && oneMonthBtn && threeMonthsBtn) {
+        const buttons = [sevenDaysBtn, oneMonthBtn, threeMonthsBtn];
+        const updateBtns = (activeIndex) => {
+            buttons.forEach((btn, index) => {
+                if (index === activeIndex) {
+                    btn.classList.add('active');
+                    btn.classList.remove('text-gray-400');
+                } else {
+                    btn.classList.remove('active');
+                    btn.classList.add('text-gray-400');
+                }
+            });
         };
-        oneMonthBtn.onclick = () => { updateBtns(oneMonthBtn, threeMonthsBtn); fetchScoreGraphData(30); };
-        threeMonthsBtn.onclick = () => { updateBtns(threeMonthsBtn, oneMonthBtn); fetchScoreGraphData(90); };
+
+        sevenDaysBtn.onclick = () => { updateBtns(0); fetchScoreGraphData(7); };
+        oneMonthBtn.onclick = () => { updateBtns(1); fetchScoreGraphData(30); };
+        threeMonthsBtn.onclick = () => { updateBtns(2); fetchScoreGraphData(90); };
     }
 
     // --- Первоначальная загрузка данных ---
-    // Убираем await отсюда, т.к. fetchWithAuth не блокирует выполнение, если происходит редирект
     fetchAndDisplayAverageStats();
     fetchAndDisplayMealHistory();
-    fetchScoreGraphData(30);
+    fetchScoreGraphData(7); // Загружаем 7 дней по умолчанию
+    if (sevenDaysBtn) {
+        sevenDaysBtn.classList.add('active');
+        sevenDaysBtn.classList.remove('text-gray-400');
+    }
     resetWizard();
 });

@@ -735,10 +735,26 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
         
         consumed = consumption_map.get(str(current_date))
 
-        consumed_calories = consumed["total_calories"] if consumed else 0
-        consumed_protein = consumed["total_protein"] if consumed else 0
-        consumed_fat = consumed["total_fat"] if consumed else 0
-        consumed_carbohydrates = consumed["total_carbohydrates"] if consumed else 0
+        if not consumed:
+            daily_breakdown.append(schemas.DailyStatDetail(
+                date=current_date,
+                consumed_calories=0,
+                consumed_protein=0,
+                consumed_fat=0,
+                consumed_carbohydrates=0,
+                target_calories=target_calories,
+                target_protein=target_protein,
+                target_fat=target_fat,
+                target_carbohydrates=target_carbohydrates,
+                status="no_data",
+                daily_score=None
+            ))
+            continue
+
+        consumed_calories = consumed["total_calories"]
+        consumed_protein = consumed["total_protein"]
+        consumed_fat = consumed["total_fat"]
+        consumed_carbohydrates = consumed["total_carbohydrates"]
 
         target_macros = {
             "calories": target_calories,
@@ -755,7 +771,6 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
 
         score_result = {}
         if current_date == date.today():
-            # Используем новую расширенную функцию для сегодняшнего дня
             score_result = utils.calculate_progress_lab_score(target_macros, actual_macros)
             progress_lab_summary_for_today = score_result
         else:
@@ -780,12 +795,11 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
             time_progress=score_result.get("time_progress")
         ))
         
-        if consumed:
-            days_with_data += 1
-            total_consumed["calories"] += consumed_calories
-            total_consumed["protein"] += consumed_protein
-            total_consumed["fat"] += consumed_fat
-            total_consumed["carbohydrates"] += consumed_carbohydrates
+        days_with_data += 1
+        total_consumed["calories"] += consumed_calories
+        total_consumed["protein"] += consumed_protein
+        total_consumed["fat"] += consumed_fat
+        total_consumed["carbohydrates"] += consumed_carbohydrates
 
     avg_calories = (total_consumed["calories"] / days_with_data) if days_with_data > 0 else 0
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0
