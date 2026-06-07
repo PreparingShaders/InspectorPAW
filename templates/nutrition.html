@@ -97,12 +97,12 @@
             </div>
         </div>
 
-        <div id="analysis-wizard" class="w-full flex-grow flex flex-col min-h-[375px]">
-            <div id="step-1" class="step active ai-section w-full flex-grow">
-                <div class="flex flex-col h-full justify-start">
+        <div id="analysis-wizard" class="w-full flex flex-col">
+            <div id="step-1" class="step active ai-section w-full">
+                <div class="flex flex-col justify-start">
 
-                    <div id="initial-view" class="flex flex-col h-full justify-start space-y-1">
-                        <div id="progress-lab-summary" class="w-full bg-white/5 border border-white/20 rounded-2xl p-4 flex flex-col neon-glow-pantone-gray">
+                    <div id="initial-view" class="flex flex-col justify-start space-y-1">
+                        <div id="progress-lab-summary" class="w-full -mt-6 bg-white/5 border border-white/20 rounded-2xl p-4 flex flex-col neon-glow-pantone-gray">
                             <h4 id="summary-title" class="text-white font-bold text-lg text-center">Анализ дня</h4>
                             <div id="summary-content-default" class="w-full flex-grow flex items-center justify-center">
                                 <p id="summary-advice" class="text-sm text-gray-200 leading-relaxed text-left font-medium w-full"></p>
@@ -132,7 +132,7 @@
                         </div>
                     </div>
 
-                    <div id="image-added-view" class="hidden flex-grow flex flex-col justify-start space-y-4">
+                    <div id="image-added-view" class="hidden flex flex-col justify-start space-y-4">
                         <textarea id="meal-description" class="w-full bg-gray-800/50 text-white rounded-xl p-3 h-48 placeholder-gray-400 neon-glow-pantone-gray" placeholder="Например: каша на кокосовом молоке с ложкой масла.&#10;&#10;Это поможет AI точнее определить КБЖУ." {% if not features.can_analyze_meal %}disabled{% endif %}></textarea>
                         <div class="w-full pb-2 pt-2">
                             <button id="send-to-ai-btn" class="w-full py-4 text-lg font-semibold rounded-xl text-white ai-animated-glow-button transition-all active:scale-95 {% if not features.can_analyze_meal %}opacity-50 cursor-not-allowed{% endif %}" {% if not features.can_analyze_meal %}disabled{% endif %}>
