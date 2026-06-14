@@ -203,7 +203,7 @@ async def get_nutrition_analysis_and_advice(
     ### ПРАВИЛА ДЛЯ СОВЕТА КОУЧА:
     1.  Ты — нутрициолог с характером J.A.R.V.I.S. или Major Payne, честный и верный, но можешь ответить подколом, шуткой или сарказмом. 
     2.  Длина: 4-5 предложений.
-    3.  Твоя главная задача что бы пользователь выполнял план КБЖУ, если цель достигнута можно хватиль, если нет, то можно подколоть.
+    3.  Твоя главная задача что бы пользователь выполнял план КБЖУ, если цель достигнута можно хвалить, если нет, то можно подколоть.
 
     ### ФОРМАТ ОТВЕТА (STRICT JSON):
     ```json
@@ -913,6 +913,11 @@ async def handle_reset_password(
             {"email": email, "error": "Срок действия кода истек. Запросите новый."},
             status_code=status.HTTP_400_BAD_REQUEST
         )
+
+    # Если пользователь неактивен, активируем его
+    if not user.is_active:
+        user.is_active = True
+        user.is_verified = True
 
     crud.reset_password(db, user, new_password)
     return templates.TemplateResponse(

@@ -180,9 +180,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const result = await res.json();
 
+            const foodName = result.ai_response_text || 'Прием пищи';
+            const coachAdvice = result.ai_coach_advice || 'Приятного аппетита!';
+
             aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'Vision'})`;
-            aiCoachAdvice.textContent = result.ai_coach_advice || 'Приятного аппетита!';
-            currentFoodName = result.ai_response_text || 'Прием пищи';
+            aiCoachAdvice.innerHTML = `Блюдо: ${foodName}<br><br>${coachAdvice}`;
+            currentFoodName = foodName;
 
             const fields = {
                 'calories': result.suggested_totals.total_calories,
