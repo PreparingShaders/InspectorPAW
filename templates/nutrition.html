@@ -150,7 +150,6 @@
                                 <p id="summary-advice" class="text-sm text-gray-200 leading-relaxed text-left font-medium w-full"></p>
                             </div>
                             <div id="summary-content-gamified" class="hidden w-full flex-grow flex flex-col justify-center">
-                                <p id="pace-advice-text" class="text-xs text-gray-200 leading-relaxed text-center font-medium w-full px-2 mb-3"></p>
                                 <div id="all-rings-container" class="flex justify-around items-center w-full">
                                     <div id="score-ring-container" class="w-1/5">
                                         <!-- Score ring will be injected here by JS -->
@@ -213,7 +212,7 @@
                         </select>
                     </div>
                     <div class="flex space-x-3 pt-2">
-                        <button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-300 border border-white/5">Отмена</button>
+                        <button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button>
                         <button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button>
                     </div>
                 </form>
@@ -242,6 +241,15 @@
                 <button id="modal-cancel-btn" class="w-1/2 py-2 rounded-lg bg-red-600/70 text-white font-bold">Отмена</button>
                 <button id="modal-confirm-btn" class="w-1/2 py-2 rounded-lg bg-green-600 text-white font-bold">OK</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для информации о кольцах -->
+    <div id="info-modal-overlay">
+        <div id="info-modal">
+            <h3 id="info-modal-title" class="text-lg font-bold text-center mb-4">Информация</h3>
+            <div id="info-modal-content" class="text-sm text-center"></div>
+            <button id="info-modal-close-btn" class="w-full mt-4 py-2 rounded-lg bg-gray-600 text-white font-bold">Закрыть</button>
         </div>
     </div>
 

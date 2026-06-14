@@ -1,8 +1,9 @@
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, validator, computed_field
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 import re
 from .models import UserRole
+from .config import settings
 
 # --- AI Hub Chat Schema ---
 class AIChatRequest(BaseModel):
@@ -143,6 +144,14 @@ class Meal(MealBase, MealTotals):
     id: int
     user_id: int
     timestamp: datetime
+
+    @computed_field
+    @property
+    def formatted_time(self) -> str:
+        """Computes formatted time in MSK timezone."""
+        msk_time = self.timestamp.astimezone(settings.MSK_TZ)
+        return msk_time.strftime('%H:%M')
+
     class Config:
         from_attributes = True
 

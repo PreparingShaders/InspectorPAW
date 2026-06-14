@@ -349,38 +349,31 @@ def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float) -> Dic
     }
 
 def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None) -> Dict[str, Any]:
-    now = current_dt if current_dt else datetime.datetime.now()
+    now = current_dt if current_dt else datetime.datetime.now(settings.MSK_TZ)
     current_time = now.hour + now.minute / 60
     start_h, end_h = 5.0, 23.0
     time_factor = max(0.05, min(1.0, (current_time - start_h) / (end_h - start_h)))
 
-    # --- Новый блок для геймификации ---
     macros_pace = {}
-    advice_parts = []
-    nutrient_map = {'protein': 'белка', 'fat': 'жиров', 'carbohydrates': 'углеводов', 'calories': 'калорий'}
-
-    for key, name in nutrient_map.items():
+    for key in ['calories', 'protein', 'fat', 'carbohydrates']:
         t_val = target.get(key, 0)
         a_val = actual.get(key, 0)
         expected = t_val * time_factor
         macros_pace[key] = {'actual': a_val, 'expected': expected, 'target': t_val}
 
-        diff = a_val - expected
-        if diff < -10: # Значительный недобор
-            advice_parts.append(f"добрать ~{abs(round(diff))} г {name}")
-        elif diff > 10 and key != 'protein': # Значительный перебор (кроме белка)
-            advice_parts.append(f"у вас перебор {name} на ~{round(diff)} г")
-
-    smart_advice = "Вы отлично идете по плану!"
-    if advice_parts:
-        smart_advice = "Обстановка: " + ", ".join(advice_parts) + "."
-    
-    pace_recommendation = {
-        "text_advice": smart_advice,
-        "macros_pace": macros_pace,
-        "formatted_time": now.strftime("%H:%M")
+    tooltips = {
+        "score": "Общая оценка вашего прогресса за день. 100 - идеально. Учитывает не только КБЖУ, но и время их потребления.",
+        "calories": f"Потреблено: {round(macros_pace['calories']['actual'])} / {round(macros_pace['calories']['target'])} ккал",
+        "protein": f"Потреблено: {round(macros_pace['protein']['actual'])} / {round(macros_pace['protein']['target'])} г",
+        "fat": f"Потреблено: {round(macros_pace['fat']['actual'])} / {round(macros_pace['fat']['target'])} г",
+        "carbohydrates": f"Потреблено: {round(macros_pace['carbohydrates']['actual'])} / {round(macros_pace['carbohydrates']['target'])} г"
     }
-    # --- Конец нового блока ---
+
+    pace_recommendation = {
+        "macros_pace": macros_pace,
+        "formatted_time": now.strftime("%H:%M"),
+        "tooltips": tooltips
+    }
 
     if not any(actual.values()):
         return {
@@ -389,7 +382,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
             "y_axis_pos": 0, "time_progress": round(time_factor * 100, 1),
             "target_delta": {key: round(target.get(key, 0)) for key in ['calories', 'protein', 'fat', 'carbohydrates']},
             "nutrient_statuses": {"calories": "OK", "protein": "OK", "fat": "OK", "carbohydrates": "OK"},
-            "probability_of_success": 100, # Изначально 100%
+            "probability_of_success": 100,
             "danger_status": False,
             "pace_recommendation": pace_recommendation,
         }
@@ -410,17 +403,17 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         total_score += max(0, param_score)
 
     final_score = total_score
-    day_calorie_ratio = actual.get('calories', 0) / target.get('calories', 1)
+    day_calorie_ratio = actual.get('calories', 0) / (target.get('calories', 1) + 1e-6)
     if day_calorie_ratio >= 0.98:
         base_score = 100
-        day_fat_ratio = actual.get('fat', 0) / target.get('fat', 1)
-        day_carbs_ratio = actual.get('carbohydrates', 0) / target.get('carbohydrates', 1)
+        day_fat_ratio = actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)
+        day_carbs_ratio = actual.get('carbohydrates', 0) / (target.get('carbohydrates', 1) + 1e-6)
         if day_fat_ratio > 1.15: base_score -= 10
         if day_carbs_ratio < 0.85: base_score -= 5
         final_score = max(85, base_score)
 
     if actual.get('protein', 0) > target.get('protein', 0) and actual.get('calories', 0) <= target.get('calories', 1) * 1.05:
-        bonus = (actual.get('protein', 0) / target.get('protein', 1) - 1.0) * 50
+        bonus = (actual.get('protein', 0) / (target.get('protein', 1) + 1e-6) - 1.0) * 50
         final_score += min(bonus, 20)
 
     final_score = round(max(0, min(final_score, 120)))
@@ -428,7 +421,8 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     if final_score > 105: color = "#FFD700"
     elif 95 <= final_score <= 105: color = "#F0F0F0"
     elif 80 <= final_score <= 94: color = "#f59e0b"
-    tooltips = get_nutrient_tooltips(target, actual, time_factor)
+    
+    status_tooltips = get_nutrient_tooltips(target, actual, time_factor)
 
     target_delta = {
         key: max(0, round(target.get(key, 0) - actual.get(key, 0)))
@@ -443,7 +437,6 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
             nutrient_statuses[key] = "OK"
             continue
         ratio = a_val / t_val
-        # Увеличиваем порог для CRITICAL_LIMIT с 1.05 до 1.10
         if ratio > 1.10 and key != 'protein':
             nutrient_statuses[key] = "CRITICAL_LIMIT"
         elif ratio > 0.95 and key != 'protein':
@@ -454,32 +447,27 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     danger_status = False
     if nutrient_statuses['fat'] == "CRITICAL_LIMIT" or nutrient_statuses['calories'] == "CRITICAL_LIMIT":
         danger_status = True
-    # Увеличиваем порог для раннего потребления жиров с 0.8 до 0.9
     if current_time < 12.0 and (actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)) > 0.9:
         danger_status = True
-    # Увеличиваем порог для раннего потребления калорий с 0.9 до 0.95
     if current_time < 18.0 and (actual.get('calories', 0) / (target.get('calories', 1) + 1e-6)) > 0.95:
         danger_status = True
 
-    # probability_of_success теперь числовое значение (процент)
-    # Изначально берем от final_score, но не более 100%
     probability_of_success = min(100, final_score)
-
     remaining_time_factor = 1.0 - time_factor
     
     if danger_status:
-        probability_of_success = min(probability_of_success, 40) # Снижаем до 40% при опасности
+        probability_of_success = min(probability_of_success, 40)
     elif remaining_time_factor < 0.2 and target_delta['calories'] > target.get('calories', 1) * 0.3:
-        probability_of_success = min(probability_of_success, 30) # Снижаем до 30% при критическом недоборе в конце дня
+        probability_of_success = min(probability_of_success, 30)
     elif target_delta['fat'] < 10 and remaining_time_factor > 0.25:
-        probability_of_success = min(probability_of_success, 60) # Снижаем до 60% при малом остатке жиров, но много времени
+        probability_of_success = min(probability_of_success, 60)
 
-    probability_of_success = round(max(0, probability_of_success)) # Убедимся, что не ниже 0
+    probability_of_success = round(max(0, probability_of_success))
 
     return {
         "daily_score": final_score,
         "status_color": color,
-        "status_message": tooltips,
+        "status_message": status_tooltips,
         "y_axis_pos": final_score,
         "time_progress": round(time_factor * 100, 1),
         "target_delta": target_delta,

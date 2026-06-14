@@ -619,8 +619,9 @@ def confirm_and_create_meal(
                 detail="Лимит на 5 приемов пищи в день для бесплатного аккаунта исчерпан. Оформите премиум-подписку для снятия ограничений."
             )
 
+    # Если есть совет от AI, используем его как food_name, иначе используем оригинальное название
     if meal_data.ai_coach_advice:
-        meal_data.food_name = f"{meal_data.food_name}\n\n{meal_data.ai_coach_advice}"
+        meal_data.food_name = meal_data.ai_coach_advice
 
     return crud.create_meal(db=db, meal=meal_data, user_id=current_user.id)
 

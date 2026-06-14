@@ -293,3 +293,66 @@ input[type=range].styled-slider::-moz-range-thumb {
         box-shadow: 0 0 18px 3px var(--color-over-limit-green), 0 0 30px 3px rgba(80,200,120,0.4) !important;
     }
 }
+
+/* --- Стили для модального окна --- */
+#info-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+#info-modal-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+#info-modal {
+    background: rgba(28, 28, 40, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 350px;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+#info-modal-overlay.visible #info-modal {
+    transform: scale(1);
+}
+#info-modal-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+#info-modal-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: left;
+    margin-bottom: 1.5rem;
+}
+#info-modal-close-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background-color: #4A5568;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+#info-modal-close-btn:hover {
+    background-color: #2D3748;
+}

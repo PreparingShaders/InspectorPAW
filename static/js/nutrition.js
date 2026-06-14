@@ -24,6 +24,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalConfirmBtn = document.getElementById('modal-confirm-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
 
+    // --- Элементы модального окна ИНФО ---
+    const infoModalOverlay = document.getElementById('info-modal-overlay');
+    const infoModalTitle = document.getElementById('info-modal-title');
+    const infoModalContent = document.getElementById('info-modal-content');
+    const infoModalCloseBtn = document.getElementById('info-modal-close-btn');
+
+
     let currentFoodName = '';
     let compressedFile = null;
     let tooltipTimeout;
@@ -243,6 +250,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         modalInput.addEventListener('keydown', handleEnter);
     }
 
+    // --- Логика модального окна с информацией ---
+    function showInfoModal(title, content) {
+        if (!infoModalOverlay) return;
+        infoModalTitle.textContent = title;
+        infoModalContent.innerHTML = content;
+        infoModalOverlay.classList.add('visible');
+    }
+
+    function hideInfoModal() {
+        if (!infoModalOverlay) return;
+        infoModalOverlay.classList.remove('visible');
+    }
+
     // --- Рендеринг и интерактивность колец КБЖУ ---
     function renderInteractiveRings() {
         interactiveRingsContainer.innerHTML = ''; // Очищаем контейнер
@@ -339,11 +359,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (summary && summary.pace_recommendation) {
             // --- GAMIFIED VIEW ---
-            const { text_advice, macros_pace, formatted_time } = summary.pace_recommendation;
+            const { macros_pace, formatted_time, tooltips } = summary.pace_recommendation;
 
             // 1. Update titles
             titleEl.textContent = `Статус на ${formatted_time}`;
-            document.getElementById('pace-advice-text').textContent = text_advice;
 
             // 2. Clear previous rings
             scoreRingContainer.innerHTML = '';
@@ -355,36 +374,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const scoreValueId = 'summary-score-value';
                 const score = latestDayData.daily_score || 0;
                 const scoreColor = latestDayData.status_color || '#F0F0F0';
+                const scoreTooltip = tooltips?.daily_score || 'Общий счет дня, основанный на балансе КБЖУ.';
 
-                scoreRingContainer.innerHTML = `
-                    <div class="text-center flex flex-col items-center justify-center h-full">
-                        <div class="ring-container w-12 aspect-square relative" style="box-shadow: 0 0 12px ${scoreColor}; border-radius: 50%;">
-                            <svg id="${scoreRingId}" class="progress-ring-svg" viewBox="0 0 120 120">
-                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${scoreColor};" />
-                            </svg>
-                            <div class="absolute inset-0 flex items-center justify-center">
-                                <span id="${scoreValueId}" class="font-bold text-base" style="color: ${scoreColor};">${score}</span>
-                            </div>
+                const scoreRingWrapper = document.createElement('div');
+                scoreRingWrapper.className = 'text-center flex flex-col items-center justify-center h-full cursor-pointer';
+                scoreRingWrapper.innerHTML = `
+                    <div class="ring-container w-12 aspect-square relative" style="border-radius: 50%; box-shadow: 0 0 12px ${scoreColor};">
+                        <svg id="${scoreRingId}" class="progress-ring-svg" viewBox="0 0 120 120">
+                            <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${scoreColor};" />
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span id="${scoreValueId}" class="font-bold text-base" style="color: ${scoreColor};">${score}</span>
                         </div>
-                        <p class="text-xs font-semibold text-gray-400 mt-1">Score</p>
                     </div>
+                    <p class="text-xs font-semibold text-gray-400 mt-1">Score <span style="color: ${scoreColor};">?</span></p>
                 `;
-                // Передаем найденный SVG-элемент напрямую
+                scoreRingContainer.appendChild(scoreRingWrapper);
+
+                scoreRingWrapper.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showInfoModal('Daily Score', scoreTooltip);
+                });
+
                 const summaryScoreRingSvg = scoreRingContainer.querySelector(`#${scoreRingId}`);
                 if (summaryScoreRingSvg) {
                     updateRing(summaryScoreRingSvg, score, 100);
                 }
-                const scoreValueSpan = document.getElementById(scoreValueId);
-                if (scoreValueSpan) scoreValueSpan.style.color = scoreColor;
             }
 
             // 4. Nutrient rings
             const nutrientConfig = {
-                calories: { label: 'Ккал', color: 'var(--color-amber)', neon: 'neon-glow-amber' },
-                protein: { label: 'Б', color: 'var(--color-protein-white)', neon: 'neon-glow-protein-white' },
-                fat: { label: 'Ж', color: 'var(--color-golden-orange)', neon: 'neon-glow-golden-orange' },
-                carbohydrates: { label: 'У', color: 'var(--color-muted-teal)', neon: 'neon-glow-muted-teal' }
+                calories: { label: 'Калории', color: 'var(--color-amber)'},
+                protein: { label: 'Белки', color: 'var(--color-protein-white)'},
+                fat: { label: 'Жиры', color: 'var(--color-golden-orange)'},
+                carbohydrates: { label: 'Углеводы', color: 'var(--color-muted-teal)'}
             };
 
             for (const key in nutrientConfig) {
@@ -394,54 +418,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const config = nutrientConfig[key];
                 const ringId = `pace-${key}-ring`;
                 const valueId = `pace-${key}-value`;
+                const tooltipText = tooltips?.[key] || `Информация о ${config.label}.`;
+
+                const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
+                let ringColor = config.color;
+                if (percentage > 100) {
+                    ringColor = (key === 'protein') ? 'var(--color-over-limit-green)' : 'var(--color-over-limit-red)';
+                }
 
                 const ringWrapper = document.createElement('div');
-                ringWrapper.className = 'text-center flex flex-col items-center space-y-1';
+                ringWrapper.className = 'text-center flex flex-col items-center space-y-1 cursor-pointer';
                 ringWrapper.innerHTML = `
-                    <div class="ring-container w-12 aspect-square ${config.neon} relative">
+                    <div class="ring-container w-12 aspect-square relative" style="border-radius: 50%; box-shadow: 0 0 12px ${ringColor};">
                         <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
                             <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${config.color};" />
+                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${ringColor};"/>
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="${valueId}" class="font-bold text-base" style="color: ${config.color};">0</span>
+                            <span id="${valueId}" class="font-bold text-base" style="color: ${ringColor};">0</span>
                         </div>
                     </div>
-                    <p class="text-xs font-semibold text-gray-400 mt-1">${config.label}</p>
+                    <p class="text-xs font-semibold text-gray-400 mt-1">${config.label} <span style="color: ${ringColor};">?</span></p>
                 `;
 
                 paceBarsContainer.appendChild(ringWrapper);
 
-                // Находим SVG-элемент внутри только что созданного ringWrapper
+                ringWrapper.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showInfoModal(config.label, tooltipText);
+                });
+
                 const paceRingSvg = ringWrapper.querySelector(`#${ringId}`);
                 if (paceRingSvg) {
                     updateRing(paceRingSvg, pace.actual, pace.expected);
-                    // Обновляем цвет обводки после updateRing, если он изменился
-                    const ringBar = paceRingSvg.querySelector('.progress-ring-bar');
-                    if(ringBar) {
-                        let ringColor = config.color;
-                        const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
-                        if (percentage > 100) {
-                            if (key === 'protein') {
-                                ringColor = '#22c55e';
-                            } else {
-                                ringColor = '#e11d48';
-                            }
-                        }
-                        ringBar.style.stroke = ringColor;
-                    }
                     const valueSpan = ringWrapper.querySelector(`#${valueId}`);
                     if(valueSpan) {
-                        let ringColor = config.color;
-                        const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
-                        if (percentage > 100) {
-                            if (key === 'protein') {
-                                ringColor = '#22c55e';
-                            } else {
-                                ringColor = '#e11d48';
-                            }
-                        }
-                        valueSpan.style.color = ringColor;
                         valueSpan.textContent = Math.round(pace.actual);
                     }
                 }
@@ -562,7 +573,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-bold text-lg">${trans[m.meal_type]}</h4>
-                        <span class="text-sm text-gray-400">${new Date(m.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span class="text-sm text-gray-400">${m.formatted_time}</span>
                     </div>
                     <p class="text-sm text-gray-300 mb-3 text-left">${m.food_name.replace(/\n/g, '<br>')}</p>
                     <div class="border-t border-white/10 my-3"></div>
@@ -729,6 +740,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Инициализация ---
     if (cancelAnalysisBtn) cancelAnalysisBtn.addEventListener('click', resetWizard);
     document.addEventListener('click', (e) => { if (scoreTooltip && !scoreTooltip.contains(e.target) && !e.target.closest('.score-circle')) hideTooltip(); });
+
+    if (infoModalOverlay) {
+        infoModalCloseBtn.addEventListener('click', hideInfoModal);
+        infoModalOverlay.addEventListener('click', (e) => {
+            if (e.target === infoModalOverlay) {
+                hideInfoModal();
+            }
+        });
+    }
 
     const sevenDaysBtn = document.getElementById('seven-days-btn');
     const oneMonthBtn = document.getElementById('one-month-btn');
