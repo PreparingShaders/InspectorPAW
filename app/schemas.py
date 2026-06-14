@@ -125,10 +125,17 @@ class MealTotals(BaseModel):
     total_carbohydrates: float = 0
 
 # --- Analysis Schemas ---
+class Recommendations(BaseModel):
+    calories: Optional[str] = None
+    proteins: Optional[str] = None
+    fats: Optional[str] = None
+    carbohydrates: Optional[str] = None
+
 class AnalysisResponse(BaseModel):
     suggested_totals: MealTotals
     ai_response_text: str
     ai_coach_advice: Optional[str] = None
+    recommendations: Optional[Recommendations] = None
     nutrition_model_used: Optional[str] = None # Модель для анализа КБЖУ
     coach_model_used: Optional[str] = None      # Модель для совета
 

@@ -216,7 +216,13 @@ async def get_nutrition_analysis_and_advice(
         "fats_g": 0,
         "carbs_g": 0
       }},
-      "coach_advice": "Твой совет здесь."
+      "coach_advice": "Твой совет здесь.",
+      "recommendations": {{
+        "calories": "Краткий совет по калориям (1-2 предложения).",
+        "proteins": "Краткий совет по белкам (1-2 предложения).",
+        "fats": "Краткий совет по жирам (1-2 предложения).",
+        "carbohydrates": "Краткий совет по углеводам (1-2 предложения)."
+      }}
     }}
     ```
     """
@@ -581,6 +587,7 @@ async def analyze_meal(
     # --- Обработка ответа ---
     food_analysis = ai_response_data.get("food_analysis", {})
     coach_advice = ai_response_data.get("coach_advice", "Не удалось получить совет от AI.")
+    recommendations = ai_response_data.get("recommendations")
 
     proteins_g = round(float(food_analysis.get("proteins_g", 0)))
     fats_g = round(float(food_analysis.get("fats_g", 0)))
@@ -599,6 +606,7 @@ async def analyze_meal(
         suggested_totals=schemas.MealTotals(**analyzed_meal_totals),
         ai_response_text=analyzed_meal_totals["food_name"],
         ai_coach_advice=coach_advice,
+        recommendations=recommendations,
         nutrition_model_used=model_used,
         coach_model_used=model_used
     )

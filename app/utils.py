@@ -340,15 +340,19 @@ def _generate_nutrient_tooltip(target_val: float, actual_val: float, time_factor
     else: status = "в норме"
     return f"{name.capitalize()}: {status} ({round(actual_val)} из {round(expected_val)} {unit})"
 
-def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float) -> Dict[str, str]:
+def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float, recommendations: Optional[Dict] = None) -> Dict[str, str]:
+    if recommendations is None:
+        recommendations = {}
+    
     return {
-        "calories": _generate_nutrient_tooltip(target.get('calories', 0), actual.get('calories', 0), time_factor, "Калории", "ккал"),
-        "protein": _generate_nutrient_tooltip(target.get('protein', 0), actual.get('protein', 0), time_factor, "Белки", "г"),
-        "fat": _generate_nutrient_tooltip(target.get('fat', 0), actual.get('fat', 0), time_factor, "Жиры", "г"),
-        "carbohydrates": _generate_nutrient_tooltip(target.get('carbohydrates', 0), actual.get('carbohydrates', 0), time_factor, "Углеводы", "г")
+        "daily_score": recommendations.get("daily_score", "Общая оценка вашего прогресса за день. 100 - идеально."),
+        "calories": recommendations.get("calories", _generate_nutrient_tooltip(target.get('calories', 0), actual.get('calories', 0), time_factor, "Калории", "ккал")),
+        "protein": recommendations.get("proteins", _generate_nutrient_tooltip(target.get('protein', 0), actual.get('protein', 0), time_factor, "Белки", "г")),
+        "fat": recommendations.get("fats", _generate_nutrient_tooltip(target.get('fat', 0), actual.get('fat', 0), time_factor, "Жиры", "г")),
+        "carbohydrates": recommendations.get("carbohydrates", _generate_nutrient_tooltip(target.get('carbohydrates', 0), actual.get('carbohydrates', 0), time_factor, "Углеводы", "г"))
     }
 
-def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None, recommendations: Optional[Dict] = None) -> Dict[str, Any]:
     now = current_dt if current_dt else datetime.datetime.now(settings.MSK_TZ)
     current_time = now.hour + now.minute / 60
     start_h, end_h = 5.0, 23.0
@@ -361,13 +365,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         expected = t_val * time_factor
         macros_pace[key] = {'actual': a_val, 'expected': expected, 'target': t_val}
 
-    tooltips = {
-        "score": "Общая оценка вашего прогресса за день. 100 - идеально. Учитывает не только КБЖУ, но и время их потребления.",
-        "calories": f"Потреблено: {round(macros_pace['calories']['actual'])} / {round(macros_pace['calories']['target'])} ккал",
-        "protein": f"Потреблено: {round(macros_pace['protein']['actual'])} / {round(macros_pace['protein']['target'])} г",
-        "fat": f"Потреблено: {round(macros_pace['fat']['actual'])} / {round(macros_pace['fat']['target'])} г",
-        "carbohydrates": f"Потреблено: {round(macros_pace['carbohydrates']['actual'])} / {round(macros_pace['carbohydrates']['target'])} г"
-    }
+    tooltips = get_nutrient_tooltips(target, actual, time_factor, recommendations)
 
     pace_recommendation = {
         "macros_pace": macros_pace,
@@ -422,7 +420,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     elif 95 <= final_score <= 105: color = "#F0F0F0"
     elif 80 <= final_score <= 94: color = "#f59e0b"
     
-    status_tooltips = get_nutrient_tooltips(target, actual, time_factor)
+    status_tooltips = get_nutrient_tooltips(target, actual, time_factor, recommendations)
 
     target_delta = {
         key: max(0, round(target.get(key, 0) - actual.get(key, 0)))
