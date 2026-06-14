@@ -1,15 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Убираем проверку токена здесь, т.к. fetchWithAuth будет делать это при каждом запросе
-    // const token = localStorage.getItem('accessToken');
-    // if (!token) { window.location.href = '/'; return; }
-
     // --- Элементы UI ---
     const mealImageInput = document.getElementById('meal-image');
     const mealDescriptionInput = document.getElementById('meal-description');
     const sendToAiBtn = document.getElementById('send-to-ai-btn');
     const initialView = document.getElementById('initial-view');
     const imageAddedView = document.getElementById('image-added-view');
-    const imagePreview = document.getElementById('image-preview'); // Добавляем ссылку на элемент предпросмотра
+    const imagePreview = document.getElementById('image-preview');
 
     const mealLogsContainer = document.getElementById('meal-logs-container');
     const aiCoachTitle = document.getElementById('ai-coach-title');
@@ -17,11 +13,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     const errorMessageDiv = document.getElementById('error-message');
     const confirmForm = document.getElementById('confirm-form');
     const cancelAnalysisBtn = document.getElementById('cancel-analysis-btn');
+    const interactiveRingsContainer = document.getElementById('interactive-rings-container');
+    const mealTypeSelect = document.getElementById('meal-type');
+
+    // --- Элементы модального окна ---
+    const modalOverlay = document.getElementById('edit-modal-overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalInput = document.getElementById('modal-input');
+    const modalError = document.getElementById('modal-error');
+    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
 
     let currentFoodName = '';
-    let compressedFile = null; // Для хранения сжатого файла
+    let compressedFile = null;
     let tooltipTimeout;
     const scoreTooltip = document.getElementById('score-tooltip');
+    let nutrientValues = {}; // Хранилище для текущих значений КБЖУ
+    let initialNutrientValues = {}; // Хранилище для исходных значений от AI
 
     const steps = {
         1: document.getElementById('step-1'),
@@ -61,11 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     canvas.toBlob(
                         (blob) => {
                             if (blob) {
-                                // Создаем новый File объект, чтобы сохранить имя файла
-                                const newFile = new File([blob], file.name, {
-                                    type: 'image/jpeg',
-                                    lastModified: Date.now(),
-                                });
+                                const newFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
                                 resolve(newFile);
                             } else {
                                 reject(new Error('Canvas to Blob conversion failed'));
@@ -80,7 +84,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             reader.onerror = (error) => reject(error);
         });
     }
-
 
     // --- Управление состоянием UI ---
     function goToStep(stepNumber) {
@@ -110,10 +113,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         mealImageInput.value = '';
         mealDescriptionInput.value = '';
         confirmForm.reset();
-        compressedFile = null; // Сбрасываем сжатый файл
-        if (imagePreview) { // Очищаем предпросмотр изображения
-            imagePreview.src = '';
-        }
+        compressedFile = null;
+        if (imagePreview) imagePreview.src = '';
+        interactiveRingsContainer.innerHTML = ''; // Очищаем кольца
         showInitialView();
         goToStep(1);
     }
@@ -121,31 +123,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Логика анализа ---
     mealImageInput.addEventListener('change', async () => {
         if (!mealImageInput.files || mealImageInput.files.length === 0) return;
-
-        // Опционально: можно добавить индикатор загрузки/сжатия здесь
-
         try {
             const originalFile = mealImageInput.files[0];
-            compressedFile = await compressImage(originalFile); // Сжимаем изображение
+            compressedFile = await compressImage(originalFile);
             console.log(`Изображение сжато с ${Math.round(originalFile.size / 1024)}KB до ${Math.round(compressedFile.size / 1024)}KB`);
-
-            // Отображаем сжатое изображение для предпросмотра
             if (imagePreview && compressedFile) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    imagePreview.src = e.target.result;
-                };
+                reader.onload = (e) => { imagePreview.src = e.target.result; };
                 reader.readAsDataURL(compressedFile);
             }
-
-            showImageAddedView(); // Показываем следующий шаг после успешного сжатия
+            showImageAddedView();
         } catch (error) {
             console.error('Ошибка сжатия изображения:', error);
             alert('Не удалось обработать изображение. Попробуйте другое.');
             resetWizard();
         }
-
-        // Опционально: убрать индикатор загрузки
     });
 
     sendToAiBtn.addEventListener('click', async () => {
@@ -153,31 +145,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('Сначала выберите фото.');
             return;
         }
-
         goToStep(2);
-
         const formData = new FormData();
-        formData.append('file', compressedFile, compressedFile.name); // Используем сжатый файл
-        if (mealDescriptionInput.value.trim()) {
-            formData.append('description', mealDescriptionInput.value.trim());
-        }
-
+        formData.append('file', compressedFile, compressedFile.name);
+        if (mealDescriptionInput.value.trim()) formData.append('description', mealDescriptionInput.value.trim());
         const aiModel = localStorage.getItem('aiHubCurrentModel');
         if (aiModel) formData.append('ai_model', aiModel);
 
         try {
-            // Используем fetchWithAuth вместо fetch
-            const res = await fetchWithAuth('/analyze-meal/', {
-                method: 'POST',
-                body: formData
-                // Заголовки Authorization и Content-Type для FormData устанавливаются автоматически
-            });
-
+            const res = await fetchWithAuth('/analyze-meal/', { method: 'POST', body: formData });
             if (!res.ok) {
                 const errorData = await res.json();
                 throw new Error(errorData.detail || 'Ошибка анализа');
             }
-
             const result = await res.json();
 
             const foodName = result.ai_response_text || 'Прием пищи';
@@ -187,22 +167,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             aiCoachAdvice.innerHTML = `Блюдо: ${foodName}<br><br>${coachAdvice}`;
             currentFoodName = foodName;
 
-            const fields = {
-                'calories': result.suggested_totals.total_calories,
-                'protein': result.suggested_totals.total_protein,
-                'fat': result.suggested_totals.total_fat,
-                'carbohydrates': result.suggested_totals.total_carbohydrates
+            initialNutrientValues = {
+                calories: Math.round(result.suggested_totals.total_calories || 0),
+                protein: Math.round(result.suggested_totals.total_protein || 0),
+                fat: Math.round(result.suggested_totals.total_fat || 0),
+                carbohydrates: Math.round(result.suggested_totals.total_carbohydrates || 0)
             };
+            // Копируем начальные значения в редактируемые
+            nutrientValues = { ...initialNutrientValues };
 
-            for (const [id, val] of Object.entries(fields)) {
-                document.getElementById(id).value = Math.round(val || 0);
-            }
-
+            renderInteractiveRings();
             goToStep(3);
 
         } catch (err) {
             console.error(err);
             errorMessageDiv.textContent = err.message;
+            goToStep(1); // Возвращаем на первый шаг в случае ошибки
             setTimeout(() => {
                 errorMessageDiv.textContent = "";
                 resetWizard();
@@ -210,20 +190,123 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // --- Логика кастомного модального окна ---
+    function showEditModal(nutrientKey, config) {
+        const initialValue = initialNutrientValues[nutrientKey];
+        const lowerBound = Math.round(initialValue * 0.5);
+        const upperBound = Math.round(initialValue * 1.5);
+
+        modalTitle.textContent = `Изменить ${config.label}`;
+        modalInput.value = nutrientValues[nutrientKey];
+        modalError.textContent = '';
+        modalOverlay.classList.add('visible');
+        modalInput.focus();
+
+        const handleConfirm = () => {
+            const newValueStr = modalInput.value;
+            const newValue = parseInt(newValueStr, 10);
+
+            if (isNaN(newValue) || newValue < lowerBound || newValue > upperBound) {
+                modalError.textContent = `Введите число от ${lowerBound} до ${upperBound}.`;
+                modalInput.classList.add('shake');
+                setTimeout(() => modalInput.classList.remove('shake'), 820);
+                return;
+            }
+
+            nutrientValues[nutrientKey] = newValue;
+            document.getElementById(`interactive-${nutrientKey}-value`).textContent = newValue;
+            if (nutrientKey !== 'calories') {
+                recalculateCalories();
+            }
+            hideEditModal();
+        };
+
+        const handleCancel = () => {
+            hideEditModal();
+        };
+
+        const hideEditModal = () => {
+            modalOverlay.classList.remove('visible');
+            modalConfirmBtn.removeEventListener('click', handleConfirm);
+            modalCancelBtn.removeEventListener('click', handleCancel);
+            modalInput.removeEventListener('keydown', handleEnter);
+        };
+
+        const handleEnter = (e) => {
+            if (e.key === 'Enter') {
+                handleConfirm();
+            }
+        };
+
+        modalConfirmBtn.addEventListener('click', handleConfirm);
+        modalCancelBtn.addEventListener('click', handleCancel);
+        modalInput.addEventListener('keydown', handleEnter);
+    }
+
+    // --- Рендеринг и интерактивность колец КБЖУ ---
+    function renderInteractiveRings() {
+        interactiveRingsContainer.innerHTML = ''; // Очищаем контейнер
+        const nutrientConfig = {
+            calories: { label: 'Ккал', color: 'var(--color-amber)' },
+            protein: { label: 'Белки', color: 'var(--color-protein-white)' },
+            fat: { label: 'Жиры', color: 'var(--color-golden-orange)' },
+            carbohydrates: { label: 'Углев.', color: 'var(--color-muted-teal)' }
+        };
+
+        const nutrientOrder = ['calories', 'protein', 'fat', 'carbohydrates'];
+
+        nutrientOrder.forEach(key => {
+            const config = nutrientConfig[key];
+            const ringId = `interactive-${key}-ring`;
+            const valueId = `interactive-${key}-value`;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'text-center flex flex-col items-center space-y-2 cursor-pointer';
+            wrapper.innerHTML = `
+                <label class="text-xs" style="color: ${config.color};">${config.label}</label>
+                <div class="ring-container w-16 h-16 relative">
+                    <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="54"/>
+                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${config.color};"/>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span id="${valueId}" class="text-lg font-bold" style="color: ${config.color};">${nutrientValues[key]}</span>
+                    </div>
+                </div>
+            `;
+            interactiveRingsContainer.appendChild(wrapper);
+
+            // Добавляем обработчик клика для открытия модального окна
+            wrapper.addEventListener('click', () => showEditModal(key, config));
+        });
+    }
+
+    function recalculateCalories() {
+        const { protein, fat, carbohydrates } = nutrientValues;
+        nutrientValues.calories = Math.round((protein * 4) + (fat * 9) + (carbohydrates * 4));
+        document.getElementById('interactive-calories-value').textContent = nutrientValues.calories;
+    }
+
     // --- Сохранение результата ---
     confirmForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const mealType = mealTypeSelect.value;
+        if (!mealType) {
+            mealTypeSelect.classList.add('border-red-500', 'ring-2', 'ring-red-500', 'shake');
+            setTimeout(() => mealTypeSelect.classList.remove('shake'), 820);
+            return;
+        }
+
         const mealData = {
-            meal_type: document.getElementById('meal-type').value,
+            meal_type: mealType,
             food_name: currentFoodName,
-            total_calories: parseFloat(document.getElementById('calories').value),
-            total_protein: parseFloat(document.getElementById('protein').value),
-            total_fat: parseFloat(document.getElementById('fat').value),
-            total_carbohydrates: parseFloat(document.getElementById('carbohydrates').value),
-            ai_coach_advice: aiCoachAdvice.textContent,
+            total_calories: nutrientValues.calories,
+            total_protein: nutrientValues.protein,
+            total_fat: nutrientValues.fat,
+            total_carbohydrates: nutrientValues.carbohydrates,
+            ai_coach_advice: aiCoachAdvice.innerHTML, // Отправляем HTML для сохранения
         };
+
         try {
-            // Используем fetchWithAuth вместо fetch
             await fetchWithAuth('/meals/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -232,10 +315,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             resetWizard();
             location.reload();
         } catch (err) {
-            alert("Ошибка при сохранении");
+            alert("Ошибка при сохранении: " + err.message);
         }
     });
 
+    mealTypeSelect.addEventListener('change', () => {
+        if (mealTypeSelect.value) {
+            mealTypeSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
+        }
+    });
+
+
+    // --- Остальной код без изменений (fetchAndDisplayMealHistory, updateProgressLabSummary и т.д.) ---
+    // ... (вставьте сюда остальной код из вашего файла, он не требует изменений)
     // --- ОБНОВЛЕНИЕ БЛОКА "АНАЛИЗ ДНЯ" ---
     function updateProgressLabSummary(summary, latestDayData) {
         const defaultContent = document.getElementById('summary-content-default');
