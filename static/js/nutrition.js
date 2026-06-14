@@ -24,17 +24,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalConfirmBtn = document.getElementById('modal-confirm-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
 
-    // --- Элементы модального окна ИНФО ---
-    const infoModalOverlay = document.getElementById('info-modal-overlay');
-    const infoModalTitle = document.getElementById('info-modal-title');
-    const infoModalContent = document.getElementById('info-modal-content');
-    const infoModalCloseBtn = document.getElementById('info-modal-close-btn');
-
+    // --- Элементы Tooltip ---
+    const scoreTooltip = document.getElementById('score-tooltip');
+    const ringTooltip = document.getElementById('ring-tooltip');
+    let tooltipTimeout;
+    let ringTooltipTimeout;
 
     let currentFoodName = '';
     let compressedFile = null;
-    let tooltipTimeout;
-    const scoreTooltip = document.getElementById('score-tooltip');
     let nutrientValues = {}; // Хранилище для текущих значений КБЖУ
     let initialNutrientValues = {}; // Хранилище для исходных значений от AI
 
@@ -250,19 +247,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         modalInput.addEventListener('keydown', handleEnter);
     }
 
-    // --- Логика модального окна с информацией ---
-    function showInfoModal(title, content) {
-        if (!infoModalOverlay) return;
-        infoModalTitle.textContent = title;
-        infoModalContent.innerHTML = content;
-        infoModalOverlay.classList.add('visible');
-    }
-
-    function hideInfoModal() {
-        if (!infoModalOverlay) return;
-        infoModalOverlay.classList.remove('visible');
-    }
-
     // --- Рендеринг и интерактивность колец КБЖУ ---
     function renderInteractiveRings() {
         interactiveRingsContainer.innerHTML = ''; // Очищаем контейнер
@@ -345,9 +329,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // --- Логика Tooltip'ов ---
+    function showRingTooltip(element, title, content, color) {
+        if (!ringTooltip) return;
+        clearTimeout(ringTooltipTimeout);
 
-    // --- Остальной код без изменений (fetchAndDisplayMealHistory, updateProgressLabSummary и т.д.) ---
-    // ... (вставьте сюда остальной код из вашего файла, он не требует изменений)
+        const titleEl = document.getElementById('ring-tooltip-title');
+        const contentEl = document.getElementById('ring-tooltip-content');
+
+        titleEl.textContent = title;
+        titleEl.style.color = color;
+        contentEl.innerHTML = content;
+        ringTooltip.style.boxShadow = `0 0 15px ${color}`;
+        ringTooltip.style.border = `1px solid ${color}`;
+
+        const rect = element.getBoundingClientRect();
+        ringTooltip.classList.remove('opacity-0', 'pointer-events-none');
+        ringTooltip.classList.add('opacity-100');
+        ringTooltip.style.transform = 'scale(1)';
+
+        let top = rect.top + window.scrollY - ringTooltip.offsetHeight - 15;
+        let left = rect.left + window.scrollX + (rect.width / 2) - (ringTooltip.offsetWidth / 2);
+
+        if (top < window.scrollY + 10) {
+            top = rect.bottom + window.scrollY + 15;
+        }
+        left = Math.max(10, Math.min(left, window.innerWidth - ringTooltip.offsetWidth - 10));
+
+        ringTooltip.style.top = `${top}px`;
+        ringTooltip.style.left = `${left}px`;
+
+        ringTooltipTimeout = setTimeout(hideRingTooltip, 4000);
+    }
+
+    function hideRingTooltip() {
+        if (!ringTooltip) return;
+        ringTooltip.classList.replace('opacity-100', 'opacity-0');
+        ringTooltip.classList.add('pointer-events-none');
+        ringTooltip.style.transform = 'scale(0.9)';
+    }
+
     // --- ОБНОВЛЕНИЕ БЛОКА "АНАЛИЗ ДНЯ" ---
     function updateProgressLabSummary(summary, latestDayData) {
         const defaultContent = document.getElementById('summary-content-default');
@@ -361,49 +382,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- GAMIFIED VIEW ---
             const { macros_pace, formatted_time, tooltips } = summary.pace_recommendation;
 
-            // 1. Update titles
             titleEl.textContent = `Статус на ${formatted_time}`;
-
-            // 2. Clear previous rings
             scoreRingContainer.innerHTML = '';
             paceBarsContainer.innerHTML = '';
 
-            // 3. Add Score ring
             if (latestDayData) {
-                const scoreRingId = 'summary-score-ring';
-                const scoreValueId = 'summary-score-value';
                 const score = latestDayData.daily_score || 0;
                 const scoreColor = latestDayData.status_color || '#F0F0F0';
-                const scoreTooltip = tooltips?.daily_score || 'Общий счет дня, основанный на балансе КБЖУ.';
+                const scoreTooltipText = tooltips?.daily_score || 'Общий счет дня, основанный на балансе КБЖУ.';
 
-                const scoreRingWrapper = document.createElement('div');
-                scoreRingWrapper.className = 'text-center flex flex-col items-center justify-center h-full cursor-pointer';
-                scoreRingWrapper.innerHTML = `
-                    <div class="ring-container w-12 aspect-square relative" style="border-radius: 50%; box-shadow: 0 0 12px ${scoreColor};">
-                        <svg id="${scoreRingId}" class="progress-ring-svg" viewBox="0 0 120 120">
-                            <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${scoreColor};" />
-                        </svg>
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <span id="${scoreValueId}" class="font-bold text-base" style="color: ${scoreColor};">${score}</span>
-                        </div>
-                    </div>
-                    <p class="text-xs font-semibold text-gray-400 mt-1">Score <span style="color: ${scoreColor};">?</span></p>
-                `;
+                const scoreRingWrapper = createRingElement('summary-score', 'Score', score, 100, scoreColor, scoreTooltipText);
                 scoreRingContainer.appendChild(scoreRingWrapper);
-
-                scoreRingWrapper.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showInfoModal('Daily Score', scoreTooltip);
-                });
-
-                const summaryScoreRingSvg = scoreRingContainer.querySelector(`#${scoreRingId}`);
-                if (summaryScoreRingSvg) {
-                    updateRing(summaryScoreRingSvg, score, 100);
-                }
+                updateRing(scoreRingWrapper.querySelector('svg'), score, 100);
             }
 
-            // 4. Nutrient rings
             const nutrientConfig = {
                 calories: { label: 'Калории', color: 'var(--color-amber)'},
                 protein: { label: 'Белки', color: 'var(--color-protein-white)'},
@@ -416,49 +408,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!pace) continue;
 
                 const config = nutrientConfig[key];
-                const ringId = `pace-${key}-ring`;
-                const valueId = `pace-${key}-value`;
                 const tooltipText = tooltips?.[key] || `Информация о ${config.label}.`;
-
                 const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
                 let ringColor = config.color;
                 if (percentage > 100) {
                     ringColor = (key === 'protein') ? 'var(--color-over-limit-green)' : 'var(--color-over-limit-red)';
                 }
 
-                const ringWrapper = document.createElement('div');
-                ringWrapper.className = 'text-center flex flex-col items-center space-y-1 cursor-pointer';
-                ringWrapper.innerHTML = `
-                    <div class="ring-container w-12 aspect-square relative" style="border-radius: 50%; box-shadow: 0 0 12px ${ringColor};">
-                        <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
-                            <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${ringColor};"/>
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="${valueId}" class="font-bold text-base" style="color: ${ringColor};">0</span>
-                        </div>
-                    </div>
-                    <p class="text-xs font-semibold text-gray-400 mt-1">${config.label} <span style="color: ${ringColor};">?</span></p>
-                `;
-
+                const ringWrapper = createRingElement(`pace-${key}`, config.label, pace.actual, pace.expected, ringColor, tooltipText);
                 paceBarsContainer.appendChild(ringWrapper);
-
-                ringWrapper.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showInfoModal(config.label, tooltipText);
-                });
-
-                const paceRingSvg = ringWrapper.querySelector(`#${ringId}`);
-                if (paceRingSvg) {
-                    updateRing(paceRingSvg, pace.actual, pace.expected);
-                    const valueSpan = ringWrapper.querySelector(`#${valueId}`);
-                    if(valueSpan) {
-                        valueSpan.textContent = Math.round(pace.actual);
-                    }
-                }
+                updateRing(ringWrapper.querySelector('svg'), pace.actual, pace.expected);
+                ringWrapper.querySelector('span').textContent = Math.round(pace.actual);
             }
 
-            // 5. Show/Hide content blocks
             defaultContent.classList.add('hidden');
             gamifiedContent.classList.remove('hidden');
 
@@ -471,8 +433,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function createRingElement(idPrefix, label, value, maxValue, color, tooltipContent) {
+        const ringId = `${idPrefix}-ring`;
+        const valueId = `${idPrefix}-value`;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'text-center flex flex-col items-center space-y-1 cursor-pointer';
+
+        const ringContainer = document.createElement('div');
+        ringContainer.className = 'ring-container w-12 aspect-square relative dynamic-glow';
+        ringContainer.style.setProperty('--dynamic-glow-color', color);
+        ringContainer.innerHTML = `
+            <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
+                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${color};" />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <span id="${valueId}" class="font-bold text-base" style="color: ${color};">${Math.round(value)}</span>
+            </div>
+        `;
+
+        const text = document.createElement('p');
+        text.className = 'text-xs font-semibold text-gray-400 mt-1';
+        text.innerHTML = `${label} <span style="color: ${color};">?</span>`;
+
+        wrapper.appendChild(ringContainer);
+        wrapper.appendChild(text);
+
+        wrapper.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showRingTooltip(wrapper, label, tooltipContent, color);
+        });
+
+        return wrapper;
+    }
+
+
     // --- Функции отрисовки (без изменений) ---
-    // Изменена для приема элемента SVG напрямую
     function updateRing(ringSvgElement, value, maxValue) {
         if (!ringSvgElement) return;
         const bar = ringSvgElement.querySelector('.progress-ring-bar');
@@ -482,32 +479,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         bar.style.strokeDasharray = `${circum} ${circum}`;
         const pct = maxValue > 0 ? Math.min(value / maxValue, 1) : 0;
         bar.style.strokeDashoffset = circum - (pct * circum);
-
-        // Находим span для значения внутри контейнера SVG
-        const ringContainer = ringSvgElement.closest('.ring-container');
-        if (ringContainer) {
-            const valEl = ringContainer.querySelector(`span`); // Ищем span внутри ring-container
-            if (valEl) valEl.textContent = Math.round(value);
-        }
     }
 
     async function fetchAndDisplayAverageStats() {
         try {
-            // Используем fetchWithAuth вместо fetch
             const res = await fetchWithAuth('/users/me/average-stats');
             if (res.ok) {
                 const s = await res.json();
-                // Обновляем вызовы updateRing для средних показателей
+                // Обновляем кольца
                 updateRing(document.getElementById('avg-calories-ring'), s.avg_calories, s.target_calories);
                 updateRing(document.getElementById('avg-protein-ring'), s.avg_protein, s.target_protein);
                 updateRing(document.getElementById('avg-fat-ring'), s.avg_fat, s.target_fat);
                 updateRing(document.getElementById('avg-carbs-ring'), s.avg_carbohydrates, s.target_carbohydrates);
+
+                // Обновляем текстовые значения
+                document.getElementById('avg-calories-value').textContent = Math.round(s.avg_calories);
+                document.getElementById('avg-protein-value').textContent = Math.round(s.avg_protein);
+                document.getElementById('avg-fat-value').textContent = Math.round(s.avg_fat);
+                document.getElementById('avg-carbs-value').textContent = Math.round(s.avg_carbohydrates);
+
                 mealLogsContainer.dataset.targets = JSON.stringify(s);
             }
         } catch (e) { console.error("Ошибка статистики:", e); }
     }
 
-    // --- Вспомогательная функция для форматирования даты ---
     function formatDateForLogs(dateString) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -526,7 +521,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Метки для макронутриентов ---
     const nutrientLabels = {
         calories: 'Ккал',
         protein: 'Б',
@@ -536,33 +530,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAndDisplayMealHistory() {
         try {
-            // Используем fetchWithAuth вместо fetch
             const res = await fetchWithAuth('/meals/');
-            let meals = await res.json(); // Используем let, так как будем сортировать
+            let meals = await res.json();
             const targets = JSON.parse(mealLogsContainer.dataset.targets || '{}');
             mealLogsContainer.innerHTML = '';
             const trans = { breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин', snack: 'Перекус' };
 
-            // Сортируем приемы пищи по timestamp в убывающем порядке (самые свежие сверху)
             meals.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
             let lastDate = null;
 
             meals.forEach(m => {
                 const mealTimestamp = new Date(m.timestamp);
-                const mealDateString = mealTimestamp.toISOString().split('T')[0]; // YYYY-MM-DD
+                const mealDateString = mealTimestamp.toISOString().split('T')[0];
 
                 if (mealDateString !== lastDate) {
-                    // Добавляем заголовок даты
                     const dateHeader = document.createElement('h3');
                     dateHeader.className = 'text-lg font-bold text-center mt-6 mb-3 text-white';
                     dateHeader.textContent = formatDateForLogs(m.timestamp);
                     mealLogsContainer.appendChild(dateHeader);
 
-                    // Добавляем разделитель (кроме самого первого дня)
                     if (lastDate !== null) {
                         const separator = document.createElement('div');
-                        separator.className = 'border-t border-white/10 my-4'; // Tailwind классы для тонкого разделителя
+                        separator.className = 'border-t border-white/10 my-4';
                         mealLogsContainer.appendChild(separator);
                     }
                     lastDate = mealDateString;
@@ -586,14 +576,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
                 mealLogsContainer.appendChild(card);
 
-                // Теперь находим SVG-элементы внутри только что добавленной карточки
                 ['calories', 'protein', 'fat', 'carbs'].forEach(type => {
                     const ringId = `log-${m.id}-${type}-ring`;
-                    const ringSvgElement = card.querySelector(`#${ringId}`); // Ищем внутри card
+                    const ringSvgElement = card.querySelector(`#${ringId}`);
                     if (ringSvgElement) {
                         updateRing(ringSvgElement, m[`total_${type === 'carbs' ? 'carbohydrates' : type}`], targets[`target_${type === 'carbs' ? 'carbohydrates' : type}`]);
-                    } else {
-                        console.warn(`SVG ring element with ID ${ringId} not found in card for meal ${m.id}`);
                     }
                 });
             });
@@ -601,7 +588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function createMiniRing(id, type, val, target, color) {
-        const label = nutrientLabels[type]; // Получаем метку из глобального объекта
+        const label = nutrientLabels[type];
         return `<div class="text-center flex flex-col items-center">
                     <div class="ring-container w-10 h-10 relative">
                         <svg id="log-${id}-${type}-ring" class="progress-ring-svg" viewBox="0 0 120 120">
@@ -631,7 +618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('tooltip-fat').textContent = Math.round(dayData.consumed_fat);
         document.getElementById('tooltip-target-fat').textContent = Math.round(dayData.target_fat);
         document.getElementById('tooltip-carbs').textContent = Math.round(dayData.consumed_carbohydrates);
-        document.getElementById('tooltip-target-carbs').textContent = Math.round(dayData.target_carbohydrates); // ИСПРАВЛЕНО: data.target_carbohydrates на dayData.target_carbohydrates
+        document.getElementById('tooltip-target-carbs').textContent = Math.round(dayData.target_carbohydrates);
         const rect = element.getBoundingClientRect();
         scoreTooltip.classList.remove('opacity-0', 'pointer-events-none');
         scoreTooltip.classList.add('opacity-100');
@@ -661,9 +648,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             g = parseInt(hex.substring(2, 4), 16);
             b = parseInt(hex.substring(4, 6), 16);
         } else {
-            return false; // Не обрабатываем другие форматы для простоты
+            return false;
         }
-        // Формула для определения яркости
         const brightness = (r * 299 + g * 587 + b * 114) / 1000;
         return brightness > 155;
     }
@@ -739,16 +725,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Инициализация ---
     if (cancelAnalysisBtn) cancelAnalysisBtn.addEventListener('click', resetWizard);
-    document.addEventListener('click', (e) => { if (scoreTooltip && !scoreTooltip.contains(e.target) && !e.target.closest('.score-circle')) hideTooltip(); });
-
-    if (infoModalOverlay) {
-        infoModalCloseBtn.addEventListener('click', hideInfoModal);
-        infoModalOverlay.addEventListener('click', (e) => {
-            if (e.target === infoModalOverlay) {
-                hideInfoModal();
-            }
-        });
-    }
+    document.addEventListener('click', (e) => {
+        if (scoreTooltip && !scoreTooltip.contains(e.target) && !e.target.closest('.score-circle')) {
+            hideTooltip();
+        }
+        if (ringTooltip && !ringTooltip.contains(e.target) && !e.target.closest('.ring-container')) {
+            hideRingTooltip();
+        }
+    });
 
     const sevenDaysBtn = document.getElementById('seven-days-btn');
     const oneMonthBtn = document.getElementById('one-month-btn');

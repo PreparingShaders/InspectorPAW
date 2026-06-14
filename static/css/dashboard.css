@@ -51,6 +51,10 @@ body {
 @keyframes neon-pulse-red-overflow { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-over-limit-red), 0 0 20px 2px rgba(255,107,107,0.3); } 50% { box-shadow: 0 0 18px 3px var(--color-over-limit-red), 0 0 30px 3px rgba(255,107,107,0.4); } }
 @keyframes neon-pulse-success { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-success-green); } 50% { box-shadow: 0 0 18px 3px var(--color-success-green); } }
 @keyframes neon-pulse-error { 0%, 100% { box-shadow: 0 0 10px 2px var(--color-error-red); } 50% { box-shadow: 0 0 18px 3px var(--color-error-red); } }
+@keyframes neon-pulse-dynamic {
+    0%, 100% { box-shadow: 0 0 10px 2px var(--dynamic-glow-color); }
+    50% { box-shadow: 0 0 18px 3px var(--dynamic-glow-color); }
+}
 
 /* Новые классы для неонового свечения кругов Score */
 .neon-glow-emerald { box-shadow: 0 0 8px 1px #10b981, 0 0 15px 2px rgba(16, 185, 129, 0.4); }
@@ -73,6 +77,8 @@ body {
 .neon-glow-over-limit-red { border: 1px solid var(--color-over-limit-red); animation: neon-pulse-red 2.5s infinite ease-in-out; }
 .neon-glow-success { border: 1px solid var(--color-success-green); animation: neon-pulse-success 2.5s infinite ease-in-out; }
 .neon-glow-error { border: 1px solid var(--color-error-red); animation: neon-pulse-error 2.5s infinite ease-in-out; }
+.dynamic-glow { animation: neon-pulse-dynamic 2.5s infinite ease-in-out; }
+
 /* Динамические классы overflow-свечения (добавляются через JS) */
 .overflow-glow-red { animation: neon-pulse-red-overflow 2.5s infinite ease-in-out !important; }
 .overflow-glow-green { animation: neon-pulse-green-overflow 2.5s infinite ease-in-out !important; }
@@ -270,7 +276,8 @@ input[type=range].styled-slider::-moz-range-thumb {
     .neon-glow-pantone-gray,
     .neon-glow-over-limit-red,
     .neon-glow-success,
-    .neon-glow-error {
+    .neon-glow-error,
+    .dynamic-glow {
         animation: none;
     }
 
@@ -283,6 +290,7 @@ input[type=range].styled-slider::-moz-range-thumb {
     .neon-glow-over-limit-red { box-shadow: 0 0 15px 2px var(--color-over-limit-red); }
     .neon-glow-success { box-shadow: 0 0 15px 2px var(--color-success-green); }
     .neon-glow-error { box-shadow: 0 0 15px 2px var(--color-error-red); }
+    .dynamic-glow { box-shadow: 0 0 15px 2px var(--dynamic-glow-color); }
 
     .overflow-glow-red {
         animation: none !important;
@@ -292,67 +300,4 @@ input[type=range].styled-slider::-moz-range-thumb {
         animation: none !important;
         box-shadow: 0 0 18px 3px var(--color-over-limit-green), 0 0 30px 3px rgba(80,200,120,0.4) !important;
     }
-}
-
-/* --- Стили для модального окна --- */
-#info-modal-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-#info-modal-overlay.visible {
-    opacity: 1;
-    pointer-events: auto;
-}
-#info-modal {
-    background: rgba(28, 28, 40, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 1.5rem;
-    padding: 1.5rem;
-    width: 90%;
-    max-width: 350px;
-    transform: scale(0.95);
-    transition: transform 0.3s ease;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
-}
-#info-modal-overlay.visible #info-modal {
-    transform: scale(1);
-}
-#info-modal-title {
-    font-size: 1.25rem;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 1rem;
-}
-#info-modal-content {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: rgba(255, 255, 255, 0.85);
-    text-align: left;
-    margin-bottom: 1.5rem;
-}
-#info-modal-close-btn {
-    display: block;
-    width: 100%;
-    padding: 0.75rem;
-    border-radius: 0.75rem;
-    background-color: #4A5568;
-    color: white;
-    font-weight: bold;
-    text-align: center;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-#info-modal-close-btn:hover {
-    background-color: #2D3748;
 }
