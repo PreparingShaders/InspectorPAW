@@ -401,13 +401,20 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
 
     final_score = total_score
     day_calorie_ratio = actual.get('calories', 0) / (target.get('calories', 1) + 1e-6)
-    if day_calorie_ratio >= 0.98:
-        base_score = 100
-        day_fat_ratio = actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)
-        day_carbs_ratio = actual.get('carbohydrates', 0) / (target.get('carbohydrates', 1) + 1e-6)
-        if day_fat_ratio > 1.15: base_score -= 10
-        if day_carbs_ratio < 0.85: base_score -= 5
-        final_score = max(85, base_score)
+    
+    # Более гибкий расчет на основе выполнения цели по калориям
+    if day_calorie_ratio < 1.0:
+        # Штраф за недобор, но не слишком сильный
+        final_score *= (1 - (1 - day_calorie_ratio) * 0.2)
+    else:
+        # Более сильный штраф за перебор
+        final_score *= (1 - (day_calorie_ratio - 1) * 0.5)
+
+    day_fat_ratio = actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)
+    day_carbs_ratio = actual.get('carbohydrates', 0) / (target.get('carbohydrates', 1) + 1e-6)
+    if day_fat_ratio > 1.15: final_score -= 10
+    if day_carbs_ratio < 0.85: final_score -= 5
+
 
     if actual.get('protein', 0) > target.get('protein', 0) and actual.get('calories', 0) <= target.get('calories', 1) * 1.05:
         bonus = (actual.get('protein', 0) / (target.get('protein', 1) + 1e-6) - 1.0) * 50
