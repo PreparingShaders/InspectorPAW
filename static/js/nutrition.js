@@ -688,6 +688,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             graphContainer.innerHTML = '';
             labelsContainer.innerHTML = '';
 
+            if (days === 1) {
+                graphContainer.style.display = 'none';
+                labelsContainer.style.display = 'none';
+            } else {
+                graphContainer.style.display = 'flex';
+                labelsContainer.style.display = 'flex';
+            }
+
             const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             sortedData.forEach((day, index) => {
@@ -737,12 +745,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    const oneDayBtn = document.getElementById('one-day-btn');
     const sevenDaysBtn = document.getElementById('seven-days-btn');
     const oneMonthBtn = document.getElementById('one-month-btn');
     const threeMonthsBtn = document.getElementById('three-months-btn');
 
-    if (sevenDaysBtn && oneMonthBtn && threeMonthsBtn) {
-        const buttons = [sevenDaysBtn, oneMonthBtn, threeMonthsBtn];
+    if (oneDayBtn && sevenDaysBtn && oneMonthBtn && threeMonthsBtn) {
+        const buttons = [oneDayBtn, sevenDaysBtn, oneMonthBtn, threeMonthsBtn];
         const updateBtns = (activeIndex) => {
             buttons.forEach((btn, index) => {
                 if (index === activeIndex) {
@@ -755,16 +764,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         };
 
-        sevenDaysBtn.onclick = () => { updateBtns(0); fetchScoreGraphData(7); };
-        oneMonthBtn.onclick = () => { updateBtns(1); fetchScoreGraphData(30); };
-        threeMonthsBtn.onclick = () => { updateBtns(2); fetchScoreGraphData(90); };
+        oneDayBtn.onclick = () => { updateBtns(0); fetchScoreGraphData(1); };
+        sevenDaysBtn.onclick = () => { updateBtns(1); fetchScoreGraphData(7); };
+        oneMonthBtn.onclick = () => { updateBtns(2); fetchScoreGraphData(30); };
+        threeMonthsBtn.onclick = () => { updateBtns(3); fetchScoreGraphData(90); };
     }
 
     // --- Первоначальная загрузка данных ---
-    fetchScoreGraphData(7); // Загружаем 7 дней по умолчанию
-    if (sevenDaysBtn) {
-        sevenDaysBtn.classList.add('active');
-        sevenDaysBtn.classList.remove('text-gray-400');
+    fetchScoreGraphData(1); // Загружаем 1 день по умолчанию
+    if (oneDayBtn) {
+        oneDayBtn.classList.add('active');
+        oneDayBtn.classList.remove('text-gray-400');
     }
     resetWizard();
 });
