@@ -481,28 +481,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         bar.style.strokeDashoffset = circum - (pct * circum);
     }
 
-    async function fetchAndDisplayAverageStats() {
-        try {
-            const res = await fetchWithAuth('/users/me/average-stats');
-            if (res.ok) {
-                const s = await res.json();
-                // Обновляем кольца
-                updateRing(document.getElementById('avg-calories-ring'), s.avg_calories, s.target_calories);
-                updateRing(document.getElementById('avg-protein-ring'), s.avg_protein, s.target_protein);
-                updateRing(document.getElementById('avg-fat-ring'), s.avg_fat, s.target_fat);
-                updateRing(document.getElementById('avg-carbs-ring'), s.avg_carbohydrates, s.target_carbohydrates);
-
-                // Обновляем текстовые значения
-                document.getElementById('avg-calories-value').textContent = Math.round(s.avg_calories);
-                document.getElementById('avg-protein-value').textContent = Math.round(s.avg_protein);
-                document.getElementById('avg-fat-value').textContent = Math.round(s.avg_fat);
-                document.getElementById('avg-carbs-value').textContent = Math.round(s.avg_carbohydrates);
-
-                mealLogsContainer.dataset.targets = JSON.stringify(s);
-            }
-        } catch (e) { console.error("Ошибка статистики:", e); }
-    }
-
     function formatDateForLogs(dateString) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -528,11 +506,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         carbs: 'У'
     };
 
-    async function fetchAndDisplayMealHistory() {
+    async function fetchAndDisplayMealHistory(targets) {
         try {
             const res = await fetchWithAuth('/meals/');
             let meals = await res.json();
-            const targets = JSON.parse(mealLogsContainer.dataset.targets || '{}');
             mealLogsContainer.innerHTML = '';
             const trans = { breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин', snack: 'Перекус' };
 
@@ -559,7 +536,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 const card = document.createElement('div');
-                card.className = 'glassmorphism rounded-xl p-4 neon-glow-pantone-gray mb-4';
+                card.className = 'glassmorphism rounded-xl p-4 mb-4';
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-bold text-lg">${trans[m.meal_type]}</h4>
@@ -659,18 +636,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetchWithAuth(`/users/me/stats/summary-by-period?days=${days}`);
             const data = await res.json();
 
+            // Обновляем средние показатели
+            const s = data.period_summary;
+            updateRing(document.getElementById('avg-calories-ring'), s.avg_calories, s.target_calories);
+            updateRing(document.getElementById('avg-protein-ring'), s.avg_protein, s.target_protein);
+            updateRing(document.getElementById('avg-fat-ring'), s.avg_fat, s.target_fat);
+            updateRing(document.getElementById('avg-carbs-ring'), s.avg_carbohydrates, s.target_carbohydrates);
+
+            document.getElementById('avg-calories-value').textContent = Math.round(s.avg_calories);
+            document.getElementById('avg-protein-value').textContent = Math.round(s.avg_protein);
+            document.getElementById('avg-fat-value').textContent = Math.round(s.avg_fat);
+            document.getElementById('avg-carbs-value').textContent = Math.round(s.avg_carbohydrates);
+
+            // Передаем цели в историю приемов пищи
+            fetchAndDisplayMealHistory(s);
+
             const scores = data.daily_breakdown.map(d => d.daily_score).filter(s => s !== null && s !== undefined);
-            const avgLabel = document.getElementById('average-score-label');
+            const avgScoreValue = document.getElementById('avg-score-value');
+            const avgScoreBar = document.getElementById('avg-score-bar');
+            const avgScoreRingContainer = document.getElementById('avg-score-ring-container');
+
             if (scores.length > 0) {
                 const averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-                if (avgLabel) {
-                    avgLabel.textContent = averageScore;
-                    avgLabel.classList.remove('hidden');
-                }
+                avgScoreValue.textContent = averageScore;
+                updateRing(document.getElementById('avg-score-ring'), averageScore, 120);
+
+                let scoreColor = '#e11d48'; // red
+                if (averageScore > 105) scoreColor = '#FFD700'; // gold
+                else if (averageScore >= 95) scoreColor = '#F0F0F0'; // white
+                else if (averageScore >= 80) scoreColor = '#f59e0b'; // amber
+
+                avgScoreValue.style.color = scoreColor;
+                avgScoreBar.style.stroke = scoreColor;
+                avgScoreRingContainer.style.boxShadow = `0 0 8px 1px ${scoreColor}`;
+
             } else {
-                if (avgLabel) {
-                    avgLabel.classList.add('hidden');
-                }
+                avgScoreValue.textContent = '0';
+                updateRing(document.getElementById('avg-score-ring'), 0, 120);
+                avgScoreValue.style.color = '#A0A0A0';
+                avgScoreBar.style.stroke = '#A0A0A0';
+                avgScoreRingContainer.style.boxShadow = 'none';
             }
 
             const sortedForSummary = data.daily_breakdown.length > 0 ? [...data.daily_breakdown].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
@@ -686,24 +691,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             sortedData.forEach((day, index) => {
-                const col = document.createElement('div');
-                col.className = 'flex-1 h-full relative flex justify-center items-center';
+                const colWrapper = document.createElement('div');
+                colWrapper.className = 'flex-1 h-full flex flex-col justify-end items-center';
 
                 if (day.daily_score !== null) {
-                    const yPos = day.y_axis_pos !== null ? ((120 - day.y_axis_pos) / 120) * 100 : 50;
-                    const circle = document.createElement('div');
+                    const barHeight = (day.daily_score / 120) * 100;
+                    const bar = document.createElement('div');
                     const bgColor = day.status_color || '#F0F0F0';
-                    const textColor = isLightColor(bgColor) ? 'text-black' : 'text-white';
 
-                    circle.className = `absolute w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${textColor} score-circle cursor-pointer`;
-                    circle.style.top = `${yPos}%`;
-                    circle.style.backgroundColor = bgColor;
-                    circle.style.boxShadow = `0 0 8px ${bgColor}`;
-                    circle.textContent = day.daily_score;
-                    circle.onclick = (e) => { e.stopPropagation(); showTooltip(circle, day); };
-                    col.appendChild(circle);
+                    bar.className = 'w-1/2 rounded-t-md cursor-pointer';
+                    bar.style.height = `${barHeight}%`;
+                    bar.style.backgroundColor = bgColor;
+                    bar.style.boxShadow = `0 0 8px ${bgColor}`;
+                    bar.onclick = (e) => { e.stopPropagation(); showTooltip(bar, day); };
+                    colWrapper.appendChild(bar);
                 }
-                graphContainer.appendChild(col);
+                graphContainer.appendChild(colWrapper);
 
                 const label = document.createElement('div');
                 label.className = 'text-center w-full';
@@ -758,8 +761,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Первоначальная загрузка данных ---
-    fetchAndDisplayAverageStats();
-    fetchAndDisplayMealHistory();
     fetchScoreGraphData(7); // Загружаем 7 дней по умолчанию
     if (sevenDaysBtn) {
         sevenDaysBtn.classList.add('active');
