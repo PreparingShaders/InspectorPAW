@@ -179,6 +179,13 @@ async def prepare_ai_context(
         "carbohydrates": get_remaining("carbohydrates")
     }
 
+    # Подтягиваем оценку опасности из существующей логики
+    progress_metrics = calculate_progress_lab_score(
+        target=user_targets,
+        actual=consumed_today,
+        current_dt=now
+    )
+
     # Формирование контекста
     context = {
         "user_profile": {
@@ -191,25 +198,17 @@ async def prepare_ai_context(
         "daily_stats": {
             "time_now": now.strftime("%Y-%m-%d %H:%M"),
             "targets": user_targets,
-            "already_consumed": consumed_today
+            "already_consumed": consumed_today,
+            "daily_score": progress_metrics.get("daily_score") # Добавляем daily_score
         },
         "proposed_meal": analyzed_meal,
         "progress_assessment": {
             "remaining_macros": remaining, # Теперь здесь полный расклад по БЖУ
-            "danger_status": False,
-            "probability_of_success": 100 # Изначально 100%
+            "danger_status": progress_metrics.get("danger_status"),
+            "probability_of_success": progress_metrics.get("probability_of_success")
         },
         "meta": {"monitoring_window": "05:00-23:50"}
     }
-
-    # Подтягиваем оценку опасности из существующей логики
-    progress_metrics = calculate_progress_lab_score(
-        target=user_targets,
-        actual=consumed_today,
-        current_dt=now
-    )
-    context["progress_assessment"]["danger_status"] = progress_metrics.get("danger_status")
-    context["progress_assessment"]["probability_of_success"] = progress_metrics.get("probability_of_success")
 
     return context
 
@@ -345,10 +344,10 @@ def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float, recomm
         recommendations = {}
     
     return {
-        "daily_score": recommendations.get("daily_score", "Общая оценка вашего прогресса за день. 100 - идеально."),
+        "daily_score": recommendations.get("daily_score", "Оценка показывает, насколько равномерно вы идете к цели в течение дня. Переборы по калориям, жирам и углеводам срезают баллы, а вот выполнение нормы по белку — наоборот, поощряется бонусами. Чтобы набрать максимум, старайтесь избегать резких скачков и питайтесь равномерно в течении дня.\nМаксимум 120 баллов."),
         "calories": recommendations.get("calories", _generate_nutrient_tooltip(target.get('calories', 0), actual.get('calories', 0), time_factor, "Калории", "ккал")),
-        "protein": recommendations.get("proteins", _generate_nutrient_tooltip(target.get('protein', 0), actual.get('protein', 0), time_factor, "Белки", "г")),
-        "fat": recommendations.get("fats", _generate_nutrient_tooltip(target.get('fat', 0), actual.get('fat', 0), time_factor, "Жиры", "г")),
+        "protein": recommendations.get("protein", _generate_nutrient_tooltip(target.get('protein', 0), actual.get('protein', 0), time_factor, "Белки", "г")),
+        "fat": recommendations.get("fat", _generate_nutrient_tooltip(target.get('fat', 0), actual.get('fat', 0), time_factor, "Жиры", "г")),
         "carbohydrates": recommendations.get("carbohydrates", _generate_nutrient_tooltip(target.get('carbohydrates', 0), actual.get('carbohydrates', 0), time_factor, "Углеводы", "г"))
     }
 
