@@ -98,6 +98,30 @@
         .shake {
             animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
         }
+
+        /* --- Стили для расширенного вида на 1 день --- */
+        #average-stats.day-view-active > div {
+            flex-direction: column;
+            justify-content: center;
+            gap: 1rem; /* Пространство между score и нутриентами */
+        }
+        #average-stats.day-view-active #avg-score-wrapper {
+            cursor: pointer;
+        }
+        #average-stats.day-view-active #avg-score-wrapper .ring-container {
+            width: 6rem; /* 96px */
+            height: 6rem;
+        }
+        #average-stats.day-view-active #avg-score-wrapper #avg-score-value {
+            font-size: 1.875rem; /* 30px */
+        }
+        #average-stats.day-view-active #nutrient-rings-wrapper .ring-container {
+            width: 4rem; /* 64px */
+            height: 4rem;
+        }
+        #average-stats.day-view-active #nutrient-rings-wrapper .font-bold {
+            font-size: 1.125rem; /* 18px */
+        }
     </style>
 </head>
 <body class="h-dvh flex flex-col">
@@ -119,10 +143,10 @@
                     <button id="three-months-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">3 мес</button>
                 </div>
             </div>
-            <div class="relative w-full glassmorphism rounded-2xl p-2">
-                <div id="average-stats" class="pt-0 mb-2">
+            <div id="stats-graph-panel" class="relative w-full glassmorphism rounded-2xl p-2 flex flex-col" style="height: 14rem;">
+                <div id="average-stats" class="pt-0 mb-2 transition-all duration-300">
                     <div class="flex justify-center items-center w-full space-x-4">
-                        <div class="text-center flex flex-col items-center space-y-1">
+                        <div id="avg-score-wrapper" class="text-center flex flex-col items-center space-y-1">
                             <div id="avg-score-ring-container" class="ring-container w-16 h-16 relative">
                                 <svg id="avg-score-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                                     <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
@@ -134,18 +158,18 @@
                             </div>
                             <p class="text-xs font-semibold text-gray-400 mt-1">Score</p>
                         </div>
-                        <div class="flex justify-center w-full space-x-2">
-                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-amber relative"><svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-calories-value" class="font-bold text-base" style="color: var(--color-amber);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Ккал</p></div>
-                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-protein-white relative"><svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-protein-value" class="font-bold text-base" style="color: var(--color-protein-white);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Б</p></div>
-                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-golden-orange relative"><svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-fat-value" class="font-bold text-base" style="color: var(--color-golden-orange);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Ж</p></div>
-                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-muted-teal relative"><svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-carbs-value" class="font-bold text-base" style="color: var(--color-muted-teal);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">У</p></div>
+                        <div id="nutrient-rings-wrapper" class="flex justify-center w-full space-x-2">
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-amber relative"><svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-calories-value" class="font-bold text-base" style="color: var(--color-amber);">0</span></div></div><p id="avg-calories-label" class="text-xs font-semibold text-gray-400 mt-1">Ккал</p></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-protein-white relative"><svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-protein-value" class="font-bold text-base" style="color: var(--color-protein-white);">0</span></div></div><p id="avg-protein-label" class="text-xs font-semibold text-gray-400 mt-1">Б</p></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-golden-orange relative"><svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-fat-value" class="font-bold text-base" style="color: var(--color-golden-orange);">0</span></div></div><p id="avg-fat-label" class="text-xs font-semibold text-gray-400 mt-1">Ж</p></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-muted-teal relative"><svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-carbs-value" class="font-bold text-base" style="color: var(--color-muted-teal);">0</span></div></div><p id="avg-carbs-label" class="text-xs font-semibold text-gray-400 mt-1">У</p></div>
                         </div>
                     </div>
                 </div>
-                <div id="graph-wrapper" class="relative h-24 w-full flex items-end justify-around">
+                <div id="graph-wrapper" class="relative h-24 w-full flex items-end justify-around transition-opacity duration-300">
                     <div id="score-graph-container" class="flex justify-around w-full h-full items-end relative z-10"></div>
                 </div>
-                <div id="x-axis-labels-container" class="flex justify-around w-full text-xs text-gray-400 mt-1 px-1"></div>
+                <div id="x-axis-labels-container" class="flex justify-around w-full text-xs text-gray-400 mt-1 px-1 transition-opacity duration-300"></div>
             </div>
         </div>
 

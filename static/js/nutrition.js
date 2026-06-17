@@ -683,17 +683,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             updateProgressLabSummary(data.progress_lab_summary, latestDay);
 
-            const graphContainer = document.getElementById('score-graph-container');
+            const averageStatsContainer = document.getElementById('average-stats');
+            const graphWrapper = document.getElementById('graph-wrapper');
             const labelsContainer = document.getElementById('x-axis-labels-container');
+            const graphContainer = document.getElementById('score-graph-container');
             graphContainer.innerHTML = '';
             labelsContainer.innerHTML = '';
 
+            // Обновление меток КБЖУ
+            const caloriesLabel = document.getElementById('avg-calories-label');
+            const proteinLabel = document.getElementById('avg-protein-label');
+            const fatLabel = document.getElementById('avg-fat-label');
+            const carbsLabel = document.getElementById('avg-carbs-label');
+
             if (days === 1) {
-                graphContainer.style.display = 'none';
-                labelsContainer.style.display = 'none';
+                graphWrapper.classList.add('opacity-0', 'h-0');
+                labelsContainer.classList.add('opacity-0', 'h-0');
+                averageStatsContainer.classList.add('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
+
+                caloriesLabel.textContent = 'Калории';
+                proteinLabel.textContent = 'Белки';
+                fatLabel.textContent = 'Жиры';
+                carbsLabel.textContent = 'Углеводы';
+
             } else {
-                graphContainer.style.display = 'flex';
-                labelsContainer.style.display = 'flex';
+                graphWrapper.classList.remove('opacity-0', 'h-0');
+                labelsContainer.classList.remove('opacity-0', 'h-0');
+                averageStatsContainer.classList.remove('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
+
+                caloriesLabel.textContent = 'Ккал';
+                proteinLabel.textContent = 'Б';
+                fatLabel.textContent = 'Ж';
+                carbsLabel.textContent = 'У';
             }
 
             const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -768,6 +789,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         sevenDaysBtn.onclick = () => { updateBtns(1); fetchScoreGraphData(7); };
         oneMonthBtn.onclick = () => { updateBtns(2); fetchScoreGraphData(30); };
         threeMonthsBtn.onclick = () => { updateBtns(3); fetchScoreGraphData(90); };
+    }
+
+    const avgScoreWrapper = document.getElementById('avg-score-wrapper');
+    if (avgScoreWrapper) {
+        avgScoreWrapper.addEventListener('click', () => {
+            const scoreTooltipText = "Оценка показывает, насколько равномерно вы идете к цели в течение дня. Переборы по калориям, жирам и углеводам срезают баллы, а вот выполнение нормы по белку — наоборот, поощряется бонусами. Чтобы набрать максимум, старайтесь избегать резких скачков и питайтесь равномерно в течении дня. Максимум 120 баллов.";
+            const scoreColor = document.getElementById('avg-score-value').style.color || '#F0F0F0';
+            showRingTooltip(avgScoreWrapper, 'Daily Score', scoreTooltipText, scoreColor);
+        });
     }
 
     // --- Первоначальная загрузка данных ---
