@@ -601,7 +601,10 @@ async def analyze_meal(
 
     # --- Кэширование рекомендаций ---
     if recommendations:
-        recommendations_cache[current_user.id] = recommendations
+        recommendations_cache[current_user.id] = {
+            "coach_advice": coach_advice,
+            "nutrients": recommendations
+        }
 
     proteins_g = round(float(food_analysis.get("proteins_g", 0)))
     fats_g = round(float(food_analysis.get("fats_g", 0)))
@@ -754,7 +757,10 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
     progress_lab_summary_for_today = None
 
     # --- Получение рекомендаций из кэша ---
-    user_recommendations = recommendations_cache.get(current_user.id)
+    cached_data = recommendations_cache.get(current_user.id, {})
+    user_recommendations = cached_data.get("nutrients")
+    coach_advice = cached_data.get("coach_advice")
+
 
     for i in range(days):
         current_date = end_date - timedelta(days=i)
@@ -797,7 +803,13 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
 
         score_result = {}
         if current_date == date.today():
-            score_result = utils.calculate_progress_lab_score(target_macros, actual_macros, recommendations=user_recommendations)
+            # Передаем и общий совет, и советы по нутриентам
+            score_result = utils.calculate_progress_lab_score(
+                target_macros, 
+                actual_macros, 
+                recommendations=user_recommendations,
+                coach_advice=coach_advice
+            )
             progress_lab_summary_for_today = score_result
         else:
             end_of_day_dt = datetime.combine(current_date, datetime.min.time().replace(hour=23))

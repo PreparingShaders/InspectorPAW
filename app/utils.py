@@ -339,19 +339,21 @@ def _generate_nutrient_tooltip(target_val: float, actual_val: float, time_factor
     else: status = "в норме"
     return f"{name.capitalize()}: {status} ({round(actual_val)} из {round(expected_val)} {unit})"
 
-def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float, recommendations: Optional[Dict] = None) -> Dict[str, str]:
+def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float, recommendations: Optional[Dict] = None, coach_advice: Optional[str] = None) -> Dict[str, str]:
     if recommendations is None:
         recommendations = {}
     
+    default_daily_score_advice = "Оценка показывает, насколько равномерно вы идете к цели в течение дня. Переборы по калориям, жирам и углеводам срезают баллы, а вот выполнение нормы по белку — наоборот, поощряется бонусами. Чтобы набрать максимум, старайтесь избегать резких скачков и питайтесь равномерно в течении дня.\nМаксимум 120 баллов."
+
     return {
-        "daily_score": recommendations.get("daily_score", "Оценка показывает, насколько равномерно вы идете к цели в течение дня. Переборы по калориям, жирам и углеводам срезают баллы, а вот выполнение нормы по белку — наоборот, поощряется бонусами. Чтобы набрать максимум, старайтесь избегать резких скачков и питайтесь равномерно в течении дня.\nМаксимум 120 баллов."),
+        "daily_score": coach_advice or recommendations.get("daily_score", default_daily_score_advice),
         "calories": recommendations.get("calories", _generate_nutrient_tooltip(target.get('calories', 0), actual.get('calories', 0), time_factor, "Калории", "ккал")),
         "protein": recommendations.get("protein", _generate_nutrient_tooltip(target.get('protein', 0), actual.get('protein', 0), time_factor, "Белки", "г")),
         "fat": recommendations.get("fat", _generate_nutrient_tooltip(target.get('fat', 0), actual.get('fat', 0), time_factor, "Жиры", "г")),
         "carbohydrates": recommendations.get("carbohydrates", _generate_nutrient_tooltip(target.get('carbohydrates', 0), actual.get('carbohydrates', 0), time_factor, "Углеводы", "г"))
     }
 
-def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None, recommendations: Optional[Dict] = None) -> Dict[str, Any]:
+def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None, recommendations: Optional[Dict] = None, coach_advice: Optional[str] = None) -> Dict[str, Any]:
     now = current_dt if current_dt else datetime.datetime.now(settings.MSK_TZ)
     current_time = now.hour + now.minute / 60
     start_h, end_h = 5.0, 23.0
@@ -364,7 +366,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
         expected = t_val * time_factor
         macros_pace[key] = {'actual': a_val, 'expected': expected, 'target': t_val}
 
-    tooltips = get_nutrient_tooltips(target, actual, time_factor, recommendations)
+    tooltips = get_nutrient_tooltips(target, actual, time_factor, recommendations, coach_advice)
 
     pace_recommendation = {
         "macros_pace": macros_pace,
@@ -426,7 +428,7 @@ def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, flo
     elif 95 <= final_score <= 105: color = "#F0F0F0"
     elif 80 <= final_score <= 94: color = "#f59e0b"
     
-    status_tooltips = get_nutrient_tooltips(target, actual, time_factor, recommendations)
+    status_tooltips = get_nutrient_tooltips(target, actual, time_factor, recommendations, coach_advice)
 
     target_delta = {
         key: max(0, round(target.get(key, 0) - actual.get(key, 0)))

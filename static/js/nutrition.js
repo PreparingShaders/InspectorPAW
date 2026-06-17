@@ -369,117 +369,84 @@ document.addEventListener('DOMContentLoaded', async () => {
         ringTooltip.style.transform = 'scale(0.9)';
     }
 
-    // --- ОБНОВЛЕНИЕ БЛОКА "АНАЛИЗ ДНЯ" ---
-    function updateProgressLabSummary(summary, latestDayData) {
-        const defaultContent = document.getElementById('summary-content-default');
-        const gamifiedContent = document.getElementById('summary-content-gamified');
-        const adviceEl = document.getElementById('summary-advice');
-        const titleEl = document.getElementById('summary-title');
-        const scoreRingContainer = document.getElementById('score-ring-container');
-        const paceBarsContainer = document.getElementById('pace-bars-container');
+    // --- ОБНОВЛЕНИЕ БЛОКА СОВЕТОВ ---
+    function updateCoachRecommendations(summary) {
+        const nutrientStatuses = summary?.nutrient_statuses;
+        const tooltips = summary?.pace_recommendation?.tooltips;
 
-        if (summary && summary.pace_recommendation) {
-            // --- GAMIFIED VIEW ---
-            const { macros_pace, formatted_time, tooltips } = summary.pace_recommendation;
-
-            titleEl.textContent = `Статус на ${formatted_time}`;
-            scoreRingContainer.innerHTML = '';
-            paceBarsContainer.innerHTML = '';
-
-            if (latestDayData) {
-                const score = latestDayData.daily_score || 0;
-                const scoreColor = latestDayData.status_color || '#F0F0F0';
-                const scoreTooltipText = tooltips?.daily_score || 'Общий счет дня, основанный на балансе КБЖУ.';
-
-                const scoreRingWrapper = createRingElement('summary-score', 'Score', score, 100, scoreColor, scoreTooltipText);
-                scoreRingContainer.appendChild(scoreRingWrapper);
-                updateRing(scoreRingWrapper.querySelector('svg'), score, 100);
-            }
-
-            const nutrientConfig = {
-                calories: { label: 'Калории', color: 'var(--color-amber)'},
-                protein: { label: 'Белки', color: 'var(--color-protein-white)'},
-                fat: { label: 'Жиры', color: 'var(--color-golden-orange)'},
-                carbohydrates: { label: 'Углеводы', color: 'var(--color-muted-teal)'}
-            };
-
-            for (const key in nutrientConfig) {
-                const pace = macros_pace[key];
-                if (!pace) continue;
-
-                const config = nutrientConfig[key];
-                const tooltipText = tooltips?.[key] || `Информация о ${config.label}.`;
-                const percentage = pace.expected > 0 ? (pace.actual / pace.expected) * 100 : 0;
-                let ringColor = config.color;
-                if (percentage > 100) {
-                    ringColor = (key === 'protein') ? 'var(--color-over-limit-green)' : 'var(--color-over-limit-red)';
-                }
-
-                const ringWrapper = createRingElement(`pace-${key}`, config.label, pace.actual, pace.expected, ringColor, tooltipText);
-                paceBarsContainer.appendChild(ringWrapper);
-                updateRing(ringWrapper.querySelector('svg'), pace.actual, pace.expected);
-                ringWrapper.querySelector('span').textContent = Math.round(pace.actual);
-            }
-
-            defaultContent.classList.add('hidden');
-            gamifiedContent.classList.remove('hidden');
-
+        // Обновляем общий совет
+        const generalAdviceEl = document.getElementById('coach-general-advice');
+        if (tooltips?.daily_score) {
+            generalAdviceEl.innerHTML = tooltips.daily_score;
         } else {
-            // --- DEFAULT VIEW ---
-            titleEl.textContent = 'Анализ дня';
-            adviceEl.textContent = (summary && summary.smart_advice) ? summary.smart_advice : 'Нет данных для анализа.';
-            defaultContent.classList.remove('hidden');
-            gamifiedContent.classList.add('hidden');
+            generalAdviceEl.textContent = 'Нет данных для анализа.';
         }
-    }
 
-    function createRingElement(idPrefix, label, value, maxValue, color, tooltipContent) {
-        const ringId = `${idPrefix}-ring`;
-        const valueId = `${idPrefix}-value`;
+        if (!nutrientStatuses || !tooltips) {
+            // Скрываем или очищаем карточки нутриентов, если нет данных
+            return;
+        }
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'text-center flex flex-col items-center space-y-1 cursor-pointer';
+        const statusOrder = { 'CRITICAL_LIMIT': 1, 'WARNING': 2, 'OK': 3 };
+        const nutrientGrid = document.getElementById('coach-nutrient-grid');
+        const cards = Array.from(nutrientGrid.children);
 
-        const ringContainer = document.createElement('div');
-        ringContainer.className = 'ring-container w-12 aspect-square relative dynamic-glow';
-        ringContainer.style.setProperty('--dynamic-glow-color', color);
-        ringContainer.innerHTML = `
-            <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
-                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${color};" />
-            </svg>
-            <div class="absolute inset-0 flex items-center justify-center">
-                <span id="${valueId}" class="font-bold text-base" style="color: ${color};">${Math.round(value)}</span>
-            </div>
-        `;
+        cards.forEach(card => {
+            const nutrient = card.dataset.nutrient;
+            const status = nutrientStatuses[nutrient] || 'OK';
+            const adviceEl = card.querySelector('p');
 
-        const text = document.createElement('p');
-        text.className = 'text-xs font-semibold text-gray-400 mt-1';
-        text.innerHTML = `${label} <span style="color: ${color};">?</span>`;
+            // Обновляем текст
+            adviceEl.innerHTML = tooltips[nutrient] || 'Нет данных.';
 
-        wrapper.appendChild(ringContainer);
-        wrapper.appendChild(text);
+            // Обновляем подсветку
+            card.classList.remove('status-danger', 'status-warning');
+            if (status === 'CRITICAL_LIMIT') {
+                card.classList.add('status-danger');
+            } else if (status === 'WARNING') {
+                card.classList.add('status-warning');
+            }
 
-        wrapper.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showRingTooltip(wrapper, label, tooltipContent, color);
+            // Сохраняем порядок для сортировки
+            card.dataset.order = statusOrder[status] || 3;
         });
 
-        return wrapper;
+        // Сортируем и вставляем обратно
+        cards.sort((a, b) => a.dataset.order - b.dataset.order);
+        cards.forEach(card => nutrientGrid.appendChild(card));
     }
 
 
-    // --- Функции отрисовки (без изменений) ---
-    function updateRing(ringSvgElement, value, maxValue) {
+    // --- Новая функция для обновления колец со статусами ---
+    function updateRingWithStatus(ringSvgElement, value, maxValue, nutrient = null) {
         if (!ringSvgElement) return;
         const bar = ringSvgElement.querySelector('.progress-ring-bar');
         if (!bar) return;
+
+        // 1. Обновление длины полосы
         const radius = bar.r.baseVal.value;
         const circum = 2 * Math.PI * radius;
         bar.style.strokeDasharray = `${circum} ${circum}`;
-        const pct = maxValue > 0 ? Math.min(value / maxValue, 1) : 0;
-        bar.style.strokeDashoffset = circum - (pct * circum);
+        const pct = maxValue > 0 ? value / maxValue : 0;
+        const displayPct = Math.min(pct, 1);
+        bar.style.strokeDashoffset = circum - (displayPct * circum);
+
+        // 2. Логика статусов и цветов
+        bar.classList.remove('status-warning', 'status-danger', 'status-success');
+
+        if (pct > 1.05) {
+            if (nutrient === 'protein') {
+                bar.classList.add('status-success');
+            } else {
+                bar.classList.add('status-danger');
+            }
+        } else if (pct > 0.95) {
+            if (nutrient !== 'protein') {
+                bar.classList.add('status-warning');
+            }
+        }
     }
+
 
     function formatDateForLogs(dateString) {
         const today = new Date();
@@ -554,10 +521,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 mealLogsContainer.appendChild(card);
 
                 ['calories', 'protein', 'fat', 'carbs'].forEach(type => {
-                    const ringId = `log-${m.id}-${type}-ring`;
-                    const ringSvgElement = card.querySelector(`#${ringId}`);
+                    const nutrientKey = type === 'carbs' ? 'carbohydrates' : type;
+                    const ringSvgElement = card.querySelector(`#log-${m.id}-${type}-ring`);
                     if (ringSvgElement) {
-                        updateRing(ringSvgElement, m[`total_${type === 'carbs' ? 'carbohydrates' : type}`], targets[`target_${type === 'carbs' ? 'carbohydrates' : type}`]);
+                        updateRingWithStatus(ringSvgElement, m[`total_${nutrientKey}`], targets[`target_${nutrientKey}`], nutrientKey);
                     }
                 });
             });
@@ -566,11 +533,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function createMiniRing(id, type, val, target, color) {
         const label = nutrientLabels[type];
+        const nutrientKey = type === 'carbs' ? 'carbohydrates' : type;
         return `<div class="text-center flex flex-col items-center">
                     <div class="ring-container w-10 h-10 relative">
                         <svg id="log-${id}-${type}-ring" class="progress-ring-svg" viewBox="0 0 120 120">
                             <circle class="progress-ring-bg" cx="60" cy="60" r="54"/>
-                            <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-${color});"/>
+                            <circle data-nutrient="${nutrientKey}" class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-${color});"/>
                         </svg>
                         <div class="absolute inset-0 flex items-center justify-center">
                             <span id="log-${id}-${type}-value" class="text-xs font-bold">${Math.round(val)}</span>
@@ -638,10 +606,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Обновляем средние показатели
             const s = data.period_summary;
-            updateRing(document.getElementById('avg-calories-ring'), s.avg_calories, s.target_calories);
-            updateRing(document.getElementById('avg-protein-ring'), s.avg_protein, s.target_protein);
-            updateRing(document.getElementById('avg-fat-ring'), s.avg_fat, s.target_fat);
-            updateRing(document.getElementById('avg-carbs-ring'), s.avg_carbohydrates, s.target_carbohydrates);
+            updateRingWithStatus(document.querySelector('[data-nutrient="calories"]'), s.avg_calories, s.target_calories, 'calories');
+            updateRingWithStatus(document.querySelector('[data-nutrient="protein"]'), s.avg_protein, s.target_protein, 'protein');
+            updateRingWithStatus(document.querySelector('[data-nutrient="fat"]'), s.avg_fat, s.target_fat, 'fat');
+            updateRingWithStatus(document.querySelector('[data-nutrient="carbohydrates"]'), s.avg_carbohydrates, s.target_carbohydrates, 'carbohydrates');
 
             document.getElementById('avg-calories-value').textContent = Math.round(s.avg_calories);
             document.getElementById('avg-protein-value').textContent = Math.round(s.avg_protein);
@@ -659,7 +627,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (scores.length > 0) {
                 const averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
                 avgScoreValue.textContent = averageScore;
-                updateRing(document.getElementById('avg-score-ring'), averageScore, 120);
+                updateRingWithStatus(document.getElementById('avg-score-ring'), averageScore, 120);
 
                 let scoreColor = '#e11d48'; // red
                 if (averageScore > 105) scoreColor = '#FFD700'; // gold
@@ -672,16 +640,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             } else {
                 avgScoreValue.textContent = '0';
-                updateRing(document.getElementById('avg-score-ring'), 0, 120);
+                updateRingWithStatus(document.getElementById('avg-score-ring'), 0, 120);
                 avgScoreValue.style.color = '#A0A0A0';
                 avgScoreBar.style.stroke = '#A0A0A0';
                 avgScoreRingContainer.style.boxShadow = 'none';
             }
 
-            const sortedForSummary = data.daily_breakdown.length > 0 ? [...data.daily_breakdown].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
-            const latestDay = sortedForSummary.length > 0 ? sortedForSummary[0] : null;
-
-            updateProgressLabSummary(data.progress_lab_summary, latestDay);
+            // Обновляем новый блок советов
+            updateCoachRecommendations(data.progress_lab_summary);
 
             const averageStatsContainer = document.getElementById('average-stats');
             const graphWrapper = document.getElementById('graph-wrapper');
