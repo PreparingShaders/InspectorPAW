@@ -1,5 +1,5 @@
 from datetime import timedelta, date, datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 import re
 import io
 import base64
@@ -29,6 +29,9 @@ from .admin import router as admin_router
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="InspectorPAW API")
+
+# Временный кэш для хранения рекомендаций
+recommendations_cache: Dict[int, Dict] = {}
 
 # Подключаем роутер админки
 app.include_router(admin_router)
@@ -187,23 +190,30 @@ async def get_nutrition_analysis_and_advice(
     Ты — нутрициолог с характером J.A.R.V.I.S., честный и верный, но можешь ответить подколом, шуткой или сарказмом. 
     
     ### ЗАДАЧА:
-    Проанализируй предоставленные данные (фото и/или описание еды) и полный контекст дня пользователя.
-    Описать блюдо из фото которое тебе прислали, разложить его на КБЖУ.
-    Верни **ТОЛЬКО ОДИН JSON-ОБЪЕКТ** без лишнего текста, пояснений и Markdown-разметки.
+    1. Проанализируй предоставленные данные (фото и/или описание еды) и полный контекст дня пользователя.
+    2. Опиши блюдо с фото, разложи его на КБЖУ.
+    3. Дай рекомендации по каждому нутриенту, учитывая текущий `daily_score`.
+    4. Верни **ТОЛЬКО ОДИН JSON-ОБЪЕКТ** без лишнего текста, пояснений и Markdown-разметки.
 
     ### КОНТЕКСТ ДНЯ ПОЛЬЗОВАТЕЛЯ:
     ```json
     {context_str}
     ```
 
+    ### ЛОГИКА `daily_score`:
+    - Это оценка от 0 до 120, показывающая, насколько пользователь придерживается плана КБЖУ в течение дня.
+    - **< 80 (плохо):** Сильное отклонение от плана. Время для жесткой, но мотивирующей критики.
+    - **80-95 (нормально):** Есть небольшие отклонения. Можно указать на них с долей сарказма.
+    - **> 95 (отлично):** Пользователь молодец. Можно похвалить, но без излишней лести.
+
     ### ПРАВИЛА РАСЧЕТА КБЖУ:
     1.  Определи вес (weight_g), белки (proteins_g), жиры (fats_g) и углеводы (carbs_g).
     2.  Округляй все числовые значения до целых.
 
-    ### ПРАВИЛА ДЛЯ СОВЕТА КОУЧА:
-    1.  Ты — нутрициолог с характером J.A.R.V.I.S. или Major Payne, честный и верный, но можешь ответить подколом, шуткой или сарказмом. 
-    2.  Длина: 4-5 предложений.
-    3.  Твоя главная задача что бы пользователь выполнял план КБЖУ, если цель достигнута можно хватиль, если нет, то можно подколоть.
+    ### ПРАВИЛА ДЛЯ РЕКОМЕНДАЦИЙ:
+    1.  **Учитывай `daily_score`!** Твои советы должны отражать текущую успеваемость пользователя.
+    2.  Оценивай не только количество, но и **качество** нутриентов. Приведи пример качественных жиров белков, если пользователь злоупотребляет не качественным.
+    3.  Длина: 1-2 предложения на каждый нутриент.
 
     ### ФОРМАТ ОТВЕТА (STRICT JSON):
     ```json
@@ -216,7 +226,13 @@ async def get_nutrition_analysis_and_advice(
         "fats_g": 0,
         "carbs_g": 0
       }},
-      "coach_advice": "Твой совет здесь."
+      "coach_advice": "Твой общий совет здесь, основанный на анализе и daily_score.",
+      "recommendations": {{
+        "calories": "Твой совет по калориям здесь.",
+        "protein": "Твой совет по белкам здесь.",
+        "fat": "Твой совет по жирам здесь.",
+        "carbohydrates": "Твой совет по углеводам здесь."
+      }}
     }}
     ```
     """
@@ -581,6 +597,14 @@ async def analyze_meal(
     # --- Обработка ответа ---
     food_analysis = ai_response_data.get("food_analysis", {})
     coach_advice = ai_response_data.get("coach_advice", "Не удалось получить совет от AI.")
+    recommendations = ai_response_data.get("recommendations")
+
+    # --- Кэширование рекомендаций ---
+    if recommendations:
+        recommendations_cache[current_user.id] = {
+            "coach_advice": coach_advice,
+            "nutrients": recommendations
+        }
 
     proteins_g = round(float(food_analysis.get("proteins_g", 0)))
     fats_g = round(float(food_analysis.get("fats_g", 0)))
@@ -599,6 +623,7 @@ async def analyze_meal(
         suggested_totals=schemas.MealTotals(**analyzed_meal_totals),
         ai_response_text=analyzed_meal_totals["food_name"],
         ai_coach_advice=coach_advice,
+        recommendations=recommendations,
         nutrition_model_used=model_used,
         coach_model_used=model_used
     )
@@ -619,8 +644,9 @@ def confirm_and_create_meal(
                 detail="Лимит на 5 приемов пищи в день для бесплатного аккаунта исчерпан. Оформите премиум-подписку для снятия ограничений."
             )
 
+    # Если есть совет от AI, используем его как food_name, иначе используем оригинальное название
     if meal_data.ai_coach_advice:
-        meal_data.food_name = f"{meal_data.food_name}\n\n{meal_data.ai_coach_advice}"
+        meal_data.food_name = meal_data.ai_coach_advice
 
     return crud.create_meal(db=db, meal=meal_data, user_id=current_user.id)
 
@@ -730,6 +756,12 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
     days_with_data = 0
     progress_lab_summary_for_today = None
 
+    # --- Получение рекомендаций из кэша ---
+    cached_data = recommendations_cache.get(current_user.id, {})
+    user_recommendations = cached_data.get("nutrients")
+    coach_advice = cached_data.get("coach_advice")
+
+
     for i in range(days):
         current_date = end_date - timedelta(days=i)
         
@@ -771,7 +803,13 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
 
         score_result = {}
         if current_date == date.today():
-            score_result = utils.calculate_progress_lab_score(target_macros, actual_macros)
+            # Передаем и общий совет, и советы по нутриентам
+            score_result = utils.calculate_progress_lab_score(
+                target_macros, 
+                actual_macros, 
+                recommendations=user_recommendations,
+                coach_advice=coach_advice
+            )
             progress_lab_summary_for_today = score_result
         else:
             end_of_day_dt = datetime.combine(current_date, datetime.min.time().replace(hour=23))
@@ -913,6 +951,11 @@ async def handle_reset_password(
             {"email": email, "error": "Срок действия кода истек. Запросите новый."},
             status_code=status.HTTP_400_BAD_REQUEST
         )
+
+    # Если пользователь неактивен, активируем его
+    if not user.is_active:
+        user.is_active = True
+        user.is_verified = True
 
     crud.reset_password(db, user, new_password)
     return templates.TemplateResponse(

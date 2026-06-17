@@ -1,8 +1,9 @@
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, validator, computed_field
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 import re
 from .models import UserRole
+from .config import settings
 
 # --- AI Hub Chat Schema ---
 class AIChatRequest(BaseModel):
@@ -124,10 +125,17 @@ class MealTotals(BaseModel):
     total_carbohydrates: float = 0
 
 # --- Analysis Schemas ---
+class Recommendations(BaseModel):
+    calories: Optional[str] = None
+    proteins: Optional[str] = None
+    fats: Optional[str] = None
+    carbohydrates: Optional[str] = None
+
 class AnalysisResponse(BaseModel):
     suggested_totals: MealTotals
     ai_response_text: str
     ai_coach_advice: Optional[str] = None
+    recommendations: Optional[Recommendations] = None
     nutrition_model_used: Optional[str] = None # Модель для анализа КБЖУ
     coach_model_used: Optional[str] = None      # Модель для совета
 
@@ -143,6 +151,14 @@ class Meal(MealBase, MealTotals):
     id: int
     user_id: int
     timestamp: datetime
+
+    @computed_field
+    @property
+    def formatted_time(self) -> str:
+        """Computes formatted time in MSK timezone."""
+        msk_time = self.timestamp.astimezone(settings.MSK_TZ)
+        return msk_time.strftime('%H:%M')
+
     class Config:
         from_attributes = True
 

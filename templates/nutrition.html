@@ -56,9 +56,127 @@
             transition: height 0.5s ease-out;
             border-radius: 6px;
         }
+        /* --- Стили для кастомного модального окна --- */
+        #edit-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        #edit-modal-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #edit-modal {
+            background: rgba(28, 28, 40, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 320px;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        #edit-modal-overlay.visible #edit-modal {
+            transform: scale(1);
+        }
+        /* Анимация "потряхивания" */
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .shake {
+            animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* --- Стили для расширенного вида на 1 день --- */
+        #average-stats.day-view-active > div {
+            flex-direction: column;
+            justify-content: center;
+            gap: 1rem; /* Пространство между score и нутриентами */
+        }
+        #average-stats.day-view-active #avg-score-wrapper {
+            cursor: pointer;
+        }
+        #average-stats.day-view-active #avg-score-wrapper .ring-container {
+            width: 6rem; /* 96px */
+            height: 6rem;
+        }
+        #average-stats.day-view-active #avg-score-wrapper #avg-score-value {
+            font-size: 1.875rem; /* 30px */
+        }
+        #average-stats.day-view-active #nutrient-rings-wrapper .ring-container {
+            width: 4rem; /* 64px */
+            height: 4rem;
+        }
+        #average-stats.day-view-active #nutrient-rings-wrapper .font-bold {
+            font-size: 1.125rem; /* 18px */
+        }
+
+        /* --- Стили для статусов колец --- */
+        .progress-ring-bar { transition: stroke 0.5s ease; }
+        .progress-ring-bar.status-warning { stroke: url(#gradient-warning); }
+        .progress-ring-bar.status-danger  { stroke: url(#gradient-danger); }
+        .progress-ring-bar.status-success { stroke: url(#gradient-success); }
+
+        /* --- Стили для блока советов --- */
+        .advice-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        .advice-card h5 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.6;
+        }
+        .advice-card p {
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+        .advice-card.status-warning {
+            border-color: #F59E0B;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+        .advice-card.status-danger {
+            border-color: #EF4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
     </style>
 </head>
 <body class="h-dvh flex flex-col">
+
+    <!-- SVG-градиенты для статусов -->
+    <svg width="0" height="0" style="position:absolute;">
+      <defs>
+        <linearGradient id="gradient-warning" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#FBBF24;" />
+          <stop offset="100%" style="stop-color:#F59E0B;" />
+        </linearGradient>
+        <linearGradient id="gradient-danger" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#F87171;" />
+          <stop offset="100%" style="stop-color:#EF4444;" />
+        </linearGradient>
+        <linearGradient id="gradient-success" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#4ADE80;" />
+          <stop offset="100%" style="stop-color:#22C55E;" />
+        </linearGradient>
+      </defs>
+    </svg>
 
     <header class="text-center pb-2" style="padding-top: calc(0.01rem + env(safe-area-inset-top));">
         <h1 class="text-3xl font-extrabold tracking-wider">ProgressLab</h1>
@@ -68,32 +186,42 @@
     <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-2 pb-24">
 
         <!-- ... (остальные блоки без изменений) ... -->
-        <div class="w-full">
-            <div id="average-stats" class="pt-0">
-                <h3 class="text-lg font-semibold text-center mb-2">Средние показатели</h3>
-                <div class="flex justify-center w-full space-x-4">
-                    <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-amber relative"><svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-calories-value" class="font-bold text-base" style="color: var(--color-amber);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Ккал</p></div>
-                    <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-protein-white relative"><svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-protein-value" class="font-bold text-base" style="color: var(--color-protein-white);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Б</p></div>
-                    <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-golden-orange relative"><svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-fat-value" class="font-bold text-base" style="color: var(--color-golden-orange);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">Ж</p></div>
-                    <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-muted-teal relative"><svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-carbs-value" class="font-bold text-base" style="color: var(--color-muted-teal);">0</span></div></div><p class="text-xs font-semibold text-gray-400 mt-1">У</p></div>
-                </div>
-            </div>
-        </div>
         <div class="w-full space-y-1">
             <div class="w-full flex justify-center">
                 <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
-                    <button id="seven-days-btn" class="period-btn w-1/3 rounded-full py-1 text-sm font-semibold">7 дней</button>
-                    <button id="one-month-btn" class="period-btn w-1/3 rounded-full py-1 text-sm font-semibold">1 мес</button>
-                    <button id="three-months-btn" class="period-btn w-1/3 rounded-full py-1 text-sm font-semibold text-gray-400">3 мес</button>
+                    <button id="one-day-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold">1 день</button>
+                    <button id="seven-days-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold">7 д</button>
+                    <button id="one-month-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold">1 мес</button>
+                    <button id="three-months-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">3 мес</button>
                 </div>
             </div>
-            <div class="relative w-full glassmorphism neon-glow-pantone-gray rounded-2xl p-2">
-                <div class="relative h-40 w-full flex items-end justify-around">
-                    <div class="absolute top-1/2 left-0 right-0 border-t border-dashed border-[#F0F0F0]/80 -translate-y-1/2"></div>
-                    <span id="average-score-label" class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-[#F0F0F0] hidden px-2" style="background-color: #1a202c; text-shadow: 0 0 8px #F0F0F0;"></span>
-                    <div id="score-graph-container" class="flex justify-around w-full h-full items-center relative z-10"></div>
+            <div id="stats-graph-panel" class="relative w-full glassmorphism rounded-2xl p-2 flex flex-col" style="height: 14rem;">
+                <div id="average-stats" class="pt-0 mb-2 transition-all duration-300">
+                    <div class="flex justify-center items-center w-full space-x-4">
+                        <div id="avg-score-wrapper" class="text-center flex flex-col items-center space-y-1">
+                            <div id="avg-score-ring-container" class="ring-container w-16 h-16 relative">
+                                <svg id="avg-score-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                    <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                    <circle id="avg-score-bar" class="progress-ring-bar" cx="60" cy="60" r="54" />
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span id="avg-score-value" class="font-bold text-xl">0</span>
+                                </div>
+                            </div>
+                            <p class="text-xs font-semibold text-gray-400 mt-1">Score</p>
+                        </div>
+                        <div id="nutrient-rings-wrapper" class="flex justify-center w-full space-x-2">
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-amber relative"><svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle data-nutrient="calories" class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-calories-value" class="font-bold text-base" style="color: var(--color-amber);">0</span></div></div><p id="avg-calories-label" class="text-xs font-semibold text-gray-400 mt-1">Ккал</p></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-protein-white relative"><svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle data-nutrient="protein" class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-protein-value" class="font-bold text-base" style="color: var(--color-protein-white);">0</span></div></div><p id="avg-protein-label" class="text-xs font-semibold text-gray-400 mt-1">Б</p></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-golden-orange relative"><svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle data-nutrient="fat" class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-fat-value" class="font-bold text-base" style="color: var(--color-golden-orange);">0</span></div></div><p id="avg-fat-label" class="text-xs font-semibold text-gray-400 mt-1">Ж</p></div>
+                            <div class="text-center flex flex-col items-center space-y-1"><div class="ring-container w-12 aspect-square neon-glow-muted-teal relative"><svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120"><circle class="progress-ring-bg" cx="60" cy="60" r="54" /><circle data-nutrient="carbohydrates" class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" /></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span id="avg-carbs-value" class="font-bold text-base" style="color: var(--color-muted-teal);">0</span></div></div><p id="avg-carbs-label" class="text-xs font-semibold text-gray-400 mt-1">У</p></div>
+                        </div>
+                    </div>
                 </div>
-                <div id="x-axis-labels-container" class="flex justify-around w-full text-xs text-gray-400 mt-1 px-1"></div>
+                <div id="graph-wrapper" class="relative h-24 w-full flex items-end justify-around transition-opacity duration-300">
+                    <div id="score-graph-container" class="flex justify-around w-full h-full items-end relative z-10"></div>
+                </div>
+                <div id="x-axis-labels-container" class="flex justify-around w-full text-xs text-gray-400 mt-1 px-1 transition-opacity duration-300"></div>
             </div>
         </div>
 
@@ -102,25 +230,34 @@
                 <div class="flex flex-col justify-start">
 
                     <div id="initial-view" class="flex flex-col justify-start space-y-1">
-                        <div id="progress-lab-summary" class="w-full -mt-6 bg-white/5 border border-white/20 rounded-2xl p-4 flex flex-col neon-glow-pantone-gray">
-                            <h4 id="summary-title" class="text-white font-bold text-lg text-center">Анализ дня</h4>
-                            <div id="summary-content-default" class="w-full flex-grow flex items-center justify-center">
-                                <p id="summary-advice" class="text-sm text-gray-200 leading-relaxed text-left font-medium w-full"></p>
+                        <!-- Блок советов -->
+                        <div id="progress-lab-summary" class="w-full -mt-6 bg-white/5 border border-white/20 rounded-2xl p-3 flex flex-col space-y-2">
+                            <div id="coach-general-advice-card" class="advice-card">
+                                <h5 class="text-white">Общий совет</h5>
+                                <p id="coach-general-advice">Загрузка...</p>
                             </div>
-                            <div id="summary-content-gamified" class="hidden w-full flex-grow flex flex-col justify-center">
-                                <p id="pace-advice-text" class="text-xs text-gray-200 leading-relaxed text-center font-medium w-full px-2 mb-3"></p>
-                                <div id="all-rings-container" class="flex justify-around items-center w-full">
-                                    <div id="score-ring-container" class="w-1/5">
-                                        <!-- Score ring will be injected here by JS -->
-                                    </div>
-                                    <div id="pace-bars-container" class="flex justify-around items-center w-4/5">
-                                        <!-- Nutrient rings will be injected here by JS -->
-                                    </div>
+                            <div id="coach-nutrient-grid" class="grid grid-cols-2 gap-2">
+                                <div id="coach-calories-advice-card" class="advice-card" data-nutrient="calories">
+                                    <h5 style="color: var(--color-amber);">Калории</h5>
+                                    <p id="coach-calories-advice">Загрузка...</p>
+                                </div>
+                                <div id="coach-protein-advice-card" class="advice-card" data-nutrient="protein">
+                                    <h5 style="color: var(--color-protein-white);">Белки</h5>
+                                    <p id="coach-protein-advice">Загрузка...</p>
+                                </div>
+                                <div id="coach-fat-advice-card" class="advice-card" data-nutrient="fat">
+                                    <h5 style="color: var(--color-golden-orange);">Жиры</h5>
+                                    <p id="coach-fat-advice">Загрузка...</p>
+                                </div>
+                                <div id="coach-carbs-advice-card" class="advice-card" data-nutrient="carbohydrates">
+                                    <h5 style="color: var(--color-muted-teal);">Углеводы</h5>
+                                    <p id="coach-carbs-advice">Загрузка...</p>
                                 </div>
                             </div>
                         </div>
+
                         <div class="w-full pb-2 pt-2">
-                            <label for="meal-image" class="upload-button-label neon-glow-pantone-gray block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95 {% if not features.can_analyze_meal %}opacity-50 cursor-not-allowed{% endif %}">
+                            <label for="meal-image" class="upload-button-label block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95 border border-white/20">
                                 Добавить фото
                             </label>
                             <input type="file" id="meal-image" accept="image/*" class="hidden" {% if not features.can_analyze_meal %}disabled{% endif %}>
@@ -133,7 +270,7 @@
                     </div>
 
                     <div id="image-added-view" class="hidden flex flex-col justify-start space-y-4">
-                        <textarea id="meal-description" class="w-full bg-gray-800/50 text-white rounded-xl p-3 h-48 placeholder-gray-400 neon-glow-pantone-gray" placeholder="Например: каша на кокосовом молоке с ложкой масла.&#10;&#10;Это поможет AI точнее определить КБЖУ." {% if not features.can_analyze_meal %}disabled{% endif %}></textarea>
+                        <textarea id="meal-description" class="w-full bg-gray-800/50 text-white rounded-xl p-3 h-48 placeholder-gray-400" placeholder="Например: каша на кокосовом молоке с ложкой масла.&#10;&#10;Это поможет AI точнее определить КБЖУ." {% if not features.can_analyze_meal %}disabled{% endif %}></textarea>
                         <div class="w-full pb-2 pt-2">
                             <button id="send-to-ai-btn" class="w-full py-4 text-lg font-semibold rounded-xl text-white ai-animated-glow-button transition-all active:scale-95 {% if not features.can_analyze_meal %}opacity-50 cursor-not-allowed{% endif %}" {% if not features.can_analyze_meal %}disabled{% endif %}>
                                 Фото добавлено. Отправить в AI
@@ -145,13 +282,37 @@
             </div>
 
             <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-center hidden">
-                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 flex flex-col justify-center items-center space-y-4 neon-glow-pantone-gray mb-16">
+                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 flex flex-col justify-center items-center space-y-4 mb-16">
                     <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full slow-spin"></div>
                     <p class="text-center text-gray-300 leading-relaxed">Ваше фото отправлено в AI модель.<br>Процесс распознавания занимает до 10 секунд.<br>Не переходите на другие страницы и ожидайте ответа.</p>
                 </div>
             </div>
 
-            <div id="step-3" class="step ai-section w-full flex-grow"><div id="ai-coach-section" class="w-full ai-coach-container mb-4"><h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4><p id="ai-coach-advice" class="text-white text-left text-sm leading-relaxed"></p></div><div id="ai-response-text" class="hidden"></div><form id="confirm-form" class="space-y-4"><div class="form-group"><label for="meal-type">Прием пищи</label><select id="meal-type" class="w-full bg-white/5 border border-white/10 rounded-xl p-2 text-white"><option value="breakfast">Завтрак</option><option value="lunch" selected>Обед</option><option value="dinner">Ужин</option><option value="snack">Перекус</option></select></div><div id="interactive-rings-container" class="grid grid-cols-2 gap-3"><div class="flex flex-col"><label class="text-xs text-amber-500">Ккал</label><input type="number" id="calories" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-blue-300">Белки</label><input type="number" id="protein" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-orange-400">Жиры</label><input type="number" id="fat" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div><div class="flex flex-col"><label class="text-xs text-teal-400">Углев.</label><input type="number" id="carbohydrates" class="bg-white/5 border border-white/10 rounded-lg p-2 text-white"></div></div><div class="flex space-x-3 pt-2"><button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button><button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button></div></form></div>
+            <div id="step-3" class="step ai-section w-full flex-grow">
+                <div id="ai-coach-section" class="w-full ai-coach-container mb-4">
+                    <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4>
+                    <p id="ai-coach-advice" class="text-white text-left text-sm leading-relaxed"></p>
+                </div>
+                <div id="ai-response-text" class="hidden"></div>
+                <form id="confirm-form" class="space-y-4">
+                    <div id="interactive-rings-container" class="grid grid-cols-4 gap-2">
+                        <!-- Заглушки для интерактивных колец -->
+                    </div>
+                    <div class="form-group flex justify-center pt-2">
+                        <select id="meal-type" class="w-2/3 bg-white/5 border border-white/10 rounded-xl p-2 text-white text-center transition-all duration-300 focus:ring-2 focus:ring-purple-500">
+                            <option value="" disabled selected>Тип приема пищи</option>
+                            <option value="breakfast">Завтрак</option>
+                            <option value="lunch">Обед</option>
+                            <option value="dinner">Ужин</option>
+                            <option value="snack">Перекус</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-3 pt-2">
+                        <button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button>
+                        <button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <div class="w-full mt-4">
@@ -164,7 +325,27 @@
     {% set active_page = 'nutrition' %}
     {% include 'includes/bottom_nav.html' %}
 
-    <div id="score-tooltip" class="absolute z-50 p-3 rounded-2xl glassmorphism neon-glow-pantone-gray text-white opacity-0 transition-all duration-300 pointer-events-none shadow-2xl" style="min-width: 180px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transform: scale(0.9);"><p class="font-black text-base mb-1.5 tracking-wide border-b border-white/10 pb-1" id="tooltip-date"></p><div class="space-y-1 text-sm"><div class="flex justify-between items-center"><span class="text-gray-400">Score:</span><span id="tooltip-score" class="font-bold text-lg"></span></div><div class="flex justify-between items-center"><span style="color: var(--color-amber);">Ккал:</span><span class="font-medium"><span id="tooltip-calories"></span> / <span id="tooltip-target-calories"></span></span></div><div class="flex justify-between items-center"><span style="color: var(--color-protein-white);">Белки:</span><span class="font-medium"><span id="tooltip-protein"></span>г / <span id="tooltip-target-protein"></span>г</span></div><div class="flex justify-between items-center"><span style="color: var(--color-golden-orange);">Жиры:</span><span class="font-medium"><span id="tooltip-fat"></span>г / <span id="tooltip-target-fat"></span>г</span></div><div class="flex justify-between items-center"><span style="color: var(--color-muted-teal);">Углеводы:</span><span class="font-medium"><span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</span></div></div><div class="mt-2 text-xs italic font-medium leading-tight opacity-90" id="tooltip-message"></div></div>
+    <!-- Tooltip для графика -->
+    <div id="score-tooltip" class="absolute z-50 p-3 rounded-2xl glassmorphism text-white opacity-0 transition-all duration-300 pointer-events-none shadow-2xl" style="min-width: 180px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transform: scale(0.9);"><p class="font-black text-base mb-1.5 tracking-wide border-b border-white/10 pb-1" id="tooltip-date"></p><div class="space-y-1 text-sm"><div class="flex justify-between items-center"><span class="text-gray-400">Score:</span><span id="tooltip-score" class="font-bold text-lg"></span></div><div class="flex justify-between items-center"><span style="color: var(--color-amber);">Ккал:</span><span class="font-medium"><span id="tooltip-calories"></span> / <span id="tooltip-target-calories"></span></span></div><div class="flex justify-between items-center"><span style="color: var(--color-protein-white);">Белки:</span><span class="font-medium"><span id="tooltip-protein"></span>г / <span id="tooltip-target-protein"></span>г</span></div><div class="flex justify-between items-center"><span style="color: var(--color-golden-orange);">Жиры:</span><span class="font-medium"><span id="tooltip-fat"></span>г / <span id="tooltip-target-fat"></span>г</span></div><div class="flex justify-between items-center"><span style="color: var(--color-muted-teal);">Углеводы:</span><span class="font-medium"><span id="tooltip-carbs"></span>г / <span id="tooltip-target-carbs"></span>г</span></div></div><div class="mt-2 text-xs italic font-medium leading-tight opacity-90" id="tooltip-message"></div></div>
+
+    <!-- Tooltip для колец в "Анализе дня" -->
+    <div id="ring-tooltip" class="absolute z-50 p-3 rounded-2xl glassmorphism text-white opacity-0 transition-all duration-300 pointer-events-none shadow-2xl" style="max-width: 220px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transform: scale(0.9);">
+        <h4 id="ring-tooltip-title" class="font-bold text-base mb-1.5 tracking-wide border-b border-white/10 pb-1"></h4>
+        <p id="ring-tooltip-content" class="text-sm font-medium leading-tight opacity-90"></p>
+    </div>
+
+    <!-- Кастомное модальное окно для редактирования -->
+    <div id="edit-modal-overlay">
+        <div id="edit-modal">
+            <h3 id="modal-title" class="text-lg font-bold text-center mb-4">Изменить значение</h3>
+            <input type="number" id="modal-input" class="w-full bg-white/10 border border-white/20 rounded-lg p-3 text-white text-center text-xl" placeholder="0">
+            <p id="modal-error" class="text-red-500 text-xs text-center mt-2 h-4"></p>
+            <div class="flex space-x-3 mt-4">
+                <button id="modal-cancel-btn" class="w-1/2 py-2 rounded-lg bg-red-600/70 text-white font-bold">Отмена</button>
+                <button id="modal-confirm-btn" class="w-1/2 py-2 rounded-lg bg-green-600 text-white font-bold">OK</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/static/js/api.js"></script>
     <script src="/static/js/nutrition.js"></script>

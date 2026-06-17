@@ -128,7 +128,7 @@ def reset_password(db: Session, user: models.User, new_password: str) -> models.
 
 def create_user_metric(db: Session, metric: schemas.UserMetricsCreate, user_id: int) -> models.UserMetrics:
     """Создает новую запись метрик для пользователя."""
-    db_metric = models.UserMetrics(**metric.dict(), user_id=user_id)
+    db_metric = models.UserMetrics(**metric.dict(), user_id=user_id, timestamp=datetime.now(settings.MSK_TZ))
     db.add(db_metric)
     db.commit()
     db.refresh(db_metric)
@@ -209,11 +209,12 @@ def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.M
     db_meal = models.Meal(
         user_id=user_id,
         meal_type=meal.meal_type,
-        food_name=meal.food_name, # Добавлено
+        food_name=meal.food_name,
         total_calories=meal.total_calories,
         total_protein=meal.total_protein,
         total_fat=meal.total_fat,
-        total_carbohydrates=meal.total_carbohydrates
+        total_carbohydrates=meal.total_carbohydrates,
+        timestamp=datetime.now(settings.MSK_TZ) # Устанавливаем время с часовым поясом
     )
     db.add(db_meal)
     db.commit()
