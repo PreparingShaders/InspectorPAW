@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let compressedFile = null;
     let nutrientValues = {}; // Хранилище для текущих значений КБЖУ
     let initialNutrientValues = {}; // Хранилище для исходных значений от AI
+    let currentFoodQuality = null; // Хранилище для данных о качестве еды
 
     const steps = {
         1: document.getElementById('step-1'),
@@ -118,6 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         mealDescriptionInput.value = '';
         confirmForm.reset();
         compressedFile = null;
+        currentFoodQuality = null;
         if (imagePreview) imagePreview.src = '';
         interactiveRingsContainer.innerHTML = ''; // Очищаем кольца
         showInitialView();
@@ -167,8 +169,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const foodName = result.ai_response_text || 'Прием пищи';
             const coachAdvice = result.ai_coach_advice || 'Приятного аппетита!';
 
+            currentFoodQuality = result.food_quality; // Сохраняем данные о качестве
+            const toxicComment = currentFoodQuality ? currentFoodQuality.toxic_coach_comment : '';
+
             aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'Vision'})`;
-            aiCoachAdvice.innerHTML = `Блюдо: ${foodName}<br><br>${coachAdvice}`;
+            aiCoachAdvice.innerHTML = `Блюдо: ${foodName}<br><br>${toxicComment}`;
             currentFoodName = foodName;
 
             initialNutrientValues = {
@@ -307,7 +312,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             total_protein: nutrientValues.protein,
             total_fat: nutrientValues.fat,
             total_carbohydrates: nutrientValues.carbohydrates,
-            ai_coach_advice: aiCoachAdvice.innerHTML, // Отправляем HTML для сохранения
+            ai_comment: currentFoodQuality ? currentFoodQuality.toxic_coach_comment : null,
+            ai_score: currentFoodQuality ? currentFoodQuality.ai_score : null,
+            processing_level: currentFoodQuality ? currentFoodQuality.processing_level : null,
+            satiety_index: currentFoodQuality ? currentFoodQuality.satiety_index : null,
+            micronutrient_density: currentFoodQuality ? currentFoodQuality.micronutrient_density : null,
         };
 
         try {
