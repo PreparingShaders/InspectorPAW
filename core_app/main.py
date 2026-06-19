@@ -182,6 +182,20 @@ def _first_numeric_value(sources: list, *keys: str) -> float:
     return 0.0
 
 
+def _clamp_score_0_10(val, default: int = 5) -> int:
+    try:
+        return max(0, min(10, int(round(float(val)))))
+    except (TypeError, ValueError):
+        return default
+
+
+def _clamp_score_0_100(val, default: int = 50) -> int:
+    try:
+        return max(0, min(100, int(round(float(val)))))
+    except (TypeError, ValueError):
+        return default
+
+
 def extract_food_analysis(ai_response_data: dict) -> dict:
     """Извлекает КБЖУ из ответа AI с учётом разных вариантов имён полей."""
     food_analysis = ai_response_data.get("food_analysis") or {}
@@ -204,6 +218,9 @@ def extract_food_analysis(ai_response_data: dict) -> dict:
         sources, "carbs_g", "carbohydrates_g", "carbohydrate_g",
         "carbs", "carbohydrates", "total_carbohydrates"
     ))
+    fiber_g = round(_first_numeric_value(
+        sources, "fiber_g", "fiber", "total_fiber", "fibers_g"
+    ))
 
     food_name = (
         food_analysis.get("food_name")
@@ -222,7 +239,84 @@ def extract_food_analysis(ai_response_data: dict) -> dict:
         "total_protein": proteins_g,
         "total_fat": fats_g,
         "total_carbohydrates": carbs_g,
+        "total_fiber": fiber_g,
     }
+
+
+def extract_food_quality(ai_response_data: dict) -> Optional[dict]:
+    fq = ai_response_data.get("food_quality") or {}
+    if not isinstance(fq, dict):
+        return None
+
+    toxic = (
+        fq.get("toxic_coach_comment")
+        or fq.get("coach_comment")
+        or fq.get("comment")
+        or ""
+    )
+    if not toxic and fq.get("ai_score") is None:
+        return None
+
+    processing = fq.get("processing_level", "MINIMALLY_PROCESSED")
+    micronutrient = fq.get("micronutrient_density", "MEDIUM")
+
+    return {
+        "ai_score": _clamp_score_0_100(fq.get("ai_score")),
+        "processing_level": processing,
+        "satiety_index": max(1, min(5, _clamp_score_0_10(fq.get("satiety_index"), default=3))),
+        "micronutrient_density": micronutrient,
+        "toxic_coach_comment": toxic or "Без комментария.",
+        "oil_absorption_score": _clamp_score_0_10(
+            fq.get("oil_absorption_score", fq.get("oil_absorption"))
+        ),
+        "ultra_processing_score": _clamp_score_0_10(
+            fq.get("ultra_processing_score", fq.get("ultra_processing"))
+        ),
+        "hidden_ingredients_risk": _clamp_score_0_10(
+            fq.get("hidden_ingredients_risk", fq.get("hidden_ingredients"))
+        ),
+    }
+
+
+def extract_ai_analysis_details(ai_response_data: dict) -> list:
+    raw = (
+        ai_response_data.get("ai_analysis_details")
+        or ai_response_data.get("ingredients_analysis")
+        or []
+    )
+    if not isinstance(raw, list):
+        return []
+
+    criteria_keys = (
+        "portion_confidence", "processing", "oil_absorption",
+        "hidden_ingredients", "protein_quality", "micronutrients", "calorie_density",
+    )
+    result = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name") or item.get("ingredient") or "Неизвестный ингредиент"
+        criteria = item.get("criteria") or {}
+        if not isinstance(criteria, dict):
+            criteria = {}
+
+        result.append({
+            "name": str(name),
+            "estimated_weight_g": (
+                w if (w := _first_numeric_value([item], "estimated_weight_g", "weight_g", "portion_g")) > 0
+                else None
+            ),
+            "calories": _first_numeric_value([item], "calories", "kcal"),
+            "protein_g": _first_numeric_value([item], "protein_g", "protein", "proteins_g"),
+            "fat_g": _first_numeric_value([item], "fat_g", "fat", "fats_g"),
+            "carbs_g": _first_numeric_value([item], "carbs_g", "carbs", "carbohydrates_g"),
+            "fiber_g": _first_numeric_value([item], "fiber_g", "fiber"),
+            "criteria": {
+                key: _clamp_score_0_10(criteria.get(key))
+                for key in criteria_keys
+            },
+        })
+    return result
 
 
 async def get_nutrition_analysis_and_advice(
@@ -243,16 +337,22 @@ async def get_nutrition_analysis_and_advice(
 
     ### ЗАДАЧА:
     1.  **Сначала внимательно изучи ПРИКРЕПЛЁННОЕ ФОТО** (если оно есть) и/или описание еды.
-    2.  **Оцени КБЖУ именно этого блюда** — рассчитай белки, жиры и углеводы по содержимому фото/описания.
-    3.  **Оцени качество еды**: Заполни ВСЕ поля в блоке `food_quality`.
-    4.  **Дай рекомендации**: Сформулируй общий совет на день (`coach_advice`) и краткие советы по каждому нутриенту (`recommendations`) с учётом контекста дня.
-    5.  **Верни ТОЛЬКО ОДИН JSON-ОБЪЕКТ** без лишнего текста, пояснений и Markdown-разметки.
+    2.  **Оцени КБЖУ и клетчатку** именно этого блюда — белки, жиры, углеводы, клетчатку (`fiber_g`).
+    3.  **Оцени качество еды**: заполни ВСЕ поля в `food_quality`, включая шкалы 0–10.
+    4.  **Разбери ингредиенты**: заполни `ai_analysis_details` — каждый видимый ингредиент с КБЖУ и 7 критериями.
+    5.  **Дай рекомендации**: `coach_advice` и `recommendations` с учётом контекста дня.
+    6.  **Верни ТОЛЬКО ОДИН JSON-ОБЪЕКТ** без лишнего текста, пояснений и Markdown-разметки.
 
     ### КРИТИЧЕСКИ ВАЖНО ДЛЯ food_analysis:
-    - Значения `proteins_g`, `fats_g`, `carbs_g` — это КБЖУ **только текущего блюда на фото**, а НЕ дневные нормы, остаток или цели из контекста.
+    - Значения `proteins_g`, `fats_g`, `carbs_g`, `fiber_g` — КБЖУ **только текущего блюда на фото**, а НЕ дневные нормы из контекста.
     - Каждое новое фото — новый анализ: оценивай видимую порцию, состав и объём заново.
-    - Если на фото есть хлеб, крупы, фрукты, овощи, сладости — `carbs_g` должен быть больше 0.
-    - Используй именно эти ключи: `proteins_g`, `fats_g`, `carbs_g` (не `protein`, не `carbohydrates`).
+    - Используй ключи: `proteins_g`, `fats_g`, `carbs_g`, `fiber_g`.
+
+    ### ШКАЛЫ 0–10 (food_quality и criteria):
+    - `oil_absorption_score` — насколько блюдо пропитано маслом (0 = сухое, 10 = очень жирное).
+    - `ultra_processing_score` — степень ультраобработки (0 = цельный продукт, 10 = фастфуд/УПП).
+    - `hidden_ingredients_risk` — риск скрытых соусов, сахара, усилителей (0 = нет, 10 = высокий).
+    - В `criteria` каждого ингредиента: `portion_confidence`, `processing`, `oil_absorption`, `hidden_ingredients`, `protein_quality`, `micronutrients`, `calorie_density` (все 0–10).
 
     ### КОНТЕКСТ ДНЯ ПОЛЬЗОВАТЕЛЯ:
     ```json
@@ -265,6 +365,7 @@ async def get_nutrition_analysis_and_advice(
     -   **`processing_level`**: `WHOLE` (цельный), `MINIMALLY_PROCESSED` (минимально обработанный), `ULTRA_PROCESSED` (ультра-обработанный).
     -   **`satiety_index`**: Оцени сытость от 1 до 5 (1 - не сытно, 5 - очень сытно).
     -   **`micronutrient_density`**: `HIGH`, `MEDIUM` или `LOW`.
+    -   **`oil_absorption_score`**, **`ultra_processing_score`**, **`hidden_ingredients_risk`**: целые 0–10 для всего блюда.
     -   **`toxic_coach_comment`**: Хлёсткий, саркастичный, но мотивирующий комментарий о качестве **именно этой еды**.
     -   **`coach_advice`**: Общий совет на **остаток дня** с учетом этого приема пищи.
     -   **`recommendations`**: Краткие (1-2 предложения) советы по каждому нутриенту на остаток дня.
@@ -278,15 +379,39 @@ async def get_nutrition_analysis_and_advice(
         "calories": 0,
         "proteins_g": 0,
         "fats_g": 0,
-        "carbs_g": 0
+        "carbs_g": 0,
+        "fiber_g": 0
       }},
       "food_quality": {{
         "ai_score": 85,
         "processing_level": "MINIMALLY_PROCESSED",
         "satiety_index": 4,
         "micronutrient_density": "HIGH",
-        "toxic_coach_comment": "Отличный выбор, белковый заряд! Но в следующий раз попробуй сыр с меньшей жирностью, чемпион."
+        "oil_absorption_score": 3,
+        "ultra_processing_score": 2,
+        "hidden_ingredients_risk": 1,
+        "toxic_coach_comment": "Отличный выбор, белковый заряд!"
       }},
+      "ai_analysis_details": [
+        {{
+          "name": "куриная грудка",
+          "estimated_weight_g": 150,
+          "calories": 165,
+          "protein_g": 31,
+          "fat_g": 3,
+          "carbs_g": 0,
+          "fiber_g": 0,
+          "criteria": {{
+            "portion_confidence": 8,
+            "processing": 2,
+            "oil_absorption": 1,
+            "hidden_ingredients": 1,
+            "protein_quality": 9,
+            "micronutrients": 6,
+            "calorie_density": 4
+          }}
+        }}
+      ],
       "coach_advice": "Твой общий совет на остаток дня здесь.",
       "recommendations": {{
         "calories": "Твой совет по калориям на остаток дня.",
@@ -681,9 +806,10 @@ async def analyze_meal(
         raise HTTPException(status_code=503, detail=f"All AI models are currently unavailable. Last error: {last_error}")
 
     # --- Обработка ответа ---
-    food_quality = ai_response_data.get("food_quality")
+    food_quality_raw = extract_food_quality(ai_response_data)
     coach_advice = ai_response_data.get("coach_advice", "Не удалось получить совет от AI.")
     recommendations = ai_response_data.get("recommendations")
+    ai_analysis_details_raw = extract_ai_analysis_details(ai_response_data)
 
     # --- Кэширование рекомендаций ---
     if recommendations:
@@ -694,9 +820,27 @@ async def analyze_meal(
 
     analyzed_meal_totals = extract_food_analysis(ai_response_data)
 
+    food_quality = None
+    if food_quality_raw:
+        try:
+            food_quality = schemas.FoodQuality(**food_quality_raw)
+        except Exception as e:
+            print(f"FoodQuality validation warning: {e}")
+
+    ai_analysis_details = None
+    if ai_analysis_details_raw:
+        parsed_details = []
+        for item in ai_analysis_details_raw:
+            try:
+                parsed_details.append(schemas.IngredientAnalysisDetail(**item))
+            except Exception as e:
+                print(f"Skip invalid ingredient detail: {e}")
+        ai_analysis_details = parsed_details or None
+
     return schemas.AnalysisResponse(
         suggested_totals=schemas.MealTotals(**analyzed_meal_totals),
-        food_quality=schemas.FoodQuality(**food_quality) if food_quality else None,
+        food_quality=food_quality,
+        ai_analysis_details=ai_analysis_details,
         ai_response_text=analyzed_meal_totals["food_name"],
         ai_coach_advice=coach_advice,
         recommendations=recommendations,

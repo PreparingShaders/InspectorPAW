@@ -206,6 +206,17 @@ def delete_meal(db: Session, meal_id: int):
 
 def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.Meal:
     """Создает запись о приеме пищи с итоговыми КБЖУ и оценкой качества."""
+    ai_details = None
+    if meal.ai_analysis_details:
+        ai_details = []
+        for item in meal.ai_analysis_details:
+            if hasattr(item, "model_dump"):
+                ai_details.append(item.model_dump())
+            elif hasattr(item, "dict"):
+                ai_details.append(item.dict())
+            else:
+                ai_details.append(item)
+
     db_meal = models.Meal(
         user_id=user_id,
         meal_type=meal.meal_type,
@@ -214,11 +225,16 @@ def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.M
         total_protein=meal.total_protein,
         total_fat=meal.total_fat,
         total_carbohydrates=meal.total_carbohydrates,
+        total_fiber=meal.total_fiber or 0,
         ai_comment=meal.ai_comment,
         ai_score=meal.ai_score,
         processing_level=meal.processing_level,
         satiety_index=meal.satiety_index,
         micronutrient_density=meal.micronutrient_density,
+        oil_absorption_score=meal.oil_absorption_score,
+        ultra_processing_score=meal.ultra_processing_score,
+        hidden_ingredients_risk=meal.hidden_ingredients_risk,
+        ai_analysis_details=ai_details,
         timestamp=datetime.now(settings.MSK_TZ)
     )
     db.add(db_meal)

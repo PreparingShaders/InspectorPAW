@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let compressedFile = null;
     let nutrientValues = {}; // Хранилище для текущих значений КБЖУ
     let initialNutrientValues = {}; // Хранилище для исходных значений от AI
-    let currentFoodQuality = null; // Хранилище для данных о качестве еды
+    let currentFoodQuality = null;
+    let currentMealAnalysis = null;
 
     const steps = {
         1: document.getElementById('step-1'),
@@ -125,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         confirmForm.reset();
         compressedFile = null;
         currentFoodQuality = null;
+        currentMealAnalysis = null;
         if (imagePreview) imagePreview.src = '';
         interactiveRingsContainer.innerHTML = ''; // Очищаем кольца
         showInitialView();
@@ -172,6 +174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         goToStep(2);
         currentFoodQuality = null;
+        currentMealAnalysis = null;
         nutrientValues = {};
         initialNutrientValues = {};
 
@@ -193,7 +196,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const foodName = result.ai_response_text || 'Прием пищи';
             const coachAdvice = result.ai_coach_advice || 'Приятного аппетита!';
 
-            currentFoodQuality = result.food_quality; // Сохраняем данные о качестве
+            currentFoodQuality = result.food_quality;
+            currentMealAnalysis = {
+                total_fiber: result.suggested_totals?.total_fiber || 0,
+                ai_analysis_details: result.ai_analysis_details || null,
+            };
             const toxicComment = currentFoodQuality ? currentFoodQuality.toxic_coach_comment : '';
 
             aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'Vision'})`;
@@ -530,11 +537,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             total_protein: nutrientValues.protein,
             total_fat: nutrientValues.fat,
             total_carbohydrates: nutrientValues.carbohydrates,
+            total_fiber: currentMealAnalysis?.total_fiber ?? 0,
             ai_comment: currentFoodQuality ? currentFoodQuality.toxic_coach_comment : null,
             ai_score: currentFoodQuality ? currentFoodQuality.ai_score : null,
             processing_level: currentFoodQuality ? currentFoodQuality.processing_level : null,
             satiety_index: currentFoodQuality ? currentFoodQuality.satiety_index : null,
             micronutrient_density: currentFoodQuality ? currentFoodQuality.micronutrient_density : null,
+            oil_absorption_score: currentFoodQuality?.oil_absorption_score ?? null,
+            ultra_processing_score: currentFoodQuality?.ultra_processing_score ?? null,
+            hidden_ingredients_risk: currentFoodQuality?.hidden_ingredients_risk ?? null,
+            ai_analysis_details: currentMealAnalysis?.ai_analysis_details ?? null,
         };
 
         try {
