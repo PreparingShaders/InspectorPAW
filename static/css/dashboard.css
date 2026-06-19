@@ -40,6 +40,31 @@ body {
     min-height: 100dvh;
 }
 
+/* --- Стили для интерактивного кольца --- */
+#interactive-rings-container {
+    position: relative;
+    cursor: pointer;
+}
+
+#interactive-rings-container svg {
+    overflow: visible; /* To make shadows visible */
+}
+
+.nutrient-ring-segment {
+    fill: none;
+    transition: stroke-dasharray 0.5s ease-out, stroke-dashoffset 0.5s ease-out;
+    filter: url(#drop-shadow);
+}
+
+.nutrient-ring-label {
+    font-size: 12px;
+    fill: white;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none; /* Labels should not block clicks on the ring */
+}
+
+
 /* --- Анимация свечения --- */
 @keyframes neon-pulse-amber { 0%, 100% { box-shadow: 0 0 5px 1px var(--color-amber); } 50% { box-shadow: 0 0 8px 2px var(--color-amber); } }
 @keyframes neon-pulse-protein { 0%, 100% { box-shadow: 0 0 5px 1px var(--color-protein-white); } 50% { box-shadow: 0 0 8px 2px var(--color-protein-white); } }

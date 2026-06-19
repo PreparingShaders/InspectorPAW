@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
     <title>Анализ еды - ProgressLab</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=1">
     <style>
         .ai-coach-container {
             border-radius: 1.5rem; /* 24px */
@@ -49,63 +49,8 @@
         <div class="w-full">
             <div id="average-stats" class="pt-4">
                 <h3 class="text-lg font-semibold text-center mb-4">Средние данные</h3>
-                <div class="flex justify-center w-full space-x-2">
-                    <!-- Калории -->
-                    <div class="text-center flex flex-col items-center space-y-1">
-                        <div class="ring-container w-16 aspect-square neon-glow-amber relative">
-                            <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
-                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="avg-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
-                                <span class="label-text text-xs -mt-1">ккал</span>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Белки -->
-                    <div class="text-center flex flex-col items-center space-y-1">
-                        <div class="ring-container w-16 aspect-square neon-glow-protein-white relative">
-                            <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
-                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="avg-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
-                                <span class="label-text text-xs -mt-1">г</span>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Жиры -->
-                    <div class="text-center flex flex-col items-center space-y-1">
-                        <div class="ring-container w-16 aspect-square neon-glow-golden-orange relative">
-                            <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
-                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="avg-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
-                                <span class="label-text text-xs -mt-1">г</span>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Углеводы -->
-                    <div class="text-center flex flex-col items-center space-y-1">
-                        <div class="ring-container w-16 aspect-square neon-glow-muted-teal relative">
-                            <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
-                                <circle class="progress-ring-overflow" cx="60" cy="60" r="54" />
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="avg-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
-                                <span class="label-text text-xs -mt-1">г</span>
-                            </div>
-                        </div>
-                    </div>
+                <div id="interactive-rings-container" class="w-full h-64 flex items-center justify-center">
+                    <!-- The new interactive ring will be generated here by JavaScript -->
                 </div>
             </div>
         </div>
@@ -201,7 +146,7 @@
     {% set active_page = 'nutrition' %}
     {% include 'includes/bottom_nav.html' %}
 
-    <script src="/static/js/analyze.js"></script>
+    <script src="/static/js/analyze.js?v=1"></script>
 
     <!-- Tooltip for Score Graph -->
     <div id="score-tooltip" class="absolute z-50 p-3 rounded-2xl glassmorphism neon-glow-pantone-gray text-white opacity-0 transition-all duration-300 pointer-events-none shadow-2xl" style="min-width: 180px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transform: scale(0.9);">

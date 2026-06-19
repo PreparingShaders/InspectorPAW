@@ -272,15 +272,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderInteractiveRings() {
         interactiveRingsContainer.innerHTML = '';
 
-        const container = document.createElement('div');
-        container.className = 'composite-ring-container';
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        const viewBoxSize = 280; // Оставляем увеличенный размер для лейблов
+        svg.setAttribute("viewBox", `0 0 ${viewBoxSize} ${viewBoxSize}`);
+        svg.style.overflow = 'visible';
 
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('viewBox', '0 0 120 120');
-        svg.classList.add('composite-ring-svg');
+        const defs = document.createElementNS(svgNS, "defs");
+        const filter = document.createElementNS(svgNS, "filter");
+        filter.setAttribute("id", "drop-shadow");
+        filter.innerHTML = `<feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>`;
+        defs.appendChild(filter);
+        svg.appendChild(defs);
 
-        const center = document.createElement('div');
-        center.className = 'composite-ring-center';
+        const center = viewBoxSize / 2;
+        const radius = 85; // Уменьшаем радиус
+        const strokeWidth = 22; // Уменьшаем толщину
+        const circumference = 2 * Math.PI * radius;
+        const gapDegrees = 4;
 
         const nutrientConfig = {
             protein: { label: 'Белки', color: 'var(--color-protein-white)' },
@@ -290,75 +299,111 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const { protein, fat, carbohydrates, calories } = nutrientValues;
         const totalGrams = protein + fat + carbohydrates;
-        const gapSize = totalGrams > 0 ? 4 : 0; // Размер разрыва в градусах
 
-        const radius = 48;
-        const centerPoint = 60;
-        const circumference = 2 * Math.PI * radius;
-
-        // Фоновое кольцо
-        const bgRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        bgRing.setAttribute('class', 'composite-ring-bg');
-        bgRing.setAttribute('cx', centerPoint);
-        bgRing.setAttribute('cy', centerPoint);
-        bgRing.setAttribute('r', radius);
-        svg.appendChild(bgRing);
+        if (totalGrams === 0) {
+            // Отрисовка плейсхолдера
+            return;
+        }
 
         let currentAngle = 0;
-        const activeNutrients = Object.keys(nutrientConfig).filter(key => nutrientValues[key] > 0);
-        const totalGaps = activeNutrients.length * gapSize;
+        const segmentsData = [];
+        const drawOrder = ['protein', 'fat', 'carbohydrates'];
 
-        activeNutrients.forEach(key => {
+        drawOrder.forEach(key => {
             const value = nutrientValues[key];
-            const percentage = totalGrams > 0 ? (value / totalGrams) : 0;
-            const angle = percentage * (360 - totalGaps);
-            const dasharray = (angle / 360) * circumference;
-
-            const segment = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            segment.setAttribute('class', 'composite-ring-segment');
-            segment.setAttribute('cx', centerPoint);
-            segment.setAttribute('cy', centerPoint);
-            segment.setAttribute('r', radius);
-            segment.setAttribute('stroke', nutrientConfig[key].color);
-            segment.setAttribute('stroke-width', '12');
-            segment.setAttribute('fill', 'transparent');
-            segment.setAttribute('stroke-dasharray', `${dasharray} ${circumference}`);
-            segment.style.transformOrigin = 'center';
-            segment.style.transform = `rotate(${currentAngle}deg)`;
-
-            segment.addEventListener('click', () => showEditModal(key, nutrientConfig[key]));
-            svg.appendChild(segment);
-
-            // Добавляем подписи
-            const labelAngleRad = ((currentAngle + angle / 2) - 90) * Math.PI / 180;
-            const labelRadius = radius + 24;
-            const x = centerPoint + labelRadius * Math.cos(labelAngleRad);
-            const y = centerPoint + labelRadius * Math.sin(labelAngleRad);
-
-            const label = document.createElement('div');
-            label.className = 'nutrient-label';
-            label.style.left = `${x}px`;
-            label.style.top = `${y}px`;
-            label.innerHTML = `
-                <span class="font-bold" style="color: ${nutrientConfig[key].color};">${nutrientConfig[key].label}</span>
-                <br>
-                <span class="text-gray-400">${value}г</span>
-            `;
-            container.appendChild(label);
-
-            currentAngle += angle + gapSize;
+            if (value > 0) {
+                const percentage = value / totalGrams;
+                const angle = percentage * 360;
+                segmentsData.push({ key, angle, ...nutrientConfig[key] });
+            }
         });
 
-        center.innerHTML = `
-            <span class="text-3xl font-bold" style="color: var(--color-amber);">${calories}</span>
-            <span class="text-sm text-gray-400 -mt-1">Ккал</span>
-        `;
-        center.addEventListener('click', () => showEditModal('calories', { label: 'Ккал' }));
+        const totalGaps = segmentsData.length * gapDegrees;
+        const scaleFactor = (360 - totalGaps) / 360;
 
-        container.appendChild(svg);
-        container.appendChild(center);
-        interactiveRingsContainer.appendChild(container);
+        const segmentElements = segmentsData.map(item => {
+            const angle = item.angle * scaleFactor;
+            const arcLength = (circumference / 360) * angle;
+
+            const segment = document.createElementNS(svgNS, "circle");
+            segment.setAttribute("cx", center);
+            segment.setAttribute("cy", center);
+            segment.setAttribute("r", radius);
+            segment.setAttribute("stroke", item.color);
+            segment.setAttribute("stroke-width", strokeWidth);
+            segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
+            segment.setAttribute("stroke-linecap", "round"); // Закругленные концы
+            segment.setAttribute("fill", "none");
+            segment.setAttribute("filter", "url(#drop-shadow)");
+            segment.style.transformOrigin = 'center';
+            segment.style.transform = `rotate(${currentAngle - 90 + gapDegrees / 2}deg)`; // Добавляем половину гэпа для центрирования
+
+            item.startAngle = currentAngle;
+            item.endAngle = currentAngle + angle;
+
+            currentAngle += angle + gapDegrees;
+            return segment;
+        });
+
+        const labelsGroup = document.createElementNS(svgNS, "g");
+        segmentsData.forEach(item => {
+            const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
+            const labelRadius = radius + strokeWidth + 10; // Увеличиваем радиус для лейблов
+            const x = center + labelRadius * Math.cos(midAngleRad);
+            const y = center + labelRadius * Math.sin(midAngleRad);
+
+            const label = document.createElementNS(svgNS, "text");
+            label.setAttribute("x", x);
+            label.setAttribute("y", y);
+            label.setAttribute("text-anchor", "middle");
+            label.setAttribute("dominant-baseline", "middle");
+            label.setAttribute("fill", item.color);
+            label.style.fontSize = '14px';
+            label.style.fontWeight = 'bold';
+            label.innerHTML = `<tspan x="${x}" dy="-0.6em">${item.label}</tspan><tspan x="${x}" dy="1.2em" style="font-size: 12px; fill: var(--text-secondary);">${nutrientValues[item.key]}г</tspan>`;
+            labelsGroup.appendChild(label);
+        });
+
+        segmentElements.forEach(el => svg.appendChild(el));
+        svg.appendChild(labelsGroup);
+
+        const centerText = document.createElementNS(svgNS, "text");
+        centerText.setAttribute("x", "50%");
+        centerText.setAttribute("y", "50%");
+        centerText.setAttribute("text-anchor", "middle");
+        centerText.setAttribute("dominant-baseline", "central");
+        centerText.setAttribute("fill", "var(--color-amber)");
+        centerText.style.fontSize = '32px';
+        centerText.style.fontWeight = 'bold';
+        centerText.innerHTML = `<tspan x="50%" dy="-0.1em">${calories}</tspan><tspan x="50%" dy="1.2em" style="font-size: 14px; fill: var(--text-secondary);">Ккал</tspan>`;
+        svg.appendChild(centerText);
+
+        svg.addEventListener('click', (event) => {
+            const rect = svg.getBoundingClientRect();
+            const clickX = (event.clientX - rect.left) * (viewBoxSize / rect.width);
+            const clickY = (event.clientY - rect.top) * (viewBoxSize / rect.height);
+
+            const dx = clickX - center;
+            const dy = clickY - center;
+
+            let clickAngle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
+
+            const clickedSegment = segmentsData.find(item => {
+                const start = item.startAngle;
+                const end = item.endAngle + gapDegrees; // Учитываем гэп
+                return clickAngle >= start && clickAngle < end;
+            });
+
+            if (clickedSegment) {
+                showEditModal(clickedSegment.key, clickedSegment);
+            } else if (Math.sqrt(dx*dx + dy*dy) < (radius - strokeWidth / 2)) {
+                showEditModal('calories', { label: 'Ккал' });
+            }
+        });
+
+        interactiveRingsContainer.appendChild(svg);
     }
+
 
     function recalculateCalories() {
         const { protein, fat, carbohydrates } = nutrientValues;

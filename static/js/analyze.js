@@ -2,25 +2,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Глобальный перехватчик для fetch ---
     async function fetchWithAuth(url, options = {}) {
         const token = localStorage.getItem('accessToken');
-
-        // Добавляем заголовок авторизации, если он еще не установлен
         if (token && !options.headers?.Authorization) {
             if (!options.headers) {
                 options.headers = {};
             }
             options.headers['Authorization'] = `Bearer ${token}`;
         }
-
         const response = await fetch(url, options);
-
-        // Если токен истек или невалиден, выходим из системы
         if (response.status === 401) {
             localStorage.removeItem('accessToken');
             window.location.href = '/login';
-            // Возвращаем "пустой" Promise, чтобы остановить выполнение цепочки .then()
             return new Promise(() => {});
         }
-
         return response;
     }
 
@@ -65,9 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function resetAnalysisUI() {
-        // Не скрываем resultsSection, а сбрасываем его содержимое
         aiResponseTextDiv.innerHTML = '';
-
         const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
         fields.forEach(field => {
             const slider = document.getElementById(`${field}-slider`);
@@ -75,32 +66,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             slider.value = 0;
             input.value = 0;
         });
-
-        // Скрываем только AI коуча, так как он относится к конкретному анализу
         aiCoachSection.style.display = 'none';
         localStorage.removeItem('lastAiAdvice');
         localStorage.removeItem('lastCoachModel');
-
         clearAnalysisState();
     }
 
     function populateResultsFromState(state) {
         if (!state) return;
-
         currentFoodName = state.foodName;
         aiResponseTextDiv.innerHTML = `<p>${currentFoodName}</p>`;
-
         document.getElementById('meal-type').value = state.mealType;
-
         const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
         fields.forEach(field => {
             const slider = document.getElementById(`${field}-slider`);
             const input = document.getElementById(field);
             const value = state.values[field] || 0;
-
             slider.value = value;
             input.value = value;
-
             const config = { minBuffer: field === 'calories' ? 500 : 30, step: field === 'calories' ? 10 : 1 };
             const buffer = Math.max(value * 0.5, config.minBuffer);
             const minValue = Math.max(0, Math.floor((value - buffer) / config.step) * config.step);
@@ -108,8 +91,174 @@ document.addEventListener('DOMContentLoaded', async () => {
             slider.min = minValue;
             slider.max = maxValue;
         });
-
         resultsSection.style.display = 'block';
+    }
+
+    // --- Новый, исправленный код для интерактивного кольца ---
+    function createInteractiveRing(container, data, totalCalories) {
+        container.innerHTML = '';
+
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        const viewBoxSize = 280; // Увеличим, чтобы было место для лейблов и тени
+        svg.setAttribute("viewBox", `0 0 ${viewBoxSize} ${viewBoxSize}`);
+
+        const defs = document.createElementNS(svgNS, "defs");
+        const filter = document.createElementNS(svgNS, "filter");
+        filter.setAttribute("id", "drop-shadow");
+        filter.innerHTML = `<feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.4"/>`;
+        defs.appendChild(filter);
+        svg.appendChild(defs);
+
+        const center = viewBoxSize / 2;
+        const radius = 100;
+        const strokeWidth = 25;
+        const circumference = 2 * Math.PI * radius;
+        const gapDegrees = 2.5; // Увеличим отступ
+
+        const totalGrams = data.reduce((sum, item) => sum + item.value, 0);
+
+        if (totalGrams === 0) {
+            // Отрисовка плейсхолдера, если нет данных
+            const placeholder = document.createElementNS(svgNS, "circle");
+            placeholder.setAttribute("cx", center);
+            placeholder.setAttribute("cy", center);
+            placeholder.setAttribute("r", radius);
+            placeholder.setAttribute("stroke", "var(--border-color)");
+            placeholder.setAttribute("stroke-width", strokeWidth);
+            placeholder.setAttribute("fill", "none");
+            svg.appendChild(placeholder);
+            const centerText = document.createElementNS(svgNS, "text");
+            centerText.setAttribute("x", "50%");
+            centerText.setAttribute("y", "50%");
+            centerText.setAttribute("text-anchor", "middle");
+            centerText.setAttribute("dominant-baseline", "middle");
+            centerText.setAttribute("font-size", "20");
+            centerText.setAttribute("fill", "var(--text-secondary)");
+            centerText.textContent = "Нет данных";
+            svg.appendChild(centerText);
+            container.appendChild(svg);
+            return;
+        }
+
+        let currentAngle = 0;
+        const segments = [];
+        const labels = [];
+
+        data.forEach(item => {
+            const percentage = item.value / totalGrams;
+            const angle = 360 * percentage;
+            const arcLength = (circumference / 360) * (angle > gapDegrees ? angle - gapDegrees : angle);
+
+            const segment = document.createElementNS(svgNS, "circle");
+            segment.setAttribute("cx", center);
+            segment.setAttribute("cy", center);
+            segment.setAttribute("r", radius);
+            segment.setAttribute("stroke", item.color);
+            segment.setAttribute("stroke-width", strokeWidth);
+            segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
+            segment.setAttribute("stroke-linecap", "butt"); // Важно для четких отступов
+            segment.setAttribute("transform", `rotate(${currentAngle - 90 + gapDegrees / 2}, ${center}, ${center})`);
+            segment.setAttribute("fill", "none");
+            segment.setAttribute("filter", "url(#drop-shadow)"); // Применяем тень
+            segments.push(segment);
+
+            // Сохраняем углы для обработчика кликов
+            item.startAngle = currentAngle;
+            item.endAngle = currentAngle + angle;
+
+            // Создаем лейблы, но пока не добавляем в SVG
+            const labelRadius = radius + strokeWidth;
+            const midAngleRad = (currentAngle + angle / 2 - 90) * Math.PI / 180;
+            const x = center + labelRadius * Math.cos(midAngleRad);
+            const y = center + labelRadius * Math.sin(midAngleRad);
+
+            const label = document.createElementNS(svgNS, "text");
+            label.setAttribute("class", "nutrient-ring-label");
+            label.setAttribute("x", x);
+            label.setAttribute("y", y);
+            label.textContent = item.label;
+            labels.push(label);
+
+            currentAngle += angle;
+        });
+
+        // Сначала добавляем все сегменты, потом все лейблы
+        segments.forEach(s => svg.appendChild(s));
+        labels.forEach(l => svg.appendChild(l));
+
+        // Центральный текст (калории)
+        const centerText = document.createElementNS(svgNS, "text");
+        centerText.setAttribute("x", "50%");
+        centerText.setAttribute("y", "50%");
+        centerText.setAttribute("text-anchor", "middle");
+        centerText.setAttribute("dominant-baseline", "middle");
+        centerText.setAttribute("font-size", "40");
+        centerText.setAttribute("font-weight", "bold");
+        centerText.setAttribute("fill", "var(--color-amber)");
+        centerText.innerHTML = `
+            <tspan x="50%" dy="-0.1em">${Math.round(totalCalories)}</tspan>
+            <tspan x="50%" dy="1.2em" font-size="16" fill="var(--text-secondary)">ккал</tspan>
+        `;
+        svg.appendChild(centerText);
+
+        // Единый обработчик кликов
+        svg.addEventListener('click', (event) => {
+            const rect = svg.getBoundingClientRect();
+            const x = event.clientX - rect.left - center;
+            const y = event.clientY - rect.top - center;
+
+            let clickAngle = Math.atan2(y, x) * 180 / Math.PI + 90;
+            if (clickAngle < 0) {
+                clickAngle += 360;
+            }
+
+            const clickedSegment = data.find(item => clickAngle >= item.startAngle && clickAngle < item.endAngle);
+
+            if (clickedSegment) {
+                console.log(`Clicked on ${clickedSegment.label}`);
+                const input = document.getElementById(clickedSegment.id);
+                if (input) {
+                    const sliderGroup = input.closest('.slider-group');
+                    if (sliderGroup) {
+                        sliderGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        input.focus();
+                    }
+                }
+            }
+        });
+
+        container.appendChild(svg);
+    }
+
+    async function fetchAndDrawRing() {
+        try {
+            const response = await fetchWithAuth('/users/me/average-stats');
+            if (!response.ok) throw new Error('Could not fetch average stats.');
+            const stats = await response.json();
+
+            const container = document.getElementById('interactive-rings-container');
+            if (!container) return;
+
+            const nutrientData = [
+                { id: 'protein', label: 'Белки', value: stats.avg_protein || 0, color: 'var(--color-protein-white)' },
+                { id: 'fat', label: 'Жиры', value: stats.avg_fat || 0, color: 'var(--color-golden-orange)' },
+                { id: 'carbohydrates', label: 'Углеводы', value: stats.avg_carbohydrates || 0, color: 'var(--color-muted-teal)' }
+            ];
+
+            createInteractiveRing(container, nutrientData, stats.avg_calories);
+
+            mealLogsContainer.dataset.targetCalories = stats.target_calories;
+            mealLogsContainer.dataset.targetProtein = stats.target_protein;
+            mealLogsContainer.dataset.targetFat = stats.target_fat;
+            mealLogsContainer.dataset.targetCarbohydrates = stats.target_carbohydrates;
+
+        } catch (error) {
+            console.error("Error fetching average stats for ring:", error);
+            // В случае ошибки, рисуем пустой круг
+            const container = document.getElementById('interactive-rings-container');
+            if (container) createInteractiveRing(container, [], 0);
+        }
     }
 
     function updateRingWithOverflow(ringId, value, maxValue) {
@@ -130,24 +279,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const valueElement = document.getElementById(valueElementId);
         if (valueElement) {
             valueElement.textContent = Math.round(value);
-        }
-    }
-
-    async function fetchAndDisplayAverageStats() {
-        try {
-            const response = await fetchWithAuth('/users/me/average-stats');
-            if (!response.ok) throw new Error('Could not fetch average stats.');
-            const stats = await response.json();
-            updateRingWithOverflow('avg-calories-ring', stats.avg_calories, stats.target_calories);
-            updateRingWithOverflow('avg-protein-ring', stats.avg_protein, stats.target_protein);
-            updateRingWithOverflow('avg-fat-ring', stats.avg_fat, stats.target_fat);
-            updateRingWithOverflow('avg-carbs-ring', stats.avg_carbohydrates, stats.target_carbohydrates);
-            mealLogsContainer.dataset.targetCalories = stats.target_calories;
-            mealLogsContainer.dataset.targetProtein = stats.target_protein;
-            mealLogsContainer.dataset.targetFat = stats.target_fat;
-            mealLogsContainer.dataset.targetCarbohydrates = stats.target_carbohydrates;
-        } catch (error) {
-            console.error("Error fetching average stats:", error);
         }
     }
 
@@ -426,7 +557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => { errorMessageDiv.textContent = ''; errorMessageDiv.style.color = ''; }, 3000);
 
             await fetchAndDisplayMealHistory();
-            await fetchAndDisplayAverageStats();
+            await fetchAndDrawRing(); // Обновляем кольцо после добавления еды
         } catch (error) {
             errorMessageDiv.textContent = error.message;
         } finally {
@@ -449,6 +580,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateResultsFromState(savedState);
     }
 
-    await fetchAndDisplayAverageStats();
+    await fetchAndDrawRing();
     await fetchAndDisplayMealHistory();
 });
