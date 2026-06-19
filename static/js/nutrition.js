@@ -117,6 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function resetWizard() {
         mealImageInput.value = '';
         mealDescriptionInput.value = '';
+        mealTypeSelect.value = '';
         confirmForm.reset();
         compressedFile = null;
         currentFoodQuality = null;
@@ -151,9 +152,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('Сначала выберите фото.');
             return;
         }
+        const mealType = mealTypeSelect.value;
+        if (!mealType) {
+            mealTypeSelect.classList.add('border-red-500', 'ring-2', 'ring-red-500', 'shake');
+            setTimeout(() => mealTypeSelect.classList.remove('shake'), 820);
+            return;
+        }
+
         goToStep(2);
         const formData = new FormData();
         formData.append('file', compressedFile, compressedFile.name);
+        formData.append('meal_type', mealType);
         if (mealDescriptionInput.value.trim()) formData.append('description', mealDescriptionInput.value.trim());
         const aiModel = localStorage.getItem('aiHubCurrentModel');
         if (aiModel) formData.append('ai_model', aiModel);
@@ -300,8 +309,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         const mealType = mealTypeSelect.value;
         if (!mealType) {
-            mealTypeSelect.classList.add('border-red-500', 'ring-2', 'ring-red-500', 'shake');
-            setTimeout(() => mealTypeSelect.classList.remove('shake'), 820);
+            // Эта проверка не должна сработать, если логика sendToAiBtn верна,
+            // но оставим ее как дополнительную защиту.
+            alert("Пожалуйста, выберите тип приема пищи.");
             return;
         }
 
