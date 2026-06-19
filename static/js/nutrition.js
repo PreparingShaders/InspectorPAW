@@ -73,11 +73,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     canvas.toBlob(
                         (blob) => {
-                            if (blob) {
-                                const newFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
+                            if (blob && blob.size > 500) {
+                                const newFile = new File(
+                                    [blob],
+                                    `meal_${Date.now()}.jpg`,
+                                    { type: 'image/jpeg', lastModified: Date.now() }
+                                );
                                 resolve(newFile);
                             } else {
-                                reject(new Error('Canvas to Blob conversion failed'));
+                                reject(new Error('Canvas to Blob conversion failed or image is empty'));
                             }
                         },
                         'image/jpeg',
@@ -128,6 +132,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Логика анализа ---
+    const uploadLabel = document.querySelector('label[for="meal-image"]');
+    if (uploadLabel) {
+        uploadLabel.addEventListener('click', () => {
+            mealImageInput.value = '';
+        });
+    }
+
     mealImageInput.addEventListener('change', async () => {
         if (!mealImageInput.files || mealImageInput.files.length === 0) return;
         try {
@@ -160,6 +171,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         goToStep(2);
+        currentFoodQuality = null;
+        nutrientValues = {};
+        initialNutrientValues = {};
+
         const formData = new FormData();
         formData.append('file', compressedFile, compressedFile.name);
         formData.append('meal_type', mealType);
@@ -168,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (aiModel) formData.append('ai_model', aiModel);
 
         try {
-            const res = await fetchWithAuth('/analyze-meal/', { method: 'POST', body: formData });
+            const res = await fetchWithAuth('/analyze-meal/', { method: 'POST', body: formData, cache: 'no-store' });
             if (!res.ok) {
                 const errorData = await res.json();
                 throw new Error(errorData.detail || 'Ошибка анализа');
@@ -269,41 +284,94 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Рендеринг и интерактивность составного кольца КБЖУ ---
+    function createRingGradient(defs, id, light, dark) {
+        const grad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+        grad.setAttribute("id", id);
+        grad.setAttribute("x1", "20%");
+        grad.setAttribute("y1", "0%");
+        grad.setAttribute("x2", "80%");
+        grad.setAttribute("y2", "100%");
+        [{ offset: "0%", color: light }, { offset: "100%", color: dark }].forEach(({ offset, color }) => {
+            const stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            stop.setAttribute("offset", offset);
+            stop.setAttribute("stop-color", color);
+            grad.appendChild(stop);
+        });
+        defs.appendChild(grad);
+    }
+
+    function createRingGlowFilter(defs, id, glowColor) {
+        const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+        filter.setAttribute("id", id);
+        filter.setAttribute("x", "-40%");
+        filter.setAttribute("y", "-40%");
+        filter.setAttribute("width", "180%");
+        filter.setAttribute("height", "180%");
+        filter.innerHTML = `
+            <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
+            <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="${glowColor}" flood-opacity="0.55" result="glow"/>
+            <feMerge>
+                <feMergeNode in="depth"/>
+                <feMergeNode in="glow"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        `;
+        defs.appendChild(filter);
+    }
+
     function renderInteractiveRings() {
         interactiveRingsContainer.innerHTML = '';
 
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
-        const viewBoxSize = 280; // Оставляем увеличенный размер для лейблов
+        const viewBoxSize = 280;
         svg.setAttribute("viewBox", `0 0 ${viewBoxSize} ${viewBoxSize}`);
-        svg.style.overflow = 'visible';
 
         const defs = document.createElementNS(svgNS, "defs");
-        const filter = document.createElementNS(svgNS, "filter");
-        filter.setAttribute("id", "drop-shadow");
-        filter.innerHTML = `<feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>`;
-        defs.appendChild(filter);
+        createRingGradient(defs, 'grad-protein', '#FFFFFF', '#9CA3AF');
+        createRingGradient(defs, 'grad-fat', '#FFF9C4', '#F9A825');
+        createRingGradient(defs, 'grad-carbs', '#86EFAC', '#16A34A');
+        createRingGlowFilter(defs, 'glow-protein', '#FFFFFF');
+        createRingGlowFilter(defs, 'glow-fat', '#FFEE58');
+        createRingGlowFilter(defs, 'glow-carbs', '#4ADE80');
+
+        const centerTextFilter = document.createElementNS(svgNS, "filter");
+        centerTextFilter.setAttribute("id", "glow-calories-text");
+        centerTextFilter.setAttribute("x", "-30%");
+        centerTextFilter.setAttribute("y", "-30%");
+        centerTextFilter.setAttribute("width", "160%");
+        centerTextFilter.setAttribute("height", "160%");
+        centerTextFilter.innerHTML = `<feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#D4A017" flood-opacity="0.7"/>`;
+        defs.appendChild(centerTextFilter);
         svg.appendChild(defs);
 
         const center = viewBoxSize / 2;
-        const radius = 85; // Уменьшаем радиус
-        const strokeWidth = 22; // Уменьшаем толщину
+        const radius = 86;
+        const strokeWidth = 17;
         const circumference = 2 * Math.PI * radius;
-        const gapDegrees = 4;
+        const gapDegrees = 3;
 
         const nutrientConfig = {
-            protein: { label: 'Белки', color: 'var(--color-protein-white)' },
-            fat: { label: 'Жиры', color: 'var(--color-golden-orange)' },
-            carbohydrates: { label: 'Углеводы', color: 'var(--color-muted-teal)' }
+            protein: { label: 'Белки', color: '#FFFFFF', gradient: 'url(#grad-protein)', filter: 'url(#glow-protein)' },
+            fat: { label: 'Жиры', color: '#FFEE58', gradient: 'url(#grad-fat)', filter: 'url(#glow-fat)' },
+            carbohydrates: { label: 'Углеводы', color: '#4ADE80', gradient: 'url(#grad-carbs)', filter: 'url(#glow-carbs)' }
         };
 
         const { protein, fat, carbohydrates, calories } = nutrientValues;
         const totalGrams = protein + fat + carbohydrates;
 
         if (totalGrams === 0) {
-            // Отрисовка плейсхолдера
             return;
         }
+
+        const trackRing = document.createElementNS(svgNS, "circle");
+        trackRing.setAttribute("cx", center);
+        trackRing.setAttribute("cy", center);
+        trackRing.setAttribute("r", radius);
+        trackRing.setAttribute("stroke", "rgba(255,255,255,0.07)");
+        trackRing.setAttribute("stroke-width", strokeWidth + 2);
+        trackRing.setAttribute("fill", "none");
+        svg.appendChild(trackRing);
 
         let currentAngle = 0;
         const segmentsData = [];
@@ -324,31 +392,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         const segmentElements = segmentsData.map(item => {
             const angle = item.angle * scaleFactor;
             const arcLength = (circumference / 360) * angle;
+            const rotation = `${currentAngle - 90 + gapDegrees / 2}deg`;
+
+            const shadow = document.createElementNS(svgNS, "circle");
+            shadow.setAttribute("cx", center);
+            shadow.setAttribute("cy", center);
+            shadow.setAttribute("r", radius);
+            shadow.setAttribute("stroke", "rgba(0,0,0,0.35)");
+            shadow.setAttribute("stroke-width", strokeWidth + 2);
+            shadow.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
+            shadow.setAttribute("stroke-linecap", "round");
+            shadow.setAttribute("fill", "none");
+            shadow.style.transformOrigin = 'center';
+            shadow.style.transform = `rotate(${rotation}) translateY(2px)`;
 
             const segment = document.createElementNS(svgNS, "circle");
             segment.setAttribute("cx", center);
             segment.setAttribute("cy", center);
             segment.setAttribute("r", radius);
-            segment.setAttribute("stroke", item.color);
+            segment.setAttribute("stroke", item.gradient);
             segment.setAttribute("stroke-width", strokeWidth);
             segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
-            segment.setAttribute("stroke-linecap", "round"); // Закругленные концы
+            segment.setAttribute("stroke-linecap", "round");
             segment.setAttribute("fill", "none");
-            segment.setAttribute("filter", "url(#drop-shadow)");
+            segment.setAttribute("filter", item.filter);
             segment.style.transformOrigin = 'center';
-            segment.style.transform = `rotate(${currentAngle - 90 + gapDegrees / 2}deg)`; // Добавляем половину гэпа для центрирования
+            segment.style.transform = `rotate(${rotation})`;
 
             item.startAngle = currentAngle;
             item.endAngle = currentAngle + angle;
-
             currentAngle += angle + gapDegrees;
-            return segment;
+
+            return { shadow, segment };
         });
 
         const labelsGroup = document.createElementNS(svgNS, "g");
         segmentsData.forEach(item => {
             const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
-            const labelRadius = radius + strokeWidth + 10; // Увеличиваем радиус для лейблов
+            const labelRadius = radius + strokeWidth + 10;
             const x = center + labelRadius * Math.cos(midAngleRad);
             const y = center + labelRadius * Math.sin(midAngleRad);
 
@@ -358,13 +439,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             label.setAttribute("text-anchor", "middle");
             label.setAttribute("dominant-baseline", "middle");
             label.setAttribute("fill", item.color);
-            label.style.fontSize = '14px';
+            label.style.fontSize = '12px';
             label.style.fontWeight = 'bold';
-            label.innerHTML = `<tspan x="${x}" dy="-0.6em">${item.label}</tspan><tspan x="${x}" dy="1.2em" style="font-size: 12px; fill: var(--text-secondary);">${nutrientValues[item.key]}г</tspan>`;
+            label.innerHTML = `<tspan x="${x}" dy="-0.6em">${item.label}</tspan><tspan x="${x}" dy="1.2em" style="font-size: 11px; fill: var(--text-secondary);">${nutrientValues[item.key]}г</tspan>`;
             labelsGroup.appendChild(label);
         });
 
-        segmentElements.forEach(el => svg.appendChild(el));
+        segmentElements.forEach(({ shadow, segment }) => {
+            svg.appendChild(shadow);
+            svg.appendChild(segment);
+        });
         svg.appendChild(labelsGroup);
 
         const centerText = document.createElementNS(svgNS, "text");
@@ -372,10 +456,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         centerText.setAttribute("y", "50%");
         centerText.setAttribute("text-anchor", "middle");
         centerText.setAttribute("dominant-baseline", "central");
-        centerText.setAttribute("fill", "var(--color-amber)");
-        centerText.style.fontSize = '32px';
+        centerText.setAttribute("fill", "#D4A017");
+        centerText.setAttribute("filter", "url(#glow-calories-text)");
+        centerText.style.fontSize = '28px';
         centerText.style.fontWeight = 'bold';
-        centerText.innerHTML = `<tspan x="50%" dy="-0.1em">${calories}</tspan><tspan x="50%" dy="1.2em" style="font-size: 14px; fill: var(--text-secondary);">Ккал</tspan>`;
+        centerText.innerHTML = `<tspan x="50%" dy="-0.1em">${calories}</tspan><tspan x="50%" dy="1.2em" style="font-size: 12px; fill: var(--text-secondary);">Ккал</tspan>`;
         svg.appendChild(centerText);
 
         svg.addEventListener('click', (event) => {
@@ -390,7 +475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const clickedSegment = segmentsData.find(item => {
                 const start = item.startAngle;
-                const end = item.endAngle + gapDegrees; // Учитываем гэп
+                const end = item.endAngle + gapDegrees;
                 return clickAngle >= start && clickAngle < end;
             });
 

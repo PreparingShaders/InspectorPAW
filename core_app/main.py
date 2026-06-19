@@ -167,11 +167,71 @@ async def get_models():
         raise HTTPException(status_code=500, detail=f"Не удалось получить список моделей: {e}")
 
 
+def _first_numeric_value(sources: list, *keys: str) -> float:
+    for src in sources:
+        if not isinstance(src, dict):
+            continue
+        for key in keys:
+            val = src.get(key)
+            if val is None or val == "":
+                continue
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                continue
+    return 0.0
+
+
+def extract_food_analysis(ai_response_data: dict) -> dict:
+    """Извлекает КБЖУ из ответа AI с учётом разных вариантов имён полей."""
+    food_analysis = ai_response_data.get("food_analysis") or {}
+    if not isinstance(food_analysis, dict):
+        food_analysis = {}
+
+    nested = food_analysis.get("macros") or food_analysis.get("nutrition") or {}
+    if not isinstance(nested, dict):
+        nested = {}
+
+    sources = [food_analysis, nested, ai_response_data]
+
+    proteins_g = round(_first_numeric_value(
+        sources, "proteins_g", "protein_g", "protein", "proteins", "total_protein"
+    ))
+    fats_g = round(_first_numeric_value(
+        sources, "fats_g", "fat_g", "fat", "fats", "total_fat"
+    ))
+    carbs_g = round(_first_numeric_value(
+        sources, "carbs_g", "carbohydrates_g", "carbohydrate_g",
+        "carbs", "carbohydrates", "total_carbohydrates"
+    ))
+
+    food_name = (
+        food_analysis.get("food_name")
+        or food_analysis.get("name")
+        or ai_response_data.get("food_name")
+        or "Неизвестное блюдо"
+    )
+
+    calculated_calories = round((proteins_g * 4) + (fats_g * 9) + (carbs_g * 4))
+    ai_calories = _first_numeric_value(sources, "calories", "total_calories", "kcal")
+    total_calories = round(ai_calories) if ai_calories > 0 else calculated_calories
+
+    return {
+        "food_name": food_name,
+        "total_calories": total_calories,
+        "total_protein": proteins_g,
+        "total_fat": fats_g,
+        "total_carbohydrates": carbs_g,
+    }
+
+
 async def get_nutrition_analysis_and_advice(
     file_content: Optional[bytes],
     description: Optional[str],
     ai_context: dict,
-    model_to_use: str
+    model_to_use: str,
+    meal_type: Optional[str] = None,
+    image_mime_type: str = "image/jpeg",
 ) -> (dict, str):
     """
     Выполняет анализ питания и дает совет одним запросом к AI, используя конкретную модель.
@@ -182,11 +242,17 @@ async def get_nutrition_analysis_and_advice(
     Ты — нутрициолог с характером J.A.R.V.I.S., честный и верный, но можешь ответить подколом, шуткой или сарказмом.
 
     ### ЗАДАЧА:
-    1.  **Проанализируй** предоставленные данные (фото и/или описание еды) и полный **контекст дня** пользователя.
-    2.  **Оцени КБЖУ**: Рассчитай калории, белки, жиры и углеводы для блюда.
+    1.  **Сначала внимательно изучи ПРИКРЕПЛЁННОЕ ФОТО** (если оно есть) и/или описание еды.
+    2.  **Оцени КБЖУ именно этого блюда** — рассчитай белки, жиры и углеводы по содержимому фото/описания.
     3.  **Оцени качество еды**: Заполни ВСЕ поля в блоке `food_quality`.
-    4.  **Дай рекомендации**: Сформулируй общий совет на день (`coach_advice`) и краткие советы по каждому нутриенту (`recommendations`).
+    4.  **Дай рекомендации**: Сформулируй общий совет на день (`coach_advice`) и краткие советы по каждому нутриенту (`recommendations`) с учётом контекста дня.
     5.  **Верни ТОЛЬКО ОДИН JSON-ОБЪЕКТ** без лишнего текста, пояснений и Markdown-разметки.
+
+    ### КРИТИЧЕСКИ ВАЖНО ДЛЯ food_analysis:
+    - Значения `proteins_g`, `fats_g`, `carbs_g` — это КБЖУ **только текущего блюда на фото**, а НЕ дневные нормы, остаток или цели из контекста.
+    - Каждое новое фото — новый анализ: оценивай видимую порцию, состав и объём заново.
+    - Если на фото есть хлеб, крупы, фрукты, овощи, сладости — `carbs_g` должен быть больше 0.
+    - Используй именно эти ключи: `proteins_g`, `fats_g`, `carbs_g` (не `protein`, не `carbohydrates`).
 
     ### КОНТЕКСТ ДНЯ ПОЛЬЗОВАТЕЛЯ:
     ```json
@@ -232,11 +298,20 @@ async def get_nutrition_analysis_and_advice(
     ```
     """
     
+    meal_type_labels = {
+        "breakfast": "Завтрак",
+        "lunch": "Обед",
+        "dinner": "Ужин",
+        "snack": "Перекус",
+    }
+    if meal_type:
+        prompt_text += f"\nТип приёма пищи: {meal_type_labels.get(meal_type, meal_type)}."
     if description:
         prompt_text += f"\nДополнительное описание от пользователя: {description}"
+    if not file_content and not description:
+        prompt_text += "\nФото не предоставлено — оцени только по описанию."
 
     print(f"Attempting to use model for combined analysis and advice: {model_to_use}")
-    print(prompt_text)
 
     headers = {"Content-Type": "application/json"}
     payload = {}
@@ -250,10 +325,15 @@ async def get_nutrition_analysis_and_advice(
             gemini_contents = []
             if file_content:
                 base64_image = base64.b64encode(file_content).decode('utf-8')
-                gemini_contents.append({"inline_data": {"mime_type": "image/jpeg", "data": base64_image}})
+                gemini_contents.append({
+                    "inline_data": {"mime_type": image_mime_type, "data": base64_image}
+                })
             
             gemini_contents.append({"text": prompt_text})
-            payload = {"contents": [{"parts": gemini_contents}]}
+            payload = {
+                "contents": [{"parts": gemini_contents}],
+                "generationConfig": {"responseMimeType": "application/json"},
+            }
 
         elif model_to_use in settings.OPEN_ROUTER_MODELS:
             url_path = "/v1/chat/completions"
@@ -262,9 +342,10 @@ async def get_nutrition_analysis_and_advice(
             openai_content_parts = [{"type": "text", "text": prompt_text}]
             if file_content:
                 base64_image = base64.b64encode(file_content).decode('utf-8')
+                mime = image_mime_type if image_mime_type.startswith("image/") else "image/jpeg"
                 openai_content_parts.append({
                     "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                    "image_url": {"url": f"data:{mime};base64,{base64_image}"}
                 })
             
             payload = {
@@ -294,6 +375,7 @@ async def get_nutrition_analysis_and_advice(
 
         response_text = response_text.strip().removeprefix("```json").strip().removeprefix("```").strip().removesuffix("```").strip()
         parsed_data = json.loads(response_text)
+        print(f"AI food_analysis parsed: {extract_food_analysis(parsed_data)}")
         return parsed_data, model_to_use
 
     except httpx.HTTPStatusError as e:
@@ -536,6 +618,7 @@ def create_metric_for_current_user(
 @app.post("/analyze-meal/", response_model=schemas.AnalysisResponse)
 async def analyze_meal(
         description: Optional[str] = Form(None),
+        meal_type: Optional[str] = Form(None),
         file: Optional[UploadFile] = File(None),
         ai_model: Optional[str] = Form(None),
         db: Session = Depends(get_db),
@@ -545,6 +628,12 @@ async def analyze_meal(
         raise HTTPException(status_code=400, detail="Please provide a photo or a description.")
     
     file_content = await file.read() if file else None
+    image_mime_type = "image/jpeg"
+    if file and file.content_type and file.content_type.startswith("image/"):
+        image_mime_type = file.content_type
+
+    if file_content and len(file_content) < 500:
+        raise HTTPException(status_code=400, detail="Файл изображения слишком маленький или повреждён. Попробуйте другое фото.")
 
     # --- Сбор контекста ---
     today_stats = crud.get_user_stats_by_period(db, user_id=current_user.id, start_date=date.today(), end_date=date.today())
@@ -578,7 +667,9 @@ async def analyze_meal(
                 file_content=file_content,
                 description=description,
                 ai_context=ai_context,
-                model_to_use=model
+                model_to_use=model,
+                meal_type=meal_type,
+                image_mime_type=image_mime_type,
             )
             if ai_response_data:
                 break 
@@ -590,7 +681,6 @@ async def analyze_meal(
         raise HTTPException(status_code=503, detail=f"All AI models are currently unavailable. Last error: {last_error}")
 
     # --- Обработка ответа ---
-    food_analysis = ai_response_data.get("food_analysis", {})
     food_quality = ai_response_data.get("food_quality")
     coach_advice = ai_response_data.get("coach_advice", "Не удалось получить совет от AI.")
     recommendations = ai_response_data.get("recommendations")
@@ -602,18 +692,7 @@ async def analyze_meal(
             "nutrients": recommendations
         }
 
-    proteins_g = round(float(food_analysis.get("proteins_g", 0)))
-    fats_g = round(float(food_analysis.get("fats_g", 0)))
-    carbs_g = round(float(food_analysis.get("carbs_g", 0)))
-    calculated_calories = (proteins_g * 4) + (fats_g * 9) + (carbs_g * 4)
-
-    analyzed_meal_totals = {
-        "food_name": food_analysis.get("food_name", "Неизвестное блюдо"),
-        "total_calories": round(calculated_calories),
-        "total_protein": proteins_g,
-        "total_fat": fats_g,
-        "total_carbohydrates": carbs_g
-    }
+    analyzed_meal_totals = extract_food_analysis(ai_response_data)
 
     return schemas.AnalysisResponse(
         suggested_totals=schemas.MealTotals(**analyzed_meal_totals),

@@ -2,10 +2,10 @@
 
 :root {
     /* Основная палитра */
-    --color-amber: #F5E1B0;
-    --color-protein-white: #FFFFFF;
-    --color-golden-orange: #E2A35D;
-    --color-muted-teal: #569DAA;
+    --color-amber: #D4A017;           /* калории — глубокое золото */
+    --color-protein-white: #FFFFFF;   /* белки — белый */
+    --color-golden-orange: #FFEE58;   /* жиры — яркий желток */
+    --color-muted-teal: #4ADE80;      /* углеводы — зелёный */
     --color-pantone-gray: #E0E0E0;
     --color-inactive-icon: rgba(255, 255, 255, 0.4);
     --color-over-limit-red: #FF6B6B; /* Нежно-красный для перебора */
@@ -14,10 +14,10 @@
     --color-error-red: #EF4444; /* Красный для ошибки */
 
     /* Фоны для колец */
-    --bg-ring-amber: rgba(245, 225, 176, 0.1);
+    --bg-ring-amber: rgba(212, 160, 23, 0.12);
     --bg-ring-protein-white: rgba(255, 255, 255, 0.1);
-    --bg-ring-golden-orange: rgba(226, 163, 93, 0.1);
-    --bg-ring-muted-teal: rgba(86, 157, 170, 0.1);
+    --bg-ring-golden-orange: rgba(255, 238, 88, 0.12);
+    --bg-ring-muted-teal: rgba(74, 222, 128, 0.12);
     --bg-ring-over-limit-red: rgba(255, 107, 107, 0.15);
     --bg-ring-over-limit-green: rgba(80, 200, 120, 0.15);
 
@@ -41,13 +41,20 @@ body {
 }
 
 /* --- Стили для интерактивного кольца --- */
+/* iPhone 14 Pro: 393px viewport, px-4 → ~361px контент; кольцо ~80% ширины */
 #interactive-rings-container {
     position: relative;
     cursor: pointer;
+    width: min(314px, calc(100vw - 48px));
+    margin: 0 auto;
+    padding: 6px 0 10px;
 }
 
 #interactive-rings-container svg {
-    overflow: visible; /* To make shadows visible */
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
 }
 
 .nutrient-ring-segment {
