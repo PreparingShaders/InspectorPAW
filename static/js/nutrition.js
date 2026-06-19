@@ -211,8 +211,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Логика кастомного модального окна ---
     function showEditModal(nutrientKey, config) {
         const initialValue = initialNutrientValues[nutrientKey];
-        const lowerBound = Math.round(initialValue * 0.5);
-        const upperBound = Math.round(initialValue * 1.5);
+        let lowerBound, upperBound;
+
+        if (initialValue === 0) {
+            lowerBound = 0;
+            upperBound = 20;
+        } else {
+            lowerBound = Math.round(initialValue * 0.5);
+            upperBound = Math.round(initialValue * 1.5);
+        }
 
         modalTitle.textContent = `Изменить ${config.label}`;
         modalInput.value = nutrientValues[nutrientKey];
@@ -232,10 +239,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             nutrientValues[nutrientKey] = newValue;
-            document.getElementById(`interactive-${nutrientKey}-value`).textContent = newValue;
             if (nutrientKey !== 'calories') {
                 recalculateCalories();
             }
+            renderInteractiveRings(); // Перерисовываем кольца с новыми значениями
             hideEditModal();
         };
 
@@ -261,47 +268,101 @@ document.addEventListener('DOMContentLoaded', async () => {
         modalInput.addEventListener('keydown', handleEnter);
     }
 
-    // --- Рендеринг и интерактивность колец КБЖУ ---
+    // --- Рендеринг и интерактивность составного кольца КБЖУ ---
     function renderInteractiveRings() {
-        interactiveRingsContainer.innerHTML = ''; // Очищаем контейнер
+        interactiveRingsContainer.innerHTML = '';
+
+        const container = document.createElement('div');
+        container.className = 'composite-ring-container';
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 120 120');
+        svg.classList.add('composite-ring-svg');
+
+        const center = document.createElement('div');
+        center.className = 'composite-ring-center';
+
         const nutrientConfig = {
-            calories: { label: 'Ккал', color: 'var(--color-amber)' },
             protein: { label: 'Белки', color: 'var(--color-protein-white)' },
             fat: { label: 'Жиры', color: 'var(--color-golden-orange)' },
-            carbohydrates: { label: 'Углев.', color: 'var(--color-muted-teal)' }
+            carbohydrates: { label: 'Углеводы', color: 'var(--color-muted-teal)' }
         };
 
-        const nutrientOrder = ['calories', 'protein', 'fat', 'carbohydrates'];
+        const { protein, fat, carbohydrates, calories } = nutrientValues;
+        const totalGrams = protein + fat + carbohydrates;
+        const gapSize = totalGrams > 0 ? 4 : 0; // Размер разрыва в градусах
 
-        nutrientOrder.forEach(key => {
-            const config = nutrientConfig[key];
-            const ringId = `interactive-${key}-ring`;
-            const valueId = `interactive-${key}-value`;
-            const wrapper = document.createElement('div');
-            wrapper.className = 'text-center flex flex-col items-center space-y-2 cursor-pointer';
-            wrapper.innerHTML = `
-                <label class="text-xs" style="color: ${config.color};">${config.label}</label>
-                <div class="ring-container w-16 h-16 relative">
-                    <svg id="${ringId}" class="progress-ring-svg" viewBox="0 0 120 120">
-                        <circle class="progress-ring-bg" cx="60" cy="60" r="54"/>
-                        <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: ${config.color};"/>
-                    </svg>
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <span id="${valueId}" class="text-lg font-bold" style="color: ${config.color};">${nutrientValues[key]}</span>
-                    </div>
-                </div>
+        const radius = 48;
+        const centerPoint = 60;
+        const circumference = 2 * Math.PI * radius;
+
+        // Фоновое кольцо
+        const bgRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        bgRing.setAttribute('class', 'composite-ring-bg');
+        bgRing.setAttribute('cx', centerPoint);
+        bgRing.setAttribute('cy', centerPoint);
+        bgRing.setAttribute('r', radius);
+        svg.appendChild(bgRing);
+
+        let currentAngle = 0;
+        const activeNutrients = Object.keys(nutrientConfig).filter(key => nutrientValues[key] > 0);
+        const totalGaps = activeNutrients.length * gapSize;
+
+        activeNutrients.forEach(key => {
+            const value = nutrientValues[key];
+            const percentage = totalGrams > 0 ? (value / totalGrams) : 0;
+            const angle = percentage * (360 - totalGaps);
+            const dasharray = (angle / 360) * circumference;
+
+            const segment = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            segment.setAttribute('class', 'composite-ring-segment');
+            segment.setAttribute('cx', centerPoint);
+            segment.setAttribute('cy', centerPoint);
+            segment.setAttribute('r', radius);
+            segment.setAttribute('stroke', nutrientConfig[key].color);
+            segment.setAttribute('stroke-width', '12');
+            segment.setAttribute('fill', 'transparent');
+            segment.setAttribute('stroke-dasharray', `${dasharray} ${circumference}`);
+            segment.style.transformOrigin = 'center';
+            segment.style.transform = `rotate(${currentAngle}deg)`;
+
+            segment.addEventListener('click', () => showEditModal(key, nutrientConfig[key]));
+            svg.appendChild(segment);
+
+            // Добавляем подписи
+            const labelAngleRad = ((currentAngle + angle / 2) - 90) * Math.PI / 180;
+            const labelRadius = radius + 24;
+            const x = centerPoint + labelRadius * Math.cos(labelAngleRad);
+            const y = centerPoint + labelRadius * Math.sin(labelAngleRad);
+
+            const label = document.createElement('div');
+            label.className = 'nutrient-label';
+            label.style.left = `${x}px`;
+            label.style.top = `${y}px`;
+            label.innerHTML = `
+                <span class="font-bold" style="color: ${nutrientConfig[key].color};">${nutrientConfig[key].label}</span>
+                <br>
+                <span class="text-gray-400">${value}г</span>
             `;
-            interactiveRingsContainer.appendChild(wrapper);
+            container.appendChild(label);
 
-            // Добавляем обработчик клика для открытия модального окна
-            wrapper.addEventListener('click', () => showEditModal(key, config));
+            currentAngle += angle + gapSize;
         });
+
+        center.innerHTML = `
+            <span class="text-3xl font-bold" style="color: var(--color-amber);">${calories}</span>
+            <span class="text-sm text-gray-400 -mt-1">Ккал</span>
+        `;
+        center.addEventListener('click', () => showEditModal('calories', { label: 'Ккал' }));
+
+        container.appendChild(svg);
+        container.appendChild(center);
+        interactiveRingsContainer.appendChild(container);
     }
 
     function recalculateCalories() {
         const { protein, fat, carbohydrates } = nutrientValues;
         nutrientValues.calories = Math.round((protein * 4) + (fat * 9) + (carbohydrates * 4));
-        document.getElementById('interactive-calories-value').textContent = nutrientValues.calories;
     }
 
     // --- Сохранение результата ---
@@ -309,8 +370,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         const mealType = mealTypeSelect.value;
         if (!mealType) {
-            // Эта проверка не должна сработать, если логика sendToAiBtn верна,
-            // но оставим ее как дополнительную защиту.
             alert("Пожалуйста, выберите тип приема пищи.");
             return;
         }
