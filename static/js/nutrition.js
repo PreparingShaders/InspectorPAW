@@ -329,10 +329,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const defs = document.createElementNS(svgNS, "defs");
         createRingGradient(defs, 'grad-protein', '#FFFFFF', '#9CA3AF');
-        createRingGradient(defs, 'grad-fat', '#FFF9C4', '#F9A825');
+        createRingGradient(defs, 'grad-fat', '#F0D878', '#DAA520');
         createRingGradient(defs, 'grad-carbs', '#86EFAC', '#16A34A');
         createRingGlowFilter(defs, 'glow-protein', '#FFFFFF');
-        createRingGlowFilter(defs, 'glow-fat', '#FFEE58');
+        createRingGlowFilter(defs, 'glow-fat', '#DAA520');
         createRingGlowFilter(defs, 'glow-carbs', '#4ADE80');
 
         const centerTextFilter = document.createElementNS(svgNS, "filter");
@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         centerTextFilter.setAttribute("y", "-30%");
         centerTextFilter.setAttribute("width", "160%");
         centerTextFilter.setAttribute("height", "160%");
-        centerTextFilter.innerHTML = `<feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#D4A017" flood-opacity="0.7"/>`;
+        centerTextFilter.innerHTML = `<feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#DEB887" flood-opacity="0.45"/>`;
         defs.appendChild(centerTextFilter);
         svg.appendChild(defs);
 
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const nutrientConfig = {
             protein: { label: 'Белки', color: '#FFFFFF', gradient: 'url(#grad-protein)', filter: 'url(#glow-protein)' },
-            fat: { label: 'Жиры', color: '#FFEE58', gradient: 'url(#grad-fat)', filter: 'url(#glow-fat)' },
+            fat: { label: 'Жиры', color: 'var(--color-golden-orange)', gradient: 'url(#grad-fat)', filter: 'url(#glow-fat)' },
             carbohydrates: { label: 'Углеводы', color: '#4ADE80', gradient: 'url(#grad-carbs)', filter: 'url(#glow-carbs)' }
         };
 
@@ -427,11 +427,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         const labelsGroup = document.createElementNS(svgNS, "g");
+        const labelOffsets = { protein: 22, fat: 22, carbohydrates: 32 };
         segmentsData.forEach(item => {
             const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
-            const labelRadius = radius + strokeWidth + 10;
+            const labelRadius = radius + strokeWidth / 2 + labelOffsets[item.key];
             const x = center + labelRadius * Math.cos(midAngleRad);
             const y = center + labelRadius * Math.sin(midAngleRad);
+            const isCarbs = item.key === 'carbohydrates';
+            const nameFontSize = isCarbs ? '10px' : '11px';
 
             const label = document.createElementNS(svgNS, "text");
             label.setAttribute("x", x);
@@ -439,9 +442,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             label.setAttribute("text-anchor", "middle");
             label.setAttribute("dominant-baseline", "middle");
             label.setAttribute("fill", item.color);
-            label.style.fontSize = '12px';
+            label.style.fontSize = nameFontSize;
             label.style.fontWeight = 'bold';
-            label.innerHTML = `<tspan x="${x}" dy="-0.6em">${item.label}</tspan><tspan x="${x}" dy="1.2em" style="font-size: 11px; fill: var(--text-secondary);">${nutrientValues[item.key]}г</tspan>`;
+            label.innerHTML = `<tspan x="${x}" dy="-0.55em">${item.label}</tspan><tspan x="${x}" dy="1.35em" style="font-size: 10px; fill: var(--text-secondary);">${nutrientValues[item.key]}г</tspan>`;
             labelsGroup.appendChild(label);
         });
 
@@ -451,17 +454,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         svg.appendChild(labelsGroup);
 
-        const centerText = document.createElementNS(svgNS, "text");
-        centerText.setAttribute("x", "50%");
-        centerText.setAttribute("y", "50%");
-        centerText.setAttribute("text-anchor", "middle");
-        centerText.setAttribute("dominant-baseline", "central");
-        centerText.setAttribute("fill", "#D4A017");
-        centerText.setAttribute("filter", "url(#glow-calories-text)");
-        centerText.style.fontSize = '28px';
-        centerText.style.fontWeight = 'bold';
-        centerText.innerHTML = `<tspan x="50%" dy="-0.1em">${calories}</tspan><tspan x="50%" dy="1.2em" style="font-size: 12px; fill: var(--text-secondary);">Ккал</tspan>`;
-        svg.appendChild(centerText);
+        const calStr = String(calories);
+        const calFontSize = calStr.length >= 4 ? 20 : calStr.length === 3 ? 22 : 26;
+
+        const calValueText = document.createElementNS(svgNS, "text");
+        calValueText.setAttribute("x", center);
+        calValueText.setAttribute("y", center - 8);
+        calValueText.setAttribute("text-anchor", "middle");
+        calValueText.setAttribute("dominant-baseline", "middle");
+        calValueText.setAttribute("fill", "var(--color-amber)");
+        calValueText.setAttribute("filter", "url(#glow-calories-text)");
+        calValueText.style.fontSize = `${calFontSize}px`;
+        calValueText.style.fontWeight = 'bold';
+        calValueText.style.letterSpacing = '-0.5px';
+        calValueText.textContent = calStr;
+
+        const calLabelText = document.createElementNS(svgNS, "text");
+        calLabelText.setAttribute("x", center);
+        calLabelText.setAttribute("y", center + 16);
+        calLabelText.setAttribute("text-anchor", "middle");
+        calLabelText.setAttribute("dominant-baseline", "middle");
+        calLabelText.setAttribute("fill", "var(--text-secondary)");
+        calLabelText.style.fontSize = '11px';
+        calLabelText.style.fontWeight = '600';
+        calLabelText.textContent = 'Ккал';
+
+        svg.appendChild(calValueText);
+        svg.appendChild(calLabelText);
 
         svg.addEventListener('click', (event) => {
             const rect = svg.getBoundingClientRect();

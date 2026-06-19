@@ -2,9 +2,9 @@
 
 :root {
     /* Основная палитра */
-    --color-amber: #D4A017;           /* калории — глубокое золото */
+    --color-amber: #DEB887;           /* калории — burlywood */
     --color-protein-white: #FFFFFF;   /* белки — белый */
-    --color-golden-orange: #FFEE58;   /* жиры — яркий желток */
+    --color-golden-orange: #DAA520;   /* жиры — goldenrod */
     --color-muted-teal: #4ADE80;      /* углеводы — зелёный */
     --color-pantone-gray: #E0E0E0;
     --color-inactive-icon: rgba(255, 255, 255, 0.4);
@@ -14,9 +14,9 @@
     --color-error-red: #EF4444; /* Красный для ошибки */
 
     /* Фоны для колец */
-    --bg-ring-amber: rgba(212, 160, 23, 0.12);
+    --bg-ring-amber: rgba(222, 184, 135, 0.12);
     --bg-ring-protein-white: rgba(255, 255, 255, 0.1);
-    --bg-ring-golden-orange: rgba(255, 238, 88, 0.12);
+    --bg-ring-golden-orange: rgba(218, 165, 32, 0.12);
     --bg-ring-muted-teal: rgba(74, 222, 128, 0.12);
     --bg-ring-over-limit-red: rgba(255, 107, 107, 0.15);
     --bg-ring-over-limit-green: rgba(80, 200, 120, 0.15);
@@ -55,6 +55,18 @@ body {
     height: auto;
     display: block;
     overflow: visible;
+}
+
+/* Nutrition step-3: кольцо визуально выше (подписи снизу тянут центр вниз) */
+#step-3 #interactive-rings-container {
+    padding-top: 0;
+    padding-bottom: 4px;
+    margin-top: -6px;
+}
+
+#step-3 #interactive-rings-container svg {
+    transform: translateY(-16px);
+    margin-bottom: -16px;
 }
 
 .nutrient-ring-segment {
