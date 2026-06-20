@@ -32,11 +32,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentFoodName = '';
     let compressedFile = null;
-    let nutrientValues = {}; // Хранилище для текущих значений КБЖУ
-    let initialNutrientValues = {}; // Хранилище для исходных значений от AI
+    let nutrientValues = {};
+    let initialNutrientValues = {};
     let currentFoodQuality = null;
     let currentMealAnalysis = null;
     let currentAiScore = null;
+    let ringDisplayMode = 'progress';
 
     const steps = {
         1: document.getElementById('step-1'),
@@ -766,24 +767,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bar = ringSvgElement.querySelector('.progress-ring-bar');
         if (!bar) return;
 
-        // 1. Обновление длины полосы
         const radius = bar.r.baseVal.value;
         const circum = 2 * Math.PI * radius;
         bar.style.strokeDasharray = `${circum} ${circum}`;
-        const pct = maxValue > 0 ? value / maxValue : 0;
-        const displayPct = Math.min(pct, 1);
-        bar.style.strokeDashoffset = circum - (displayPct * circum);
 
-        // 2. Логика статусов и цветов
+        let fillPct = maxValue > 0 ? value / maxValue : 0;
+        fillPct = Math.min(fillPct, 1);
+
+        if (ringDisplayMode === 'remaining' && nutrient && nutrient !== 'score') {
+            const remaining = Math.max(0, maxValue - value);
+            const remainingPct = maxValue > 0 ? (1 - remaining / maxValue) : 0;
+            bar.style.strokeDashoffset = circum - (Math.min(remainingPct, 1) * circum);
+        } else {
+            bar.style.strokeDashoffset = circum - (fillPct * circum);
+        }
+
         bar.classList.remove('status-warning', 'status-danger', 'status-success');
 
-        if (pct > 1.05) {
+        if (fillPct > 1.05) {
             if (nutrient === 'protein') {
                 bar.classList.add('status-success');
             } else {
                 bar.classList.add('status-danger');
             }
-        } else if (pct > 0.95) {
+        } else if (fillPct > 0.95) {
             if (nutrient !== 'protein') {
                 bar.classList.add('status-warning');
             }
@@ -954,10 +961,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateRingWithStatus(document.querySelector('[data-nutrient="fat"]'), s.avg_fat, s.target_fat, 'fat');
             updateRingWithStatus(document.querySelector('[data-nutrient="carbohydrates"]'), s.avg_carbohydrates, s.target_carbohydrates, 'carbohydrates');
 
-            document.getElementById('avg-calories-value').textContent = Math.round(s.avg_calories);
-            document.getElementById('avg-protein-value').textContent = Math.round(s.avg_protein);
-            document.getElementById('avg-fat-value').textContent = Math.round(s.avg_fat);
-            document.getElementById('avg-carbs-value').textContent = Math.round(s.avg_carbohydrates);
+            if (ringDisplayMode === 'remaining') {
+                document.getElementById('avg-calories-value').textContent = Math.max(0, Math.round(s.target_calories - s.avg_calories));
+                document.getElementById('avg-protein-value').textContent = Math.max(0, Math.round(s.target_protein - s.avg_protein));
+                document.getElementById('avg-fat-value').textContent = Math.max(0, Math.round(s.target_fat - s.avg_fat));
+                document.getElementById('avg-carbs-value').textContent = Math.max(0, Math.round(s.target_carbohydrates - s.avg_carbohydrates));
+            } else {
+                document.getElementById('avg-calories-value').textContent = Math.round(s.avg_calories);
+                document.getElementById('avg-protein-value').textContent = Math.round(s.avg_protein);
+                document.getElementById('avg-fat-value').textContent = Math.round(s.avg_fat);
+                document.getElementById('avg-carbs-value').textContent = Math.round(s.avg_carbohydrates);
+            }
 
             // Передаем цели в историю приемов пищи
             fetchAndDisplayMealHistory(s);
@@ -1004,10 +1018,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const proteinLabel = document.getElementById('avg-protein-label');
             const fatLabel = document.getElementById('avg-fat-label');
             const carbsLabel = document.getElementById('avg-carbs-label');
+            const ringToggleEl = document.getElementById('ring-toggle');
 
             if (days === 1) {
                 graphWrapper.classList.add('opacity-0', 'h-0');
                 labelsContainer.classList.add('opacity-0', 'h-0');
+                if (ringToggleEl) ringToggleEl.parentElement.classList.remove('hidden');
                 averageStatsContainer.classList.add('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
 
                 caloriesLabel.textContent = 'Калории';
@@ -1019,6 +1035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 graphWrapper.classList.remove('opacity-0', 'h-0');
                 labelsContainer.classList.remove('opacity-0', 'h-0');
                 averageStatsContainer.classList.remove('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
+                if (ringToggleEl) ringToggleEl.parentElement.classList.add('hidden');
 
                 caloriesLabel.textContent = 'Ккал';
                 proteinLabel.textContent = 'Б';
@@ -1110,10 +1127,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Первоначальная загрузка данных ---
-    fetchScoreGraphData(1); // Загружаем 1 день по умолчанию
+    fetchScoreGraphData(1);
     if (oneDayBtn) {
         oneDayBtn.classList.add('active');
         oneDayBtn.classList.remove('text-gray-400');
     }
     resetWizard();
+
+    // --- Тумблер режима колец ---
+    const ringToggleEl = document.getElementById('ring-toggle');
+    if (ringToggleEl) {
+        ringToggleEl.addEventListener('click', () => {
+            ringDisplayMode = ringDisplayMode === 'progress' ? 'remaining' : 'progress';
+            ringToggleEl.classList.toggle('mode-remaining', ringDisplayMode === 'remaining');
+            fetchScoreGraphData(1);
+        });
+    }
 });
