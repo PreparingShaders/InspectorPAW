@@ -103,7 +103,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         resultsSection.style.display = 'block';
+        updateRingForCurrentMeal(state);
         updateQualitySection(state);
+    }
+
+    function updateRingForCurrentMeal(state) {
+        const container = document.getElementById('interactive-rings-container');
+        if (!container || !state) return;
+        const values = state.values || {};
+        const nutrientData = [
+            { id: 'protein', label: 'Белки', value: values.protein || 0, color: 'var(--color-protein-white)' },
+            { id: 'fat', label: 'Жиры', value: values.fat || 0, color: 'var(--color-golden-orange)' },
+            { id: 'carbohydrates', label: 'Углеводы', value: values.carbohydrates || 0, color: 'var(--color-muted-teal)' },
+            { id: 'fiber', label: 'Клетчатка', value: values.fiber || 0, color: '#8B4513' }
+        ];
+        createInteractiveRing(container, nutrientData, values.calories || 0, state.aiScore ?? null);
+        document.getElementById('stats-title').textContent = 'Качество блюда';
     }
 
     // --- Новый, исправленный код для интерактивного кольца ---
@@ -731,8 +746,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savedState = loadAnalysisState();
     if (savedState) {
         populateResultsFromState(savedState);
+    } else {
+        await fetchAndDrawRing();
     }
-
-    await fetchAndDrawRing();
     await fetchAndDisplayMealHistory();
 });

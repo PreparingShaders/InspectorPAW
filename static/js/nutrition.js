@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let initialNutrientValues = {}; // Хранилище для исходных значений от AI
     let currentFoodQuality = null;
     let currentMealAnalysis = null;
+    let currentAiScore = null;
 
     const steps = {
         1: document.getElementById('step-1'),
@@ -127,8 +128,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         compressedFile = null;
         currentFoodQuality = null;
         currentMealAnalysis = null;
+        currentAiScore = null;
+        nutrientValues = {};
+        initialNutrientValues = {};
         if (imagePreview) imagePreview.src = '';
-        interactiveRingsContainer.innerHTML = ''; // Очищаем кольца
+        interactiveRingsContainer.innerHTML = '';
+        const qualityDetails = document.getElementById('quality-details');
+        if (qualityDetails) qualityDetails.style.display = 'none';
         showInitialView();
         goToStep(1);
     }
@@ -201,6 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 total_fiber: result.suggested_totals?.total_fiber || 0,
                 ai_analysis_details: result.ai_analysis_details || null,
             };
+            currentAiScore = result.food_quality?.ai_score ?? null;
             const toxicComment = currentFoodQuality ? currentFoodQuality.toxic_coach_comment : '';
 
             aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'Vision'})`;
@@ -211,9 +218,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 calories: Math.round(result.suggested_totals.total_calories || 0),
                 protein: Math.round(result.suggested_totals.total_protein || 0),
                 fat: Math.round(result.suggested_totals.total_fat || 0),
-                carbohydrates: Math.round(result.suggested_totals.total_carbohydrates || 0)
+                carbohydrates: Math.round(result.suggested_totals.total_carbohydrates || 0),
+                fiber: Math.round(result.suggested_totals.total_fiber || 0)
             };
-            // Копируем начальные значения в редактируемые
             nutrientValues = { ...initialNutrientValues };
 
             renderInteractiveRings();
@@ -261,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             nutrientValues[nutrientKey] = newValue;
-            if (nutrientKey !== 'calories') {
+            if (nutrientKey !== 'calories' && nutrientKey !== 'fiber') {
                 recalculateCalories();
             }
             renderInteractiveRings(); // Перерисовываем кольца с новыми значениями
@@ -338,9 +345,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         createRingGradient(defs, 'grad-protein', '#FFFFFF', '#9CA3AF');
         createRingGradient(defs, 'grad-fat', '#F0D878', '#DAA520');
         createRingGradient(defs, 'grad-carbs', '#86EFAC', '#16A34A');
+        createRingGradient(defs, 'grad-fiber', '#D2B48C', '#8B4513');
         createRingGlowFilter(defs, 'glow-protein', '#FFFFFF');
         createRingGlowFilter(defs, 'glow-fat', '#DAA520');
         createRingGlowFilter(defs, 'glow-carbs', '#4ADE80');
+        createRingGlowFilter(defs, 'glow-fiber', '#8B4513');
 
         const centerTextFilter = document.createElementNS(svgNS, "filter");
         centerTextFilter.setAttribute("id", "glow-calories-text");
@@ -361,11 +370,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const nutrientConfig = {
             protein: { label: 'Белки', color: '#FFFFFF', gradient: 'url(#grad-protein)', filter: 'url(#glow-protein)' },
             fat: { label: 'Жиры', color: 'var(--color-golden-orange)', gradient: 'url(#grad-fat)', filter: 'url(#glow-fat)' },
-            carbohydrates: { label: 'Углеводы', color: '#4ADE80', gradient: 'url(#grad-carbs)', filter: 'url(#glow-carbs)' }
+            carbohydrates: { label: 'Углеводы', color: '#4ADE80', gradient: 'url(#grad-carbs)', filter: 'url(#glow-carbs)' },
+            fiber: { label: 'Клетчатка', color: '#8B4513', gradient: 'url(#grad-fiber)', filter: 'url(#glow-fiber)' }
         };
 
-        const { protein, fat, carbohydrates, calories } = nutrientValues;
-        const totalGrams = protein + fat + carbohydrates;
+        const { protein, fat, carbohydrates, fiber, calories } = nutrientValues;
+        const totalGrams = protein + fat + carbohydrates + fiber;
 
         if (totalGrams === 0) {
             return;
@@ -382,7 +392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let currentAngle = 0;
         const segmentsData = [];
-        const drawOrder = ['protein', 'fat', 'carbohydrates'];
+        const drawOrder = ['protein', 'fat', 'carbohydrates', 'fiber'];
 
         drawOrder.forEach(key => {
             const value = nutrientValues[key];
@@ -434,7 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         const labelsGroup = document.createElementNS(svgNS, "g");
-        const labelOffsets = { protein: 22, fat: 22, carbohydrates: 32 };
+        const labelOffsets = { protein: 28, fat: 28, carbohydrates: 34, fiber: 42 };
         segmentsData.forEach(item => {
             const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
             const labelRadius = radius + strokeWidth / 2 + labelOffsets[item.key];
@@ -451,8 +461,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             label.setAttribute("fill", item.color);
             label.style.fontSize = nameFontSize;
             label.style.fontWeight = 'bold';
-            label.innerHTML = `<tspan x="${x}" dy="-0.55em">${item.label}</tspan><tspan x="${x}" dy="1.35em" style="font-size: 10px; fill: var(--text-secondary);">${nutrientValues[item.key]}г</tspan>`;
+            label.textContent = item.label;
             labelsGroup.appendChild(label);
+
+            const valueLabel = document.createElementNS(svgNS, "text");
+            valueLabel.setAttribute("x", x);
+            valueLabel.setAttribute("y", y + 14);
+            valueLabel.setAttribute("text-anchor", "middle");
+            valueLabel.setAttribute("dominant-baseline", "middle");
+            valueLabel.setAttribute("fill", "var(--text-secondary)");
+            valueLabel.style.fontSize = '10px';
+            valueLabel.style.fontWeight = '500';
+            valueLabel.textContent = `${nutrientValues[item.key]}г`;
+            labelsGroup.appendChild(valueLabel);
         });
 
         segmentElements.forEach(({ shadow, segment }) => {
@@ -466,28 +487,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const calValueText = document.createElementNS(svgNS, "text");
         calValueText.setAttribute("x", center);
-        calValueText.setAttribute("y", center - 8);
+        calValueText.setAttribute("y", center + 18);
         calValueText.setAttribute("text-anchor", "middle");
         calValueText.setAttribute("dominant-baseline", "middle");
         calValueText.setAttribute("fill", "var(--color-amber)");
         calValueText.setAttribute("filter", "url(#glow-calories-text)");
-        calValueText.style.fontSize = `${calFontSize}px`;
+        calValueText.style.fontSize = '12px';
         calValueText.style.fontWeight = 'bold';
         calValueText.style.letterSpacing = '-0.5px';
-        calValueText.textContent = calStr;
+        calValueText.textContent = `${Math.round(calories)} ккал`;
 
-        const calLabelText = document.createElementNS(svgNS, "text");
-        calLabelText.setAttribute("x", center);
-        calLabelText.setAttribute("y", center + 16);
-        calLabelText.setAttribute("text-anchor", "middle");
-        calLabelText.setAttribute("dominant-baseline", "middle");
-        calLabelText.setAttribute("fill", "var(--text-secondary)");
-        calLabelText.style.fontSize = '11px';
-        calLabelText.style.fontWeight = '600';
-        calLabelText.textContent = 'Ккал';
+        const scoreColor = getScoreColor(currentAiScore);
+        const scoreText = document.createElementNS(svgNS, "text");
+        scoreText.setAttribute("x", center);
+        scoreText.setAttribute("y", center - 10);
+        scoreText.setAttribute("text-anchor", "middle");
+        scoreText.setAttribute("dominant-baseline", "middle");
+        scoreText.setAttribute("fill", scoreColor);
+        scoreText.style.fontSize = '40px';
+        scoreText.style.fontWeight = '900';
+        scoreText.textContent = currentAiScore !== null && currentAiScore !== undefined ? currentAiScore : '—';
 
+        const scoreLabel = document.createElementNS(svgNS, "text");
+        scoreLabel.setAttribute("x", center);
+        scoreLabel.setAttribute("y", center + 6);
+        scoreLabel.setAttribute("text-anchor", "middle");
+        scoreLabel.setAttribute("dominant-baseline", "middle");
+        scoreLabel.setAttribute("fill", "var(--text-secondary)");
+        scoreLabel.style.fontSize = '11px';
+        scoreLabel.style.fontWeight = '600';
+        scoreLabel.textContent = 'Score';
+
+        svg.appendChild(scoreText);
+        svg.appendChild(scoreLabel);
         svg.appendChild(calValueText);
-        svg.appendChild(calLabelText);
 
         svg.addEventListener('click', (event) => {
             const rect = svg.getBoundingClientRect();
@@ -655,6 +688,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         cards.forEach(card => nutrientGrid.appendChild(card));
     }
 
+
+    function getScoreColor(score) {
+        if (score === null || score === undefined) return 'var(--text-secondary)';
+        if (score <= 40) return '#EF4444';
+        if (score <= 70) return '#F59E0B';
+        return '#10B981';
+    }
+
+    function getRiskColor(score) {
+        if (score === null || score === undefined) return 'var(--text-secondary)';
+        if (score <= 3) return '#10B981';
+        if (score <= 7) return '#F59E0B';
+        return '#EF4444';
+    }
+
+    function getProcessingLevelLabel(level) {
+        const map = {
+            'WHOLE': 'Цельные продукты',
+            'MINIMALLY_PROCESSED': 'Минимальная обработка',
+            'ULTRA_PROCESSED': 'Ультраобработанные'
+        };
+        return map[level] || level || '—';
+    }
+
+    function getMicronutrientLabel(level) {
+        const map = {
+            'HIGH': 'Высокая плотность',
+            'MEDIUM': 'Средняя плотность',
+            'LOW': 'Низкая плотность'
+        };
+        return map[level] || level || '—';
+    }
 
     // --- Новая функция для обновления колец со статусами ---
     function updateRingWithStatus(ringSvgElement, value, maxValue, nutrient = null) {
