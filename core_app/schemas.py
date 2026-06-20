@@ -155,6 +155,9 @@ class IngredientAnalysisDetail(BaseModel):
     carbs_g: Optional[float] = 0
     fiber_g: Optional[float] = 0
     criteria: IngredientCriteria
+    protein_quality_score: Optional[float] = Field(None, ge=1, le=10)
+    fat_quality_score: Optional[float] = Field(None, ge=1, le=10)
+    carbs_quality_score: Optional[float] = Field(None, ge=1, le=10)
 
 
 class FoodQuality(BaseModel):

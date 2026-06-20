@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Управление состоянием UI ---
     function goToStep(stepNumber) {
+        console.log('goToStep called with:', stepNumber);
         Object.values(steps).forEach(step => {
             if (step) {
                 step.classList.remove('active');
@@ -107,6 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (steps[stepNumber]) {
             steps[stepNumber].classList.remove('hidden');
             steps[stepNumber].classList.add('active');
+            console.log('Step', stepNumber, 'is now active');
         }
     }
 
@@ -193,11 +195,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const res = await fetchWithAuth('/analyze-meal/', { method: 'POST', body: formData, cache: 'no-store' });
+            console.log('Response status:', res.status);
             if (!res.ok) {
                 const errorData = await res.json();
+                console.error('Error response:', errorData);
                 throw new Error(errorData.detail || 'Ошибка анализа');
             }
             const result = await res.json();
+            console.log('Analysis result:', result);
 
             const foodName = result.ai_response_text || 'Прием пищи';
             const coachAdvice = result.ai_coach_advice || 'Приятного аппетита!';
@@ -223,8 +228,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             nutrientValues = { ...initialNutrientValues };
 
+            console.log('Rendering rings with values:', nutrientValues);
+            console.log('Food quality:', currentFoodQuality);
+            console.log('Meal analysis:', currentMealAnalysis);
+            
             renderInteractiveRings();
+            console.log('Rings rendered, going to step 3');
             goToStep(3);
+            console.log('Now at step 3');
 
         } catch (err) {
             console.error(err);
@@ -445,6 +456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const labelsGroup = document.createElementNS(svgNS, "g");
         const labelOffsets = { protein: 28, fat: 28, carbohydrates: 34, fiber: 42 };
+        const qualityScores = calculateNutrientQualityScores();
         segmentsData.forEach(item => {
             const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
             const labelRadius = radius + strokeWidth / 2 + labelOffsets[item.key];
@@ -474,6 +486,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             valueLabel.style.fontWeight = '500';
             valueLabel.textContent = `${nutrientValues[item.key]}г`;
             labelsGroup.appendChild(valueLabel);
+
+            const score = qualityScores?.[item.key];
+            if (score !== null && score !== undefined && item.key !== 'fiber') {
+                const scoreLabel = document.createElementNS(svgNS, "text");
+                scoreLabel.setAttribute("x", x);
+                scoreLabel.setAttribute("y", y + 28);
+                scoreLabel.setAttribute("text-anchor", "middle");
+                scoreLabel.setAttribute("dominant-baseline", "middle");
+                scoreLabel.setAttribute("fill", getQualityBadgeColor(score));
+                scoreLabel.style.fontSize = '9px';
+                scoreLabel.style.fontWeight = '600';
+                scoreLabel.textContent = `Качество ${score}/10`;
+                labelsGroup.appendChild(scoreLabel);
+            }
         });
 
         segmentElements.forEach(({ shadow, segment }) => {
@@ -689,6 +715,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
+    function calculateNutrientQualityScores() {
+        const details = currentMealAnalysis?.ai_analysis_details;
+        if (!details || details.length === 0) return null;
+
+        const sums = { protein: 0, fat: 0, carbohydrates: 0 };
+        const weightSums = { protein: 0, fat: 0, carbohydrates: 0 };
+
+        details.forEach(detail => {
+            const p = Number(detail.protein_g) || 0;
+            const f = Number(detail.fat_g) || 0;
+            const c = Number(detail.carbs_g) || 0;
+            
+            const criteria = detail.criteria || {};
+            let pScore = detail.protein_quality_score;
+            let fScore = detail.fat_quality_score;
+            let cScore = detail.carbs_quality_score;
+
+            if (pScore === null || pScore === undefined) pScore = criteria.protein_quality;
+            if (fScore === null || fScore === undefined) fScore = criteria.oil_absorption !== null && criteria.oil_absorption !== undefined ? 10 - criteria.oil_absorption : null;
+            if (cScore === null || cScore === undefined) cScore = criteria.processing !== null && criteria.processing !== undefined ? 10 - criteria.processing : null;
+
+            if (pScore !== null && pScore !== undefined && p > 0) { sums.protein += pScore * p; weightSums.protein += p; }
+            if (fScore !== null && fScore !== undefined && f > 0) { sums.fat += fScore * f; weightSums.fat += f; }
+            if (cScore !== null && cScore !== undefined && c > 0) { sums.carbohydrates += cScore * c; weightSums.carbohydrates += c; }
+        });
+
+        return {
+            protein: weightSums.protein > 0 ? Math.round(sums.protein / weightSums.protein) : null,
+            fat: weightSums.fat > 0 ? Math.round(sums.fat / weightSums.fat) : null,
+            carbohydrates: weightSums.carbohydrates > 0 ? Math.round(sums.carbohydrates / weightSums.carbohydrates) : null,
+        };
+    }
+
     function getScoreColor(score) {
         if (score === null || score === undefined) return 'var(--text-secondary)';
         if (score <= 40) return '#EF4444';
@@ -696,32 +755,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         return '#10B981';
     }
 
-    function getRiskColor(score) {
+    function getQualityBadgeColor(score) {
         if (score === null || score === undefined) return 'var(--text-secondary)';
-        if (score <= 3) return '#10B981';
-        if (score <= 7) return '#F59E0B';
+        if (score >= 7) return '#10B981';
+        if (score >= 4) return '#F59E0B';
         return '#EF4444';
     }
-
-    function getProcessingLevelLabel(level) {
-        const map = {
-            'WHOLE': 'Цельные продукты',
-            'MINIMALLY_PROCESSED': 'Минимальная обработка',
-            'ULTRA_PROCESSED': 'Ультраобработанные'
-        };
-        return map[level] || level || '—';
-    }
-
-    function getMicronutrientLabel(level) {
-        const map = {
-            'HIGH': 'Высокая плотность',
-            'MEDIUM': 'Средняя плотность',
-            'LOW': 'Низкая плотность'
-        };
-        return map[level] || level || '—';
-    }
-
-    // --- Новая функция для обновления колец со статусами ---
     function updateRingWithStatus(ringSvgElement, value, maxValue, nutrient = null) {
         if (!ringSvgElement) return;
         const bar = ringSvgElement.querySelector('.progress-ring-bar');

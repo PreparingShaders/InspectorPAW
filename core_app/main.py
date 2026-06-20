@@ -189,6 +189,13 @@ def _clamp_score_0_10(val, default: int = 5) -> int:
         return default
 
 
+def _clamp_score_1_10(val, default: int = 5) -> int:
+    try:
+        return max(1, min(10, int(round(float(val)))))
+    except (TypeError, ValueError):
+        return default
+
+
 def _clamp_score_0_100(val, default: int = 50) -> int:
     try:
         return max(0, min(100, int(round(float(val)))))
@@ -315,6 +322,9 @@ def extract_ai_analysis_details(ai_response_data: dict) -> list:
                 key: _clamp_score_0_10(criteria.get(key))
                 for key in criteria_keys
             },
+            "protein_quality_score": _clamp_score_1_10(item.get("protein_quality_score")),
+            "fat_quality_score": _clamp_score_1_10(item.get("fat_quality_score")),
+            "carbs_quality_score": _clamp_score_1_10(item.get("carbs_quality_score")),
         })
     return result
 
@@ -353,6 +363,10 @@ async def get_nutrition_analysis_and_advice(
     - `ultra_processing_score` — степень ультраобработки (0 = цельный продукт, 10 = фастфуд/УПП).
     - `hidden_ingredients_risk` — риск скрытых соусов, сахара, усилителей (0 = нет, 10 = высокий).
     - В `criteria` каждого ингредиента: `portion_confidence`, `processing`, `oil_absorption`, `hidden_ingredients`, `protein_quality`, `micronutrients`, `calorie_density` (все 0–10).
+    - **Дополнительные оценки качества нутриентов (1–10):**
+      - `protein_quality_score`: аминокислотный профиль (9-10 для мяса/яиц/сыворотки, 4-5 для коллагена/хлеба).
+      - `fat_quality_score`: баланс жиров (9-10 для Омега-3/мононенасыщенных, 1-2 при трансжирах).
+      - `carbs_quality_score`: скорость усвоения и сытость (высокий для сложных углеводов с низким ГИ, низкий для сахара; повышается после тренировки).
 
     ### КОНТЕКСТ ДНЯ ПОЛЬЗОВАТЕЛЯ:
     ```json
@@ -409,7 +423,10 @@ async def get_nutrition_analysis_and_advice(
             "protein_quality": 9,
             "micronutrients": 6,
             "calorie_density": 4
-          }}
+          }},
+          "protein_quality_score": 9,
+          "fat_quality_score": 8,
+          "carbs_quality_score": null
         }}
       ],
       "coach_advice": "Твой общий совет на остаток дня здесь.",
