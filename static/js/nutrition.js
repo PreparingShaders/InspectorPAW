@@ -769,30 +769,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const radius = bar.r.baseVal.value;
         const circum = 2 * Math.PI * radius;
-        bar.style.strokeDasharray = `${circum} ${circum}`;
 
         let fillPct = maxValue > 0 ? value / maxValue : 0;
-        fillPct = Math.min(fillPct, 1);
+        const isOverflow = fillPct > 1.0;
+        const clampedPct = Math.min(fillPct, 1);
 
+        let displayPct;
         if (ringDisplayMode === 'remaining' && nutrient && nutrient !== 'score') {
-            const remaining = Math.max(0, maxValue - value);
-            const remainingPct = maxValue > 0 ? (1 - remaining / maxValue) : 0;
-            bar.style.strokeDashoffset = circum - (Math.min(remainingPct, 1) * circum);
+            const remaining = maxValue - value;
+            displayPct = remaining <= 0 ? 1.0 : 1.0 - (Math.max(remaining, 0) / maxValue);
         } else {
-            bar.style.strokeDashoffset = circum - (fillPct * circum);
+            displayPct = clampedPct;
         }
+
+        const filledLength = displayPct * circum;
+        const emptyLength = circum - filledLength;
+        bar.style.strokeDasharray = `${filledLength} ${emptyLength}`;
+        bar.style.strokeDashoffset = '0';
 
         bar.classList.remove('status-warning', 'status-danger', 'status-success');
 
-        if (fillPct > 1.05) {
-            if (nutrient === 'protein') {
-                bar.classList.add('status-success');
-            } else {
-                bar.classList.add('status-danger');
-            }
-        } else if (fillPct > 0.95) {
-            if (nutrient !== 'protein') {
-                bar.classList.add('status-warning');
+        if (isOverflow && nutrient !== 'protein') {
+            bar.classList.add('status-danger');
+            bar.setAttribute('stroke', 'url(#avg-grad-overflow)');
+            bar.setAttribute('filter', 'url(#avg-glow-overflow)');
+        } else if (displayPct > 0.95 && nutrient !== 'protein' && !isOverflow) {
+            bar.classList.add('status-warning');
+        } else if (displayPct > 1.05 && nutrient === 'protein') {
+            bar.classList.add('status-success');
+        } else {
+            const gradientMap = {
+                calories: ['url(#avg-grad-calories)', 'url(#avg-glow-calories)'],
+                protein: ['url(#avg-grad-protein)', 'url(#avg-glow-protein)'],
+                fat: ['url(#avg-grad-fat)', 'url(#avg-glow-fat)'],
+                carbohydrates: ['url(#avg-grad-carbs)', 'url(#avg-glow-carbs)'],
+                score: ['url(#avg-grad-score)', 'url(#avg-glow-score)'],
+            };
+            if (nutrient && gradientMap[nutrient]) {
+                bar.setAttribute('stroke', gradientMap[nutrient][0]);
+                bar.setAttribute('filter', gradientMap[nutrient][1]);
             }
         }
     }
@@ -962,10 +977,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateRingWithStatus(document.querySelector('[data-nutrient="carbohydrates"]'), s.avg_carbohydrates, s.target_carbohydrates, 'carbohydrates');
 
             if (ringDisplayMode === 'remaining') {
-                document.getElementById('avg-calories-value').textContent = Math.max(0, Math.round(s.target_calories - s.avg_calories));
-                document.getElementById('avg-protein-value').textContent = Math.max(0, Math.round(s.target_protein - s.avg_protein));
-                document.getElementById('avg-fat-value').textContent = Math.max(0, Math.round(s.target_fat - s.avg_fat));
-                document.getElementById('avg-carbs-value').textContent = Math.max(0, Math.round(s.target_carbohydrates - s.avg_carbohydrates));
+                document.getElementById('avg-calories-value').textContent = Math.round(s.target_calories - s.avg_calories);
+                document.getElementById('avg-protein-value').textContent = Math.round(s.target_protein - s.avg_protein);
+                document.getElementById('avg-fat-value').textContent = Math.round(s.target_fat - s.avg_fat);
+                document.getElementById('avg-carbs-value').textContent = Math.round(s.target_carbohydrates - s.avg_carbohydrates);
             } else {
                 document.getElementById('avg-calories-value').textContent = Math.round(s.avg_calories);
                 document.getElementById('avg-protein-value').textContent = Math.round(s.avg_protein);
