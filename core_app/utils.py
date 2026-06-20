@@ -306,7 +306,8 @@ def calculate_user_targets(
         "target_calories": round(target_calories),
         "target_protein": round(target_protein),
         "target_fat": round(target_fat),
-        "target_carbohydrates": round(target_carbohydrates)
+        "target_carbohydrates": round(target_carbohydrates),
+        "target_fiber": 25  # Стандартная рекомендация для взрослых
     }
 
 

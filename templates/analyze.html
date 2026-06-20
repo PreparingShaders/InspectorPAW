@@ -47,12 +47,15 @@
     <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-6 pb-24">
         <!-- Блок со средними показателями -->
         <div class="w-full">
-            <div id="average-stats" class="pt-4">
-                <h3 class="text-lg font-semibold text-center mb-4">Средние данные</h3>
-                <div id="interactive-rings-container" class="w-full h-64 flex items-center justify-center">
-                    <!-- The new interactive ring will be generated here by JavaScript -->
-                </div>
+        <div id="average-stats" class="pt-4">
+            <h3 id="stats-title" class="text-lg font-semibold text-center mb-4">Средние данные</h3>
+            <div id="interactive-rings-container" class="w-full h-64 flex items-center justify-center">
+                <!-- The new interactive ring will be generated here by JavaScript -->
             </div>
+            <div id="quality-details" class="w-full mt-4 space-y-3" style="display: none;">
+                <!-- Quality details will be injected here -->
+            </div>
+        </div>
         </div>
 
         <!-- AI Coach Section -->
@@ -128,6 +131,13 @@
                     <div class="slider-wrapper">
                         <input type="range" id="carbohydrates-slider" min="0" max="300" step="1" class="styled-slider">
                         <input type="number" id="carbohydrates" class="slider-value" min="0">
+                    </div>
+                </div>
+                <div class="slider-group">
+                    <label for="fiber">Клетчатка (г)</label>
+                    <div class="slider-wrapper">
+                        <input type="range" id="fiber-slider" min="0" max="100" step="1" class="styled-slider">
+                        <input type="number" id="fiber" class="slider-value" min="0">
                     </div>
                 </div>
 

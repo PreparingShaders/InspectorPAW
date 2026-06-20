@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const aiCoachAdvice = document.getElementById('ai-coach-advice');
     const nutritionModelInfo = document.getElementById('nutrition-model-info');
 
-    let currentFoodName = '';
+    let currentAnalysisResult = null;
+    let currentMealId = null;
 
     // --- Управление состоянием формы анализа ---
     const analysisStateKey = 'analysisInProgress';
@@ -59,48 +60,66 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function resetAnalysisUI() {
         aiResponseTextDiv.innerHTML = '';
-        const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
+        const fields = ['calories', 'protein', 'fat', 'carbohydrates', 'fiber'];
         fields.forEach(field => {
             const slider = document.getElementById(`${field}-slider`);
-            const input = document.getElementById(field);
-            slider.value = 0;
-            input.value = 0;
+            const input = document.getElementById(`${field}`);
+            if (slider && input) {
+                slider.value = 0;
+                input.value = 0;
+            }
         });
         aiCoachSection.style.display = 'none';
         localStorage.removeItem('lastAiAdvice');
         localStorage.removeItem('lastCoachModel');
         clearAnalysisState();
+        currentAnalysisResult = null;
+        currentMealId = null;
+        document.getElementById('stats-title').textContent = 'Средние данные';
+        const qualityDetails = document.getElementById('quality-details');
+        if (qualityDetails) qualityDetails.style.display = 'none';
     }
 
     function populateResultsFromState(state) {
         if (!state) return;
         currentFoodName = state.foodName;
+        currentAnalysisResult = state;
         aiResponseTextDiv.innerHTML = `<p>${currentFoodName}</p>`;
         document.getElementById('meal-type').value = state.mealType;
-        const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
+        const fields = ['calories', 'protein', 'fat', 'carbohydrates', 'fiber'];
         fields.forEach(field => {
             const slider = document.getElementById(`${field}-slider`);
-            const input = document.getElementById(field);
-            const value = state.values[field] || 0;
-            slider.value = value;
-            input.value = value;
-            const config = { minBuffer: field === 'calories' ? 500 : 30, step: field === 'calories' ? 10 : 1 };
-            const buffer = Math.max(value * 0.5, config.minBuffer);
-            const minValue = Math.max(0, Math.floor((value - buffer) / config.step) * config.step);
-            const maxValue = Math.ceil((value + buffer) / config.step) * config.step;
-            slider.min = minValue;
-            slider.max = maxValue;
+            const input = document.getElementById(`${field}`);
+            const value = state.values?.[field] || 0;
+            if (slider && input) {
+                slider.value = value;
+                input.value = value;
+                const config = { minBuffer: field === 'calories' ? 500 : 30, step: field === 'calories' ? 10 : 1 };
+                const buffer = Math.max(value * 0.5, config.minBuffer);
+                const minValue = Math.max(0, Math.floor((value - buffer) / config.step) * config.step);
+                const maxValue = Math.ceil((value + buffer) / config.step) * config.step;
+                slider.min = minValue;
+                slider.max = maxValue;
+            }
         });
         resultsSection.style.display = 'block';
+        updateQualitySection(state);
     }
 
     // --- Новый, исправленный код для интерактивного кольца ---
-    function createInteractiveRing(container, data, totalCalories) {
+    function getScoreColor(score) {
+        if (score === null || score === undefined) return 'var(--text-secondary)';
+        if (score <= 40) return '#EF4444';
+        if (score <= 70) return '#F59E0B';
+        return '#10B981';
+    }
+
+    function createInteractiveRing(container, data, totalCalories, aiScore) {
         container.innerHTML = '';
 
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
-        const viewBoxSize = 280; // Увеличим, чтобы было место для лейблов и тени
+        const viewBoxSize = 300;
         svg.setAttribute("viewBox", `0 0 ${viewBoxSize} ${viewBoxSize}`);
 
         const defs = document.createElementNS(svgNS, "defs");
@@ -114,12 +133,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const radius = 100;
         const strokeWidth = 25;
         const circumference = 2 * Math.PI * radius;
-        const gapDegrees = 2.5; // Увеличим отступ
+        const gapDegrees = 2.5;
 
         const totalGrams = data.reduce((sum, item) => sum + item.value, 0);
 
         if (totalGrams === 0) {
-            // Отрисовка плейсхолдера, если нет данных
             const placeholder = document.createElementNS(svgNS, "circle");
             placeholder.setAttribute("cx", center);
             placeholder.setAttribute("cy", center);
@@ -157,17 +175,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             segment.setAttribute("stroke", item.color);
             segment.setAttribute("stroke-width", strokeWidth);
             segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
-            segment.setAttribute("stroke-linecap", "butt"); // Важно для четких отступов
+            segment.setAttribute("stroke-linecap", "butt");
             segment.setAttribute("transform", `rotate(${currentAngle - 90 + gapDegrees / 2}, ${center}, ${center})`);
             segment.setAttribute("fill", "none");
-            segment.setAttribute("filter", "url(#drop-shadow)"); // Применяем тень
+            segment.setAttribute("filter", "url(#drop-shadow)");
             segments.push(segment);
 
-            // Сохраняем углы для обработчика кликов
             item.startAngle = currentAngle;
             item.endAngle = currentAngle + angle;
 
-            // Создаем лейблы, но пока не добавляем в SVG
             const labelRadius = radius + strokeWidth;
             const midAngleRad = (currentAngle + angle / 2 - 90) * Math.PI / 180;
             const x = center + labelRadius * Math.cos(midAngleRad);
@@ -183,26 +199,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentAngle += angle;
         });
 
-        // Сначала добавляем все сегменты, потом все лейблы
         segments.forEach(s => svg.appendChild(s));
         labels.forEach(l => svg.appendChild(l));
 
-        // Центральный текст (калории)
+        const scoreColor = getScoreColor(aiScore);
         const centerText = document.createElementNS(svgNS, "text");
         centerText.setAttribute("x", "50%");
         centerText.setAttribute("y", "50%");
         centerText.setAttribute("text-anchor", "middle");
         centerText.setAttribute("dominant-baseline", "middle");
-        centerText.setAttribute("font-size", "40");
-        centerText.setAttribute("font-weight", "bold");
-        centerText.setAttribute("fill", "var(--color-amber)");
         centerText.innerHTML = `
-            <tspan x="50%" dy="-0.1em">${Math.round(totalCalories)}</tspan>
-            <tspan x="50%" dy="1.2em" font-size="16" fill="var(--text-secondary)">ккал</tspan>
+            <tspan x="50%" dy="-0.6em" font-size="28" font-weight="bold" fill="${scoreColor}">${aiScore !== null && aiScore !== undefined ? aiScore : '—'}</tspan>
+            <tspan x="50%" dy="1.1em" font-size="14" fill="var(--text-secondary)">Score</tspan>
+            <tspan x="50%" dy="2.4em" font-size="22" font-weight="bold" fill="var(--color-amber)">${Math.round(totalCalories)}</tspan>
+            <tspan x="50%" dy="3.6em" font-size="14" fill="var(--text-secondary)">ккал</tspan>
         `;
         svg.appendChild(centerText);
 
-        // Единый обработчик кликов
         svg.addEventListener('click', (event) => {
             const rect = svg.getBoundingClientRect();
             const x = event.clientX - rect.left - center;
@@ -243,10 +256,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nutrientData = [
                 { id: 'protein', label: 'Белки', value: stats.avg_protein || 0, color: 'var(--color-protein-white)' },
                 { id: 'fat', label: 'Жиры', value: stats.avg_fat || 0, color: 'var(--color-golden-orange)' },
-                { id: 'carbohydrates', label: 'Углеводы', value: stats.avg_carbohydrates || 0, color: 'var(--color-muted-teal)' }
+                { id: 'carbohydrates', label: 'Углеводы', value: stats.avg_carbohydrates || 0, color: 'var(--color-muted-teal)' },
+                { id: 'fiber', label: 'Клетчатка', value: stats.avg_fiber || 0, color: '#8B4513' }
             ];
 
-            createInteractiveRing(container, nutrientData, stats.avg_calories);
+            createInteractiveRing(container, nutrientData, stats.avg_calories, null);
+            document.getElementById('stats-title').textContent = 'Средние данные';
+            const qualityDetails = document.getElementById('quality-details');
+            if (qualityDetails) qualityDetails.style.display = 'none';
 
             mealLogsContainer.dataset.targetCalories = stats.target_calories;
             mealLogsContainer.dataset.targetProtein = stats.target_protein;
@@ -255,10 +272,125 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (error) {
             console.error("Error fetching average stats for ring:", error);
-            // В случае ошибки, рисуем пустой круг
             const container = document.getElementById('interactive-rings-container');
-            if (container) createInteractiveRing(container, [], 0);
+            if (container) createInteractiveRing(container, [], 0, null);
         }
+    }
+
+    function getRiskColor(score) {
+        if (score === null || score === undefined) return 'var(--text-secondary)';
+        if (score <= 3) return '#10B981';
+        if (score <= 7) return '#F59E0B';
+        return '#EF4444';
+    }
+
+    function getProcessingLevelLabel(level) {
+        const map = {
+            'WHOLE': 'Цельные продукты',
+            'MINIMALLY_PROCESSED': 'Минимальная обработка',
+            'ULTRA_PROCESSED': 'Ультраобработанные'
+        };
+        return map[level] || level || '—';
+    }
+
+    function getMicronutrientLabel(level) {
+        const map = {
+            'HIGH': 'Высокая плотность',
+            'MEDIUM': 'Средняя плотность',
+            'LOW': 'Низкая плотность'
+        };
+        return map[level] || level || '—';
+    }
+
+    function updateQualitySection(state) {
+        const qualityDetails = document.getElementById('quality-details');
+        if (!qualityDetails) return;
+
+        const foodQuality = state.foodQuality;
+        const aiAnalysisDetails = state.aiAnalysisDetails;
+        const values = state.values || {};
+
+        if (!foodQuality && !aiAnalysisDetails) {
+            qualityDetails.style.display = 'none';
+            return;
+        }
+
+        qualityDetails.style.display = 'block';
+        document.getElementById('stats-title').textContent = 'Качество блюда';
+
+        let html = '';
+
+        if (foodQuality) {
+            const scoreColor = getScoreColor(foodQuality.ai_score);
+            html += `
+                <div class="glassmorphism rounded-xl p-4 neon-glow-pantone-gray text-center">
+                    <div class="text-sm text-gray-400 mb-1">Оценка качества</div>
+                    <div class="text-4xl font-black" style="color: ${scoreColor};">${foodQuality.ai_score ?? '—'}</div>
+                    <div class="text-xs text-gray-500 mt-1">Score</div>
+                </div>
+            `;
+        }
+
+        if (aiAnalysisDetails && aiAnalysisDetails.length > 0) {
+            html += '<div class="space-y-2">';
+            aiAnalysisDetails.forEach((detail, index) => {
+                const criteria = detail.criteria || {};
+                html += `
+                    <div class="glassmorphism rounded-xl p-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-white">${detail.name || 'Ингредиент ' + (index + 1)}</span>
+                            <span class="text-xs text-gray-400">${detail.estimated_weight_g ?? '?'}г</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-1 text-xs">
+                            <div class="flex justify-between"><span class="text-gray-400">Калории:</span><span>${detail.calories ?? 0} ккал</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Белки:</span><span>${detail.protein_g ?? 0}г</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Жиры:</span><span>${detail.fat_g ?? 0}г</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Углеводы:</span><span>${detail.carbs_g ?? 0}г</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Клетчатка:</span><span>${detail.fiber_g ?? 0}г</span></div>
+                        </div>
+                        <div class="mt-2 space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Впитывание масла</span>
+                                <span style="color: ${getRiskColor(criteria.oil_absorption)};">${criteria.oil_absorption ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Переработка</span>
+                                <span style="color: ${getRiskColor(criteria.processing)};">${criteria.processing ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Скрытые ингредиенты</span>
+                                <span style="color: ${getRiskColor(criteria.hidden_ingredients)};">${criteria.hidden_ingredients ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Качество белка</span>
+                                <span style="color: ${getRiskColor(10 - (criteria.protein_quality ?? 5))};">${criteria.protein_quality ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Микроэлементы</span>
+                                <span style="color: ${getRiskColor(10 - (criteria.micronutrients ?? 5))};">${criteria.micronutrients ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Калорийность</span>
+                                <span style="color: ${getRiskColor(criteria.calorie_density)};">${criteria.calorie_density ?? '—'}/10</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        if (foodQuality) {
+            html += `
+                <div class="glassmorphism rounded-xl p-3 space-y-1 text-xs">
+                    <div class="flex justify-between"><span class="text-gray-400">Уровень обработки</span><span>${getProcessingLevelLabel(foodQuality.processing_level)}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Плотность микроэлементов</span><span>${getMicronutrientLabel(foodQuality.micronutrient_density)}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Индекс сытости</span><span>${foodQuality.satiety_index ?? '—'}/5</span></div>
+                </div>
+            `;
+        }
+
+        qualityDetails.innerHTML = html;
     }
 
     function updateRingWithOverflow(ringId, value, maxValue) {
@@ -391,6 +523,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupSliderSync('protein-slider', 'protein', true);
     setupSliderSync('fat-slider', 'fat', true);
     setupSliderSync('carbohydrates-slider', 'carbohydrates', true);
+    setupSliderSync('fiber-slider', 'fiber');
     document.getElementById('meal-type').addEventListener('change', saveCurrentAnalysis);
 
     function saveCurrentAnalysis() {
@@ -402,7 +535,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 protein: document.getElementById('protein').value,
                 fat: document.getElementById('fat').value,
                 carbohydrates: document.getElementById('carbohydrates').value,
-            }
+                fiber: document.getElementById('fiber').value,
+            },
+            aiScore: currentAnalysisResult?.aiScore ?? null,
+            aiAnalysisDetails: currentAnalysisResult?.aiAnalysisDetails ?? null,
+            foodQuality: currentAnalysisResult?.foodQuality ?? null,
         };
         saveAnalysisState(state);
     }
@@ -492,6 +629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             nutritionModelInfo.textContent = `Проанализировано с помощью: ${result.nutrition_model_used || 'модель не указана'}`;
 
+            currentAnalysisResult = result;
             currentFoodName = result.ai_response_text;
             const initialState = {
                 foodName: currentFoodName,
@@ -501,10 +639,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     protein: Math.round(result.suggested_totals.total_protein || 0),
                     fat: Math.round(result.suggested_totals.total_fat || 0),
                     carbohydrates: Math.round(result.suggested_totals.total_carbohydrates || 0),
-                }
+                    fiber: Math.round(result.suggested_totals.total_fiber || 0),
+                },
+                aiScore: result.food_quality?.ai_score ?? null,
+                aiAnalysisDetails: result.ai_analysis_details ?? null,
+                foodQuality: result.food_quality ?? null,
             };
             saveAnalysisState(initialState);
             populateResultsFromState(initialState);
+            updateQualitySection(initialState);
 
             resultsSection.style.display = 'block';
             analysisStatus.innerHTML = '<span style="color: #50C878;">✓ Анализ завершён!</span>';
@@ -534,6 +677,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             total_protein: parseFloat(document.getElementById('protein').value),
             total_fat: parseFloat(document.getElementById('fat').value),
             total_carbohydrates: parseFloat(document.getElementById('carbohydrates').value),
+            total_fiber: parseFloat(document.getElementById('fiber').value) || 0,
+            ai_score: currentAnalysisResult?.aiScore ?? null,
+            ai_analysis_details: currentAnalysisResult?.aiAnalysisDetails ?? null,
+            oil_absorption_score: currentAnalysisResult?.foodQuality?.oil_absorption_score ?? null,
+            ultra_processing_score: currentAnalysisResult?.foodQuality?.ultra_processing_score ?? null,
+            hidden_ingredients_risk: currentAnalysisResult?.foodQuality?.hidden_ingredients_risk ?? null,
+            processing_level: currentAnalysisResult?.foodQuality?.processing_level ?? null,
+            micronutrient_density: currentAnalysisResult?.foodQuality?.micronutrient_density ?? null,
+            satiety_index: currentAnalysisResult?.foodQuality?.satiety_index ?? null,
+            ai_comment: currentAnalysisResult?.foodQuality?.toxic_coach_comment ?? null,
         };
 
         try {

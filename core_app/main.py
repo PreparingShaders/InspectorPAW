@@ -925,15 +925,20 @@ def get_average_stats(db: Session = Depends(get_db), current_user: models.User =
     latest_body_fat = latest_metric.body_fat_percentage if latest_metric else None
     targets = utils.calculate_user_targets(current_user, latest_weight, latest_body_fat)
 
+    # Include fiber targets
+    targets.setdefault('target_fiber', 0)
+
     return schemas.AverageSummary(
         avg_calories=round(total_calories / days_with_data),
         avg_protein=round(total_protein / days_with_data),
         avg_fat=round(total_fat / days_with_data),
         avg_carbohydrates=round(total_carbohydrates / days_with_data),
+        avg_fiber=0,
         target_calories=targets.get("target_calories", 0),
         target_protein=targets.get("target_protein", 0),
         target_fat=targets.get("target_fat", 0),
-        target_carbohydrates=targets.get("target_carbohydrates", 0)
+        target_carbohydrates=targets.get("target_carbohydrates", 0),
+        target_fiber=targets.get("target_fiber", 0)
     )
 
 
@@ -1059,13 +1064,19 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
     avg_protein = (total_consumed["protein"] / days_with_data) if days_with_data > 0 else 0
     avg_fat = (total_consumed["fat"] / days_with_data) if days_with_data > 0 else 0
     avg_carbohydrates = (total_consumed["carbohydrates"] / days_with_data) if days_with_data > 0 else 0
+    avg_fiber = 0
 
     period_summary = schemas.AverageSummary(
         avg_calories=round(avg_calories),
         avg_protein=round(avg_protein),
         avg_fat=round(avg_fat),
         avg_carbohydrates=round(avg_carbohydrates),
-        **targets
+        avg_fiber=round(avg_fiber),
+        target_calories=target_calories,
+        target_protein=target_protein,
+        target_fat=target_fat,
+        target_carbohydrates=target_carbohydrates,
+        target_fiber=targets.get("target_fiber", 0)
     )
 
     return schemas.WeeklySummaryResponse(

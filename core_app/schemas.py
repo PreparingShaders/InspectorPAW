@@ -65,10 +65,12 @@ class AverageSummary(BaseModel):
     avg_protein: float
     avg_fat: float
     avg_carbohydrates: float
+    avg_fiber: float = 0
     target_calories: float
     target_protein: float
     target_fat: float
     target_carbohydrates: float
+    target_fiber: float = 0
 
 class WeeklySummaryResponse(BaseModel):
     daily_breakdown: List[DailyStatDetail]
