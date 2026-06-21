@@ -1132,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 labelsContainer.appendChild(label);
             });
         } catch (e) { console.error("Ошибка графика:", e); }
+        document.getElementById('stats-graph-panel')?.classList.remove('opacity-0');
     }
 
     // --- Инициализация ---
@@ -1180,11 +1181,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Первоначальная загрузка данных ---
-    fetchScoreGraphData(1);
     if (oneDayBtn) {
         oneDayBtn.classList.add('active');
         oneDayBtn.classList.remove('text-gray-400');
     }
+    fetchScoreGraphData(1);
     resetWizard();
 
     // --- Тумблер режима колец ---
