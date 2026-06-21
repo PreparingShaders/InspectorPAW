@@ -191,13 +191,12 @@
         }
         /* --- Стили для составного кольца --- */
         .composite-ring-container {
-            width: 240px; /* Увеличили размер для подписей */
+            width: 240px;
             height: 240px;
             position: relative;
-            margin: 1.5rem auto; /* Добавили отступ снизу */
+            margin: 1.5rem auto;
         }
         .composite-ring-svg {
-            transform: rotate(-90deg);
             width: 100%;
             height: 100%;
             overflow: visible;
@@ -228,6 +227,17 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+        }
+        .daily-quality-ring-container {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            margin: 0.5rem auto;
+        }
+        .daily-quality-ring-container svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
         }
         .nutrient-label {
             position: absolute;
@@ -413,31 +423,12 @@
                 <div class="flex flex-col justify-start">
 
                     <div id="initial-view" class="flex flex-col justify-start space-y-1">
-                        <!-- Блок советов -->
-                        <div id="progress-lab-summary" class="w-full -mt-6 bg-white/5 border border-white/20 rounded-2xl p-3 flex flex-col space-y-2">
-                            <div id="coach-general-advice-card" class="advice-card">
-                                <h5 class="text-white">Общий совет</h5>
-                                <p id="coach-general-advice">Загрузка...</p>
-                            </div>
-                            <div id="coach-nutrient-grid" class="grid grid-cols-2 gap-2">
-                                <div id="coach-calories-advice-card" class="advice-card" data-nutrient="calories">
-                                    <h5 style="color: var(--color-amber);">Калории</h5>
-                                    <p id="coach-calories-advice">Загрузка...</p>
-                                </div>
-                                <div id="coach-protein-advice-card" class="advice-card" data-nutrient="protein">
-                                    <h5 style="color: var(--color-protein-white);">Белки</h5>
-                                    <p id="coach-protein-advice">Загрузка...</p>
-                                </div>
-                                <div id="coach-fat-advice-card" class="advice-card" data-nutrient="fat">
-                                    <h5 style="color: var(--color-golden-orange);">Жиры</h5>
-                                    <p id="coach-fat-advice">Загрузка...</p>
-                                </div>
-                                <div id="coach-carbs-advice-card" class="advice-card" data-nutrient="carbohydrates">
-                                    <h5 style="color: var(--color-muted-teal);">Углеводы</h5>
-                                    <p id="coach-carbs-advice">Загрузка...</p>
-                                </div>
-                            </div>
-                        </div>
+                         <div id="daily-quality-section" class="w-full -mt-6">
+                             <div id="daily-quality-ring-container" class="daily-quality-ring-container">
+                                 <div id="daily-quality-ring"></div>
+                             </div>
+                             <p id="daily-quality-label" class="text-xs text-center mt-1" style="color: var(--text-secondary);">Качество питания</p>
+                         </div>
 
                         <div class="w-full pb-2 pt-2">
                             <label for="meal-image" class="upload-button-label block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95 border border-white/20">
