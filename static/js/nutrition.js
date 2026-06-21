@@ -971,10 +971,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Обновляем средние показатели
             const s = data.period_summary;
-            updateRingWithStatus(document.querySelector('[data-nutrient="calories"]'), s.avg_calories, s.target_calories, 'calories');
-            updateRingWithStatus(document.querySelector('[data-nutrient="protein"]'), s.avg_protein, s.target_protein, 'protein');
-            updateRingWithStatus(document.querySelector('[data-nutrient="fat"]'), s.avg_fat, s.target_fat, 'fat');
-            updateRingWithStatus(document.querySelector('[data-nutrient="carbohydrates"]'), s.avg_carbohydrates, s.target_carbohydrates, 'carbohydrates');
+            updateRingWithStatus(document.getElementById('avg-calories-ring'), s.avg_calories, s.target_calories, 'calories');
+            updateRingWithStatus(document.getElementById('avg-protein-ring'), s.avg_protein, s.target_protein, 'protein');
+            updateRingWithStatus(document.getElementById('avg-fat-ring'), s.avg_fat, s.target_fat, 'fat');
+            updateRingWithStatus(document.getElementById('avg-carbs-ring'), s.avg_carbohydrates, s.target_carbohydrates, 'carbohydrates');
 
             if (ringDisplayMode === 'remaining') {
                 document.getElementById('avg-calories-value').textContent = Math.round(s.target_calories - s.avg_calories);
