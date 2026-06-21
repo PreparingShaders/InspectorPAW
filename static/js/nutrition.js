@@ -583,8 +583,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const svgNS = "http://www.w3.org/2000/svg";
         const viewBoxSize = 280;
         const center = viewBoxSize / 2;
-        const radius = 86;
-        const strokeWidth = 17;
+        const radius = 78;
+        const strokeWidth = 14;
         const circumference = 2 * Math.PI * radius;
         const gapDegrees = 3;
 
@@ -677,7 +677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return { shadow, segment };
             });
 
-            const labelOffsets = { protein: 28, fat: 28, carbohydrates: 34, fiber: 42 };
+const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
             const labelsGroup = document.createElementNS(svgNS, "g");
 
             segmentsData.forEach(item => {
@@ -721,29 +721,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const scoreText = document.createElementNS(svgNS, "text");
         scoreText.setAttribute("x", center);
-        scoreText.setAttribute("y", center - 10);
+        scoreText.setAttribute("y", center - 8);
         scoreText.setAttribute("text-anchor", "middle");
         scoreText.setAttribute("dominant-baseline", "central");
         scoreText.setAttribute("fill", scoreColor);
-        scoreText.style.fontSize = '48px';
+        scoreText.style.fontSize = '44px';
         scoreText.style.fontWeight = '900';
         scoreText.textContent = mealCount === 0 ? '—' : Math.round(score);
         svg.appendChild(scoreText);
 
         const scoreLabel = document.createElementNS(svgNS, "text");
         scoreLabel.setAttribute("x", center);
-        scoreLabel.setAttribute("y", center + 8);
+        scoreLabel.setAttribute("y", center + 12);
         scoreLabel.setAttribute("text-anchor", "middle");
         scoreLabel.setAttribute("dominant-baseline", "central");
         scoreLabel.setAttribute("fill", "rgba(255,255,255,0.5)");
-        scoreLabel.style.fontSize = '11px';
+        scoreLabel.style.fontSize = '12px';
         scoreLabel.style.fontWeight = '600';
         scoreLabel.textContent = 'Score';
         svg.appendChild(scoreLabel);
 
         const mealCountText = document.createElementNS(svgNS, "text");
         mealCountText.setAttribute("x", center);
-        mealCountText.setAttribute("y", center + 24);
+        mealCountText.setAttribute("y", center + 28);
         mealCountText.setAttribute("text-anchor", "middle");
         mealCountText.setAttribute("dominant-baseline", "central");
         mealCountText.setAttribute("fill", "rgba(255,255,255,0.35)");
