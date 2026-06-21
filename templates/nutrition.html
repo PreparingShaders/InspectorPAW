@@ -149,6 +149,9 @@
             width: 4rem; /* 64px */
             height: 4rem;
         }
+        #average-stats.day-view-active {
+            padding-right: 3.5rem;
+        }
         #average-stats.day-view-active #nutrient-rings-wrapper .font-bold {
             font-size: 1.125rem; /* 18px */
         }
@@ -273,7 +276,7 @@
                     <button id="three-months-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">3 мес</button>
                 </div>
             </div>
-            <div id="stats-graph-panel" class="relative w-full glassmorphism rounded-2xl p-2 flex flex-col opacity-0 transition-opacity duration-200" style="height: 17rem;">
+            <div id="stats-graph-panel" class="relative w-full glassmorphism rounded-2xl p-2 flex flex-col opacity-0 transition-opacity duration-200" style="height: 14rem;">
                 <div class="absolute top-2 right-2 flex items-center gap-1.5 z-10">
                     <span class="text-[10px] text-gray-400 font-medium">Потрачено</span>
                     <div id="ring-toggle" class="ring-toggle-switch"></div>
@@ -398,10 +401,10 @@
                            </div>
                       </div>
                   </div>
-                  <div id="graph-wrapper" class="relative h-24 w-full flex items-end justify-around transition-opacity duration-300">
+                  <div id="graph-wrapper" class="relative h-24 w-full flex items-end justify-around transition-opacity duration-300 overflow-hidden">
                     <div id="score-graph-container" class="flex justify-around w-full h-full items-end relative z-10"></div>
                 </div>
-                <div id="x-axis-labels-container" class="flex justify-around w-full text-xs text-gray-400 mt-1 px-1 transition-opacity duration-300"></div>
+                <div id="x-axis-labels-container" class="flex justify-around w-full text-[9px] text-gray-400 mt-1 px-1 transition-opacity duration-300 gap-0.5"></div>
             </div>
         </div>
 
