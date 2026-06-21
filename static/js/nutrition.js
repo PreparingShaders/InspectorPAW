@@ -775,25 +775,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         const clampedPct = Math.min(fillPct, 1);
 
         let displayPct;
+        let displayOverflowPct = 0;
+
         if (ringDisplayMode === 'remaining' && nutrient && nutrient !== 'score') {
             const remaining = maxValue - value;
-            displayPct = remaining <= 0 ? 1.0 : 1.0 - (Math.max(remaining, 0) / maxValue);
+            if (remaining <= 0) {
+                displayPct = 0;
+                displayOverflowPct = Math.min(-remaining / maxValue, 1);
+            } else {
+                displayPct = remaining / maxValue;
+            }
         } else {
             displayPct = clampedPct;
+            displayOverflowPct = isOverflow ? fillPct - 1 : 0;
         }
 
         const filledLength = displayPct * circum;
-        const emptyLength = circum - filledLength;
-        bar.style.strokeDasharray = `${filledLength} ${emptyLength}`;
+        bar.style.strokeDasharray = `${filledLength} ${circum - filledLength}`;
         bar.style.strokeDashoffset = '0';
+
+        let overflowBar = ringSvgElement.querySelector('.progress-ring-overflow');
+        if (displayOverflowPct > 0) {
+            if (!overflowBar) {
+                overflowBar = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                overflowBar.setAttribute('cx', bar.getAttribute('cx'));
+                overflowBar.setAttribute('cy', bar.getAttribute('cy'));
+                overflowBar.setAttribute('r', bar.getAttribute('r'));
+                overflowBar.setAttribute('stroke-width', bar.getAttribute('stroke-width'));
+                overflowBar.setAttribute('fill', 'none');
+                overflowBar.setAttribute('stroke-linecap', 'round');
+                overflowBar.classList.add('progress-ring-overflow');
+                ringSvgElement.insertBefore(overflowBar, bar.nextSibling);
+            }
+            const overflowLength = displayOverflowPct * circum;
+            overflowBar.style.strokeDasharray = `${overflowLength} ${circum - overflowLength}`;
+            overflowBar.style.strokeDashoffset = `-${filledLength}`;
+            overflowBar.style.display = 'block';
+            overflowBar.setAttribute('stroke', nutrient === 'protein' ? '#22C55E' : '#EF4444');
+            overflowBar.removeAttribute('filter');
+        } else if (overflowBar) {
+            overflowBar.style.display = 'none';
+        }
 
         bar.classList.remove('status-warning', 'status-danger', 'status-success');
 
-        if (isOverflow && nutrient !== 'protein') {
-            bar.classList.add('status-danger');
-            bar.setAttribute('stroke', 'url(#avg-grad-overflow)');
-            bar.setAttribute('filter', 'url(#avg-glow-overflow)');
-        } else if (displayPct > 0.95 && nutrient !== 'protein' && !isOverflow) {
+        if (isOverflow) {
+            const gradientMap = {
+                calories: ['url(#avg-grad-calories)', 'url(#avg-glow-calories)'],
+                protein: ['url(#avg-grad-protein)', 'url(#avg-glow-protein)'],
+                fat: ['url(#avg-grad-fat)', 'url(#avg-glow-fat)'],
+                carbohydrates: ['url(#avg-grad-carbs)', 'url(#avg-glow-carbs)'],
+                score: ['url(#avg-grad-score)', 'url(#avg-glow-score)'],
+            };
+            if (nutrient && gradientMap[nutrient]) {
+                bar.setAttribute('stroke', gradientMap[nutrient][0]);
+                bar.setAttribute('filter', gradientMap[nutrient][1]);
+            }
+        } else if (displayPct > 0.95 && nutrient !== 'protein') {
             bar.classList.add('status-warning');
         } else if (displayPct > 1.05 && nutrient === 'protein') {
             bar.classList.add('status-success');
