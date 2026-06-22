@@ -1060,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- ОБНОВЛЕНИЕ БЛОКА СОВЕТОВ ---
-    function updateDailyQualityRing(summary, periodSummary) {
+    function loadDailyQuality() {
         const loadQuality = async () => {
             try {
                 const res = await fetchWithAuth('/users/me/daily-quality');
@@ -1079,6 +1079,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
         loadQuality();
+    }
+
+    function updateDailyQualityRing(summary, periodSummary) {
+        loadDailyQuality();
     }
 
 
@@ -1244,6 +1248,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAndDisplayMealHistory(targets) {
         try {
+            let effectiveTargets = targets;
+            if (!targets || !targets.target_calories) {
+                const res = await fetchWithAuth('/users/me/average-stats');
+                const data = await res.json();
+                effectiveTargets = {
+                    target_calories: data.target_calories || 2000,
+                    target_protein: data.target_protein || 150,
+                    target_fat: data.target_fat || 70,
+                    target_carbohydrates: data.target_carbohydrates || 250,
+                };
+            }
+
             const res = await fetchWithAuth('/meals/');
             let meals = await res.json();
             mealLogsContainer.innerHTML = '';
@@ -1281,10 +1297,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p class="text-sm text-gray-300 mb-3 text-left">${m.food_name.replace(/\n/g, '<br>')}</p>
                     <div class="border-t border-white/10 my-3"></div>
                     <div class="flex justify-around">
-                        ${createMiniRing(m.id, 'calories', m.total_calories, targets.target_calories, 'amber')}
-                        ${createMiniRing(m.id, 'protein', m.total_protein, targets.target_protein, 'protein-white')}
-                        ${createMiniRing(m.id, 'fat', m.total_fat, targets.target_fat, 'golden-orange')}
-                        ${createMiniRing(m.id, 'carbs', m.total_carbohydrates, targets.target_carbohydrates, 'muted-teal')}
+                        ${createMiniRing(m.id, 'calories', m.total_calories, effectiveTargets.target_calories, 'amber')}
+                        ${createMiniRing(m.id, 'protein', m.total_protein, effectiveTargets.target_protein, 'protein-white')}
+                        ${createMiniRing(m.id, 'fat', m.total_fat, effectiveTargets.target_fat, 'golden-orange')}
+                        ${createMiniRing(m.id, 'carbs', m.total_carbohydrates, effectiveTargets.target_carbohydrates, 'muted-teal')}
                     </div>
                 `;
                 mealLogsContainer.appendChild(card);
@@ -1293,7 +1309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const nutrientKey = type === 'carbs' ? 'carbohydrates' : type;
                     const ringSvgElement = card.querySelector(`#log-${m.id}-${type}-ring`);
                     if (ringSvgElement) {
-                        updateRingWithStatus(ringSvgElement, m[`total_${nutrientKey}`], targets[`target_${nutrientKey}`], nutrientKey);
+                        updateRingWithStatus(ringSvgElement, m[`total_${nutrientKey}`], effectiveTargets[`target_${nutrientKey}`], nutrientKey);
                     }
                 });
             });
@@ -1550,12 +1566,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // --- Переключение табов ---
+    const tabNutrition = document.getElementById('tab-nutrition');
+    const tabStats = document.getElementById('tab-stats');
+    const tabHistory = document.getElementById('tab-history');
+    const viewNutrition = document.getElementById('view-nutrition');
+    const viewStats = document.getElementById('view-stats');
+    const viewHistory = document.getElementById('view-history');
+
+    let currentTab = 'nutrition';
+
+    function switchTab(tab) {
+        currentTab = tab;
+        [tabNutrition, tabStats, tabHistory].forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('text-gray-400');
+        });
+        [viewNutrition, viewStats, viewHistory].forEach(v => v.classList.add('hidden'));
+
+        if (tab === 'nutrition') {
+            tabNutrition.classList.add('active');
+            tabNutrition.classList.remove('text-gray-400');
+            viewNutrition.classList.remove('hidden');
+            loadDailyQuality();
+        } else if (tab === 'stats') {
+            tabStats.classList.add('active');
+            tabStats.classList.remove('text-gray-400');
+            viewStats.classList.remove('hidden');
+            fetchScoreGraphData(1);
+        } else if (tab === 'history') {
+            tabHistory.classList.add('active');
+            tabHistory.classList.remove('text-gray-400');
+            viewHistory.classList.remove('hidden');
+            fetchAndDisplayMealHistory({});
+        }
+    }
+
+    if (tabNutrition) tabNutrition.onclick = () => switchTab('nutrition');
+    if (tabStats) tabStats.onclick = () => switchTab('stats');
+    if (tabHistory) tabHistory.onclick = () => switchTab('history');
+
     // --- Первоначальная загрузка данных ---
     if (oneDayBtn) {
         oneDayBtn.classList.add('active');
         oneDayBtn.classList.remove('text-gray-400');
     }
-    fetchScoreGraphData(1);
+    switchTab('nutrition');
     resetWizard();
 
     // --- Тумблер режима колец ---

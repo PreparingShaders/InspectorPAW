@@ -17,8 +17,8 @@
             background: rgba(41, 41, 56, 0.6); border: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
-        .period-btn { transition: all 0.3s ease-in-out; }
-        .period-btn.active {
+        .tab-btn { transition: all 0.3s ease-in-out; }
+        .tab-btn.active {
             background-color: rgba(255, 255, 255, 0.1);
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
             color: #fff;
@@ -335,23 +335,34 @@
     </svg>
 
     <header class="text-center pb-1" style="padding-top: calc(0.01rem + env(safe-area-inset-top));">
-        <h1 class="text-2xl font-bold tracking-wide" style="color: var(--color-amber); text-shadow: 0 0 10px rgba(222, 184, 135, 0.4);">Оценка питания</h1>
+        <h1 class="text-2xl font-bold tracking-wide" style="color: var(--color-amber); text-shadow: 0 0 10px rgba(222, 184, 135, 0.4);">ProgressLAB</h1>
         <div class="mx-auto mt-1 h-px w-24" style="background: linear-gradient(90deg, transparent, var(--color-amber), transparent); opacity: 0.4;"></div>
     </header>
 
     <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-0 pb-24">
 
-        <div id="analysis-wizard" class="w-full flex flex-col items-center mt-2">
-            <div id="step-1" class="step active ai-section" style="width: min(340px, 100%); margin-top: 0;">
-                <div id="initial-view" class="flex flex-col justify-start space-y-1">
-                         <div id="daily-quality-section" class="w-full">
-                             <div id="meal-slider-dots" class="flex justify-center gap-2 mb-3"></div>
-                             <div id="daily-quality-ring-container" class="daily-quality-ring-container">
-                                 <div id="daily-quality-ring"></div>
-                             </div>
-                             <p id="daily-quality-label" class="text-xs text-center mt-1" style="color: var(--text-secondary);">Качество питания</p>
-                             <div id="quality-cards" class="w-full mt-3 space-y-2"></div>
-                         </div>
+        <!-- Tab navigation -->
+        <div class="w-full flex justify-center mt-3">
+            <div class="relative flex w-full max-w-sm p-1 rounded-full glassmorphism">
+                <button id="tab-nutrition" class="tab-btn flex-1 rounded-full py-2 text-sm font-semibold transition-all">Питание</button>
+                <button id="tab-stats" class="tab-btn flex-1 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all">Статистика</button>
+                <button id="tab-history" class="tab-btn flex-1 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all">История</button>
+            </div>
+        </div>
+
+        <!-- ===== TAB: Питание ===== -->
+        <div id="view-nutrition" class="w-full flex flex-col items-center mt-2">
+            <div id="analysis-wizard" class="w-full flex flex-col items-center">
+                <div id="step-1" class="step active ai-section" style="width: min(340px, 100%); margin-top: 0;">
+                    <div id="initial-view" class="flex flex-col justify-start space-y-1">
+                        <div id="daily-quality-section" class="w-full">
+                            <div id="meal-slider-dots" class="flex justify-center gap-2 mb-3"></div>
+                            <div id="daily-quality-ring-container" class="daily-quality-ring-container">
+                                <div id="daily-quality-ring"></div>
+                            </div>
+                            <p id="daily-quality-label" class="text-xs text-center mt-1" style="color: var(--text-secondary);">Качество питания</p>
+                            <div id="quality-cards" class="w-full mt-3 space-y-2"></div>
+                        </div>
 
                         <div class="w-full pb-2 pt-2">
                             <label for="meal-image" class="upload-button-label block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95 border border-white/20">
@@ -387,178 +398,181 @@
                             </button>
                         </div>
                     </div>
-
                 </div>
-            </div>
 
-            <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-center hidden">
-                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 flex flex-col justify-center items-center space-y-4 mb-16">
-                    <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full slow-spin"></div>
-                    <p class="text-center text-gray-300 leading-relaxed">Ваше фото отправлено в AI модель.<br>Процесс распознавания занимает до 10 секунд.<br>Не переходите на другие страницы и ожидайте ответа.</p>
+                <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-center hidden">
+                    <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 flex flex-col justify-center items-center space-y-4 mb-16">
+                        <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full slow-spin"></div>
+                        <p class="text-center text-gray-300 leading-relaxed">Ваше фото отправлено в AI модель.<br>Процесс распознавания занимает до 10 секунд.<br>Не переходите на другие страницы и ожидайте ответа.</p>
+                    </div>
                 </div>
-            </div>
 
-            <div id="step-3" class="step ai-section w-full flex-grow">
-                <form id="confirm-form" class="space-y-4">
-                    <div id="interactive-rings-container">
-                        <!-- Сюда будет вставлено новое составное кольцо -->
-                    </div>
-                    <div id="ai-coach-section" class="w-full glassmorphism rounded-2xl p-4">
-                        <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4>
-                        <p id="ai-coach-advice" class="text-white text-left text-sm leading-relaxed"></p>
-                    </div>
-                    <div id="ai-response-text" class="hidden"></div>
-                    <div class="flex space-x-3 pt-2">
-                        <button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button>
-                        <button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button>
-                    </div>
-                </form>
+                <div id="step-3" class="step ai-section w-full flex-grow">
+                    <form id="confirm-form" class="space-y-4">
+                        <div id="interactive-rings-container"></div>
+                        <div id="ai-coach-section" class="w-full glassmorphism rounded-2xl p-4">
+                            <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4>
+                            <p id="ai-coach-advice" class="text-white text-left text-sm leading-relaxed"></p>
+                        </div>
+                        <div id="ai-response-text" class="hidden"></div>
+                        <div class="flex space-x-3 pt-2">
+                            <button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button>
+                            <button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <div class="w-full space-y-1 mt-2">
-            <div class="w-full flex justify-center">
-                <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
-                    <button id="one-day-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold">1 день</button>
-                    <button id="seven-days-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">7 д</button>
-                    <button id="one-month-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">1 мес</button>
-                    <button id="three-months-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">3 мес</button>
+        <!-- ===== TAB: Статистика ===== -->
+        <div id="view-stats" class="w-full flex flex-col items-center mt-2 hidden">
+            <div class="w-full space-y-1">
+                <div class="w-full flex justify-center">
+                    <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
+                        <button id="one-day-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold">1 день</button>
+                        <button id="seven-days-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">7 д</button>
+                        <button id="one-month-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">1 мес</button>
+                        <button id="three-months-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">3 мес</button>
+                    </div>
                 </div>
-            </div>
-<div id="stats-graph-panel" class="relative w-full glassmorphism rounded-2xl p-2 flex flex-col opacity-0 transition-opacity duration-200" style="height: 12rem;">
-                 <div id="average-stats" class="flex-1 w-full flex flex-col items-center justify-center transition-all duration-300">
-                     <svg width="0" height="0" style="position:absolute;">
-                         <defs>
-                             <linearGradient id="avg-grad-calories" x1="20%" y1="0%" x2="80%" y2="100%">
-                                 <stop offset="0%" stop-color="#FCD34D"/>
-                                 <stop offset="100%" stop-color="#F59E0B"/>
-                             </linearGradient>
-                             <linearGradient id="avg-grad-protein" x1="20%" y1="0%" x2="80%" y2="100%">
-                                 <stop offset="0%" stop-color="#FFFFFF"/>
-                                 <stop offset="100%" stop-color="#9CA3AF"/>
-                             </linearGradient>
-                             <linearGradient id="avg-grad-fat" x1="20%" y1="0%" x2="80%" y2="100%">
-                                 <stop offset="0%" stop-color="#F0D878"/>
-                                 <stop offset="100%" stop-color="#DAA520"/>
-                             </linearGradient>
-                             <linearGradient id="avg-grad-carbs" x1="20%" y1="0%" x2="80%" y2="100%">
-                                 <stop offset="0%" stop-color="#86EFAC"/>
-                                 <stop offset="100%" stop-color="#16A34A"/>
-                             </linearGradient>
-                              <linearGradient id="avg-grad-score" x1="20%" y1="0%" x2="80%" y2="100%">
-                                  <stop offset="0%" stop-color="#FFD700"/>
-                                  <stop offset="100%" stop-color="#F59E0B"/>
-                              </linearGradient>
-                              <filter id="avg-glow-score" x="-40%" y="-40%" width="180%" height="180%">
-                                  <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
-                                  <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#FFD700" flood-opacity="0.6" result="glow"/>
-                                  <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
-                              </filter>
-                             <filter id="avg-glow-calories" x="-40%" y="-40%" width="180%" height="180%">
-                                 <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
-                                 <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#F59E0B" flood-opacity="0.5" result="glow"/>
-                                 <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
-                             </filter>
-                             <filter id="avg-glow-protein" x="-40%" y="-40%" width="180%" height="180%">
-                                 <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
-                                 <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#FFFFFF" flood-opacity="0.4" result="glow"/>
-                                 <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
-                             </filter>
-                             <filter id="avg-glow-fat" x="-40%" y="-40%" width="180%" height="180%">
-                                 <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
-                                 <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#DAA520" flood-opacity="0.5" result="glow"/>
-                                 <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
-                             </filter>
-                             <filter id="avg-glow-carbs" x="-40%" y="-40%" width="180%" height="180%">
-                                 <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
-                                 <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#4ADE80" flood-opacity="0.5" result="glow"/>
-                                 <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
-                             </filter>
-                             <filter id="avg-glow-overflow" x="-40%" y="-40%" width="180%" height="180%">
-                                 <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
-                                 <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#EF4444" flood-opacity="0.7" result="glow"/>
-                                 <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
-                             </filter>
-                         </defs>
-                     </svg>
-<div id="rings-container" class="flex justify-center items-center gap-2">
-                                <div id="avg-score-wrapper" class="text-center flex flex-col items-center">
-                                    <div id="avg-score-ring-container" class="ring-container w-16 h-16 relative">
-                                        <svg id="avg-score-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                            <circle id="avg-score-bar" class="progress-ring-bar" cx="60" cy="60" r="54" stroke-width="6" fill="none" stroke-linecap="round" />
-                                        </svg>
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span id="avg-score-value" class="font-bold text-2xl">0</span>
-                                        </div>
+                <div id="stats-graph-panel" class="relative w-full glassmorphism rounded-2xl p-2 flex flex-col opacity-0 transition-opacity duration-200" style="height: 12rem;">
+                    <div id="average-stats" class="flex-1 w-full flex flex-col items-center justify-center transition-all duration-300">
+                        <svg width="0" height="0" style="position:absolute;">
+                            <defs>
+                                <linearGradient id="avg-grad-calories" x1="20%" y1="0%" x2="80%" y2="100%">
+                                    <stop offset="0%" stop-color="#FCD34D"/>
+                                    <stop offset="100%" stop-color="#F59E0B"/>
+                                </linearGradient>
+                                <linearGradient id="avg-grad-protein" x1="20%" y1="0%" x2="80%" y2="100%">
+                                    <stop offset="0%" stop-color="#FFFFFF"/>
+                                    <stop offset="100%" stop-color="#9CA3AF"/>
+                                </linearGradient>
+                                <linearGradient id="avg-grad-fat" x1="20%" y1="0%" x2="80%" y2="100%">
+                                    <stop offset="0%" stop-color="#F0D878"/>
+                                    <stop offset="100%" stop-color="#DAA520"/>
+                                </linearGradient>
+                                <linearGradient id="avg-grad-carbs" x1="20%" y1="0%" x2="80%" y2="100%">
+                                    <stop offset="0%" stop-color="#86EFAC"/>
+                                    <stop offset="100%" stop-color="#16A34A"/>
+                                </linearGradient>
+                                <linearGradient id="avg-grad-score" x1="20%" y1="0%" x2="80%" y2="100%">
+                                    <stop offset="0%" stop-color="#FFD700"/>
+                                    <stop offset="100%" stop-color="#F59E0B"/>
+                                </linearGradient>
+                                <filter id="avg-glow-score" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
+                                    <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#FFD700" flood-opacity="0.6" result="glow"/>
+                                    <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                                <filter id="avg-glow-calories" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
+                                    <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#F59E0B" flood-opacity="0.5" result="glow"/>
+                                    <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                                <filter id="avg-glow-protein" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
+                                    <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#FFFFFF" flood-opacity="0.4" result="glow"/>
+                                    <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                                <filter id="avg-glow-fat" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
+                                    <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#DAA520" flood-opacity="0.5" result="glow"/>
+                                    <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                                <filter id="avg-glow-carbs" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
+                                    <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#4ADE80" flood-opacity="0.5" result="glow"/>
+                                    <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                                <filter id="avg-glow-overflow" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.5" result="depth"/>
+                                    <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#EF4444" flood-opacity="0.7" result="glow"/>
+                                    <feMerge><feMergeNode in="depth"/><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                            </defs>
+                        </svg>
+                        <div id="rings-container" class="flex justify-center items-center gap-2">
+                            <div id="avg-score-wrapper" class="text-center flex flex-col items-center">
+                                <div id="avg-score-ring-container" class="ring-container w-16 h-16 relative">
+                                    <svg id="avg-score-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                        <circle id="avg-score-bar" class="progress-ring-bar" cx="60" cy="60" r="54" stroke-width="6" fill="none" stroke-linecap="round" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span id="avg-score-value" class="font-bold text-2xl">0</span>
                                     </div>
-                                    <p class="text-xs font-bold text-gray-400 mt-0.5">Score</p>
                                 </div>
-                                <div id="avg-calories-wrapper" class="text-center flex flex-col items-center">
-                                    <div class="ring-container w-12 aspect-square relative">
-                                        <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                            <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
-                                            <circle data-nutrient="calories" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-calories)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-calories)" />
-                                        </svg>
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span id="avg-calories-value" class="font-bold text-sm" style="color: #FCD34D;">0</span>
-                                        </div>
-                                    </div>
-                                    <p id="avg-calories-label" class="text-xs font-semibold text-gray-400 mt-0.5">Калории</p>
-                                </div>
-                                <div id="avg-protein-wrapper" class="text-center flex flex-col items-center">
-                                    <div class="ring-container w-12 aspect-square relative">
-                                        <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                            <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
-                                            <circle data-nutrient="protein" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-protein)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-protein)" />
-                                        </svg>
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span id="avg-protein-value" class="font-bold text-sm" style="color: #FFFFFF;">0</span>
-                                        </div>
-                                    </div>
-                                    <p id="avg-protein-label" class="text-xs font-semibold text-gray-400 mt-0.5">Белки</p>
-                                </div>
-                                <div id="avg-fat-wrapper" class="text-center flex flex-col items-center">
-                                    <div class="ring-container w-12 aspect-square relative">
-                                        <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                            <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
-                                            <circle data-nutrient="fat" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-fat)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-fat)" />
-                                        </svg>
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span id="avg-fat-value" class="font-bold text-sm" style="color: #F0D878;">0</span>
-                                        </div>
-                                    </div>
-                                    <p id="avg-fat-label" class="text-xs font-semibold text-gray-400 mt-0.5">Жиры</p>
-                                </div>
-                                <div id="avg-carbs-wrapper" class="text-center flex flex-col items-center">
-                                    <div class="ring-container w-12 aspect-square relative">
-                                        <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                            <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
-                                            <circle data-nutrient="carbohydrates" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-carbs)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-carbs)" />
-                                        </svg>
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span id="avg-carbs-value" class="font-bold text-sm" style="color: #86EFAC;">0</span>
-                                        </div>
-                                    </div>
-                                    <p id="avg-carbs-label" class="text-xs font-semibold text-gray-400 mt-0.5">Углеводы</p>
-                                </div>
+                                <p class="text-xs font-bold text-gray-400 mt-0.5">Score</p>
                             </div>
-                            <div class="flex items-center justify-center gap-1.5 mt-2">
-                                <span class="text-[10px] text-gray-400 font-medium">Потрачено</span>
-                                <div id="ring-toggle" class="ring-toggle-switch"></div>
-                                <span class="text-[10px] text-gray-400 font-medium">Остаток</span>
+                            <div id="avg-calories-wrapper" class="text-center flex flex-col items-center">
+                                <div class="ring-container w-12 aspect-square relative">
+                                    <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
+                                        <circle data-nutrient="calories" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-calories)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-calories)" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span id="avg-calories-value" class="font-bold text-sm" style="color: #FCD34D;">0</span>
+                                    </div>
+                                </div>
+                                <p id="avg-calories-label" class="text-xs font-semibold text-gray-400 mt-0.5">Калории</p>
                             </div>
-                   </div>
-                  <div id="graph-wrapper" class="relative h-24 w-full flex items-end justify-around transition-opacity duration-300 overflow-hidden">
-                    <div id="score-graph-container" class="flex justify-around w-full h-full items-end relative z-10"></div>
+                            <div id="avg-protein-wrapper" class="text-center flex flex-col items-center">
+                                <div class="ring-container w-12 aspect-square relative">
+                                    <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
+                                        <circle data-nutrient="protein" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-protein)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-protein)" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span id="avg-protein-value" class="font-bold text-sm" style="color: #FFFFFF;">0</span>
+                                    </div>
+                                </div>
+                                <p id="avg-protein-label" class="text-xs font-semibold text-gray-400 mt-0.5">Белки</p>
+                            </div>
+                            <div id="avg-fat-wrapper" class="text-center flex flex-col items-center">
+                                <div class="ring-container w-12 aspect-square relative">
+                                    <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
+                                        <circle data-nutrient="fat" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-fat)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-fat)" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span id="avg-fat-value" class="font-bold text-sm" style="color: #F0D878;">0</span>
+                                    </div>
+                                </div>
+                                <p id="avg-fat-label" class="text-xs font-semibold text-gray-400 mt-0.5">Жиры</p>
+                            </div>
+                            <div id="avg-carbs-wrapper" class="text-center flex flex-col items-center">
+                                <div class="ring-container w-12 aspect-square relative">
+                                    <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
+                                        <circle data-nutrient="carbohydrates" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-carbs)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-carbs)" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span id="avg-carbs-value" class="font-bold text-sm" style="color: #86EFAC;">0</span>
+                                    </div>
+                                </div>
+                                <p id="avg-carbs-label" class="text-xs font-semibold text-gray-400 mt-0.5">Углеводы</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center gap-1.5 mt-2">
+                            <span class="text-[10px] text-gray-400 font-medium">Потрачено</span>
+                            <div id="ring-toggle" class="ring-toggle-switch"></div>
+                            <span class="text-[10px] text-gray-400 font-medium">Остаток</span>
+                        </div>
+                    </div>
+                    <div id="graph-wrapper" class="relative h-24 w-full flex items-end justify-around transition-opacity duration-300 overflow-hidden">
+                        <div id="score-graph-container" class="flex justify-around w-full h-full items-end relative z-10"></div>
+                    </div>
+                    <div id="x-axis-labels-container" class="flex justify-around w-full text-[9px] text-gray-400 mt-1 px-1 transition-opacity duration-300 gap-0.5"></div>
                 </div>
-                <div id="x-axis-labels-container" class="flex justify-around w-full text-[9px] text-gray-400 mt-1 px-1 transition-opacity duration-300 gap-0.5"></div>
             </div>
         </div>
 
-        <div class="w-full mt-4">
-            <h3 class="text-xl font-bold text-center mb-3">Логи приемов пищи</h3>
-            <div id="meal-logs-container" class="w-full space-y-4"></div>
+        <!-- ===== TAB: История ===== -->
+        <div id="view-history" class="w-full flex flex-col items-center mt-2 hidden">
+            <div class="w-full">
+                <div id="meal-logs-container" class="w-full space-y-4"></div>
+            </div>
         </div>
+
         <div id="error-message" class="text-red-500 text-center mt-4"></div>
     </main>
 
