@@ -230,8 +230,8 @@
             justify-content: center;
         }
         .daily-quality-ring-container {
-            width: 260px;
-            height: 260px;
+            width: 320px;
+            height: 320px;
             position: relative;
             margin: 0.5rem auto;
         }
@@ -271,14 +271,86 @@
     </svg>
 
     <header class="text-center pb-1" style="padding-top: calc(0.01rem + env(safe-area-inset-top));">
-        <h1 class="text-2xl font-bold tracking-wide" style="color: var(--color-amber); text-shadow: 0 0 10px rgba(222, 184, 135, 0.4);">Средние данные</h1>
+        <h1 class="text-2xl font-bold tracking-wide" style="color: var(--color-amber); text-shadow: 0 0 10px rgba(222, 184, 135, 0.4);">Оценка питания</h1>
         <div class="mx-auto mt-1 h-px w-24" style="background: linear-gradient(90deg, transparent, var(--color-amber), transparent); opacity: 0.4;"></div>
     </header>
 
     <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-0 pb-24">
 
-        <!-- ... (остальные блоки без изменений) ... -->
-        <div class="w-full space-y-1">
+        <div id="analysis-wizard" class="w-full flex flex-col items-center mt-2">
+            <div id="step-1" class="step active ai-section" style="width: min(340px, 100%); margin-top: 0;">
+                <div id="initial-view" class="flex flex-col justify-start space-y-1">
+                         <div id="daily-quality-section" class="w-full">
+                             <div id="daily-quality-ring-container" class="daily-quality-ring-container">
+                                 <div id="daily-quality-ring"></div>
+                             </div>
+                             <p id="daily-quality-label" class="text-xs text-center mt-1" style="color: var(--text-secondary);">Качество питания</p>
+                         </div>
+
+                        <div class="w-full pb-2 pt-2">
+                            <label for="meal-image" class="upload-button-label block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95 border border-white/20">
+                                Добавить фото
+                            </label>
+                            <input type="file" id="meal-image" accept="image/*" class="hidden" {% if not features.can_analyze_meal %}disabled{% endif %}>
+                            {% if not features.can_analyze_meal %}
+                            <p class="text-red-500 text-xs text-center mt-2">
+                                Вы исчерпали дневной лимит (5). Оформите <a href="/profile" class="underline">премиум-подписку</a> для снятия ограничений.
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div id="image-added-view" class="hidden flex flex-col justify-start space-y-4">
+                        <div class="form-group w-full">
+                            <label for="meal-description" class="block text-sm font-medium text-gray-400 mb-1">Описание блюда (необязательно)</label>
+                            <textarea id="meal-description" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 h-28 placeholder-gray-500 focus:ring-2 focus:ring-purple-500" placeholder="Например: каша на кокосовом молоке с ложкой масла..." {% if not features.can_analyze_meal %}disabled{% endif %}></textarea>
+                        </div>
+                        <div class="form-group w-full">
+                            <label for="meal-type" class="block text-sm font-medium text-gray-400 mb-1">Тип приема пищи</label>
+                            <select id="meal-type" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-center transition-all duration-300 focus:ring-2 focus:ring-purple-500">
+                                <option value="" disabled selected>Выберите тип</option>
+                                <option value="breakfast">Завтрак</option>
+                                <option value="lunch">Обед</option>
+                                <option value="dinner">Ужин</option>
+                                <option value="snack">Перекус</option>
+                            </select>
+                        </div>
+                        <div class="w-full pt-2">
+                            <button id="send-to-ai-btn" class="w-full py-4 text-lg font-semibold rounded-xl text-white ai-animated-glow-button transition-all active:scale-95 {% if not features.can_analyze_meal %}opacity-50 cursor-not-allowed{% endif %}" {% if not features.can_analyze_meal %}disabled{% endif %}>
+                                Отправить в AI
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-center hidden">
+                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 flex flex-col justify-center items-center space-y-4 mb-16">
+                    <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full slow-spin"></div>
+                    <p class="text-center text-gray-300 leading-relaxed">Ваше фото отправлено в AI модель.<br>Процесс распознавания занимает до 10 секунд.<br>Не переходите на другие страницы и ожидайте ответа.</p>
+                </div>
+            </div>
+
+            <div id="step-3" class="step ai-section w-full flex-grow">
+                <form id="confirm-form" class="space-y-4">
+                    <div id="interactive-rings-container">
+                        <!-- Сюда будет вставлено новое составное кольцо -->
+                    </div>
+                    <div id="ai-coach-section" class="w-full glassmorphism rounded-2xl p-4">
+                        <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4>
+                        <p id="ai-coach-advice" class="text-white text-left text-sm leading-relaxed"></p>
+                    </div>
+                    <div id="ai-response-text" class="hidden"></div>
+                    <div class="flex space-x-3 pt-2">
+                        <button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button>
+                        <button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="w-full space-y-1 mt-2">
             <div class="w-full flex justify-center">
                 <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
                     <button id="one-day-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold">1 день</button>
@@ -414,80 +486,6 @@
                     <div id="score-graph-container" class="flex justify-around w-full h-full items-end relative z-10"></div>
                 </div>
                 <div id="x-axis-labels-container" class="flex justify-around w-full text-[9px] text-gray-400 mt-1 px-1 transition-opacity duration-300 gap-0.5"></div>
-            </div>
-        </div>
-
-        <div id="analysis-wizard" class="w-full flex flex-col items-center mt-2">
-            <div id="step-1" class="step active ai-section" style="width: min(340px, 100%); margin-top: 0;">
-                <h3 class="text-lg font-bold text-center" style="color: var(--color-amber); text-shadow: 0 0 8px rgba(222, 184, 135, 0.3);">Оценка качества</h3>
-                <div id="initial-view" class="flex flex-col justify-start space-y-1">
-                         <div id="daily-quality-section" class="w-full">
-                             <div id="daily-quality-ring-container" class="daily-quality-ring-container">
-                                 <div id="daily-quality-ring"></div>
-                             </div>
-                             <p id="daily-quality-label" class="text-xs text-center mt-1" style="color: var(--text-secondary);">Качество питания</p>
-                         </div>
-
-                        <div class="w-full pb-2 pt-2">
-                            <label for="meal-image" class="upload-button-label block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95 border border-white/20">
-                                Добавить фото
-                            </label>
-                            <input type="file" id="meal-image" accept="image/*" class="hidden" {% if not features.can_analyze_meal %}disabled{% endif %}>
-                            {% if not features.can_analyze_meal %}
-                            <p class="text-red-500 text-xs text-center mt-2">
-                                Вы исчерпали дневной лимит (5). Оформите <a href="/profile" class="underline">премиум-подписку</a> для снятия ограничений.
-                            </p>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div id="image-added-view" class="hidden flex flex-col justify-start space-y-4">
-                        <div class="form-group w-full">
-                            <label for="meal-description" class="block text-sm font-medium text-gray-400 mb-1">Описание блюда (необязательно)</label>
-                            <textarea id="meal-description" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 h-28 placeholder-gray-500 focus:ring-2 focus:ring-purple-500" placeholder="Например: каша на кокосовом молоке с ложкой масла..." {% if not features.can_analyze_meal %}disabled{% endif %}></textarea>
-                        </div>
-                        <div class="form-group w-full">
-                            <label for="meal-type" class="block text-sm font-medium text-gray-400 mb-1">Тип приема пищи</label>
-                            <select id="meal-type" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-center transition-all duration-300 focus:ring-2 focus:ring-purple-500">
-                                <option value="" disabled selected>Выберите тип</option>
-                                <option value="breakfast">Завтрак</option>
-                                <option value="lunch">Обед</option>
-                                <option value="dinner">Ужин</option>
-                                <option value="snack">Перекус</option>
-                            </select>
-                        </div>
-                        <div class="w-full pt-2">
-                            <button id="send-to-ai-btn" class="w-full py-4 text-lg font-semibold rounded-xl text-white ai-animated-glow-button transition-all active:scale-95 {% if not features.can_analyze_meal %}opacity-50 cursor-not-allowed{% endif %}" {% if not features.can_analyze_meal %}disabled{% endif %}>
-                                Отправить в AI
-                            </button>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <div id="step-2" class="step ai-section w-full flex-grow flex flex-col justify-center hidden">
-                <div class="w-full bg-gray-800/50 text-white rounded-xl p-4 flex flex-col justify-center items-center space-y-4 mb-16">
-                    <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full slow-spin"></div>
-                    <p class="text-center text-gray-300 leading-relaxed">Ваше фото отправлено в AI модель.<br>Процесс распознавания занимает до 10 секунд.<br>Не переходите на другие страницы и ожидайте ответа.</p>
-                </div>
-            </div>
-
-            <div id="step-3" class="step ai-section w-full flex-grow">
-                <form id="confirm-form" class="space-y-4">
-                    <div id="interactive-rings-container">
-                        <!-- Сюда будет вставлено новое составное кольцо -->
-                    </div>
-                    <div id="ai-coach-section" class="w-full glassmorphism rounded-2xl p-4">
-                        <h4 id="ai-coach-title" class="text-sm font-bold text-white/70 mb-2 text-center">COBET OT AI</h4>
-                        <p id="ai-coach-advice" class="text-white text-left text-sm leading-relaxed"></p>
-                    </div>
-                    <div id="ai-response-text" class="hidden"></div>
-                    <div class="flex space-x-3 pt-2">
-                        <button type="button" id="cancel-analysis-btn" class="w-1/3 py-3 rounded-xl bg-white/10 text-gray-400 border border-white/5">Отмена</button>
-                        <button type="submit" id="confirm-button" class="w-2/3 py-3 rounded-xl bg-green-600 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.4)]">Сохранить</button>
-                    </div>
-                </form>
             </div>
         </div>
 
