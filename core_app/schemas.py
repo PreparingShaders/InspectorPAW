@@ -322,7 +322,6 @@ class PasswordResetRequest(BaseModel):
 class DailyQualityResponse(BaseModel):
     meals: List[Meal]
     total: Optional[Dict[str, Any]] = None
-    new_password: str = Field(..., min_length=8, max_length=72)
 
 # --- Password Reset Schemas ---
 class PasswordResetRequestPayload(BaseModel):

@@ -997,11 +997,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         try {
-            await fetchWithAuth('/meals/', {
+            const res = await fetchWithAuth('/meals/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(mealData)
             });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Ошибка сохранения');
+            }
             resetWizard();
             location.reload();
         } catch (err) {
