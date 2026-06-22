@@ -342,7 +342,7 @@ def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float, recomm
     if recommendations is None:
         recommendations = {}
     
-    default_daily_score_advice = "Оценка показывает, насколько равномерно вы идете к цели в течение дня. Переборы по калориям, жирам и углеводам срезают баллы, а вот выполнение нормы по белку — наоборот, поощряется бонусами. Чтобы набрать максимум, старайтесь избегать резких скачков и питайтесь равномерно в течении дня.\nМаксимум 120 баллов."
+    default_daily_score_advice = "Оценка показывает процент выполнения дневного плана питания (0-100).\n\n• Калории — 40% от оценки\n• Белки — 30% от оценки\n• Жиры — 15% от оценки\n• Углеводы — 15% от оценки\n\nПеребор по жирам и углеводам штрафуется сильнее. Перебор по белку при нормальных калориях даёт бонус +5.\n\n95-100 — отлично\n80-94 — хорошо\n60-79 — удовлетворительно\n<60 — нужно улучшить"
 
     return {
         "daily_score": coach_advice or recommendations.get("daily_score", default_daily_score_advice),
@@ -352,134 +352,81 @@ def get_nutrient_tooltips(target: Dict, actual: Dict, time_factor: float, recomm
         "carbohydrates": recommendations.get("carbohydrates", _generate_nutrient_tooltip(target.get('carbohydrates', 0), actual.get('carbohydrates', 0), time_factor, "Углеводы", "г"))
     }
 
-def calculate_progress_lab_score(target: Dict[str, float], actual: Dict[str, float], current_dt: Optional[datetime.datetime] = None, recommendations: Optional[Dict] = None, coach_advice: Optional[str] = None) -> Dict[str, Any]:
-    now = current_dt if current_dt else datetime.datetime.now(settings.MSK_TZ)
-    current_time = now.hour + now.minute / 60
-    start_h, end_h = 5.0, 23.0
-    time_factor = max(0.05, min(1.0, (current_time - start_h) / (end_h - start_h)))
+def calculate_progress_lab_score(
+    target: Dict[str, float],
+    actual: Dict[str, float],
+    current_dt: Optional[datetime.datetime] = None,
+    recommendations: Optional[Dict] = None,
+    coach_advice: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Рассчитывает простой показатель выполнения плана питания (0-100).
+    100 = идеальное выполнение всех целей, 0 = все цели провалены.
+    """
+    now = datetime.datetime.now(settings.MSK_TZ)
 
-    macros_pace = {}
-    for key in ['calories', 'protein', 'fat', 'carbohydrates']:
-        t_val = target.get(key, 0)
-        a_val = actual.get(key, 0)
-        expected = t_val * time_factor
-        macros_pace[key] = {'actual': a_val, 'expected': expected, 'target': t_val}
-
-    tooltips = get_nutrient_tooltips(target, actual, time_factor, recommendations, coach_advice)
-
-    pace_recommendation = {
-        "macros_pace": macros_pace,
-        "formatted_time": now.strftime("%H:%M"),
-        "tooltips": tooltips
-    }
-
-    if not any(actual.values()):
-        return {
-            "daily_score": 0, "status_color": "#5A6978",
-            "status_message": {"calories": "Нет данных", "protein": "Нет данных", "fat": "Нет данных", "carbohydrates": "Нет данных"},
-            "y_axis_pos": 0, "time_progress": round(time_factor * 100, 1),
-            "target_delta": {key: round(target.get(key, 0)) for key in ['calories', 'protein', 'fat', 'carbohydrates']},
-            "nutrient_statuses": {"calories": "OK", "protein": "OK", "fat": "OK", "carbohydrates": "OK"},
-            "probability_of_success": 100,
-            "danger_status": False,
-            "pace_recommendation": pace_recommendation,
-        }
-
-    total_score = 0.0
     weights = {'calories': 40, 'protein': 30, 'fat': 15, 'carbohydrates': 15}
-    tolerance_threshold = 0.3
-    for param, max_weight in weights.items():
+
+    # Рассчитываем взвешенный score
+    total_score = 0.0
+    for param, weight in weights.items():
         t_val = target.get(param, 0)
         a_val = actual.get(param, 0)
-        if t_val == 0: continue
-        expected_now = t_val * max(max(time_factor, tolerance_threshold), 0.1)
-        ratio = a_val / expected_now if expected_now > 0 else 1.0
-        param_score = max_weight
-        if ratio < 0.8: param_score *= (a_val / (t_val * time_factor + 1e-6))
-        elif ratio > 1.2 and param != 'protein': param_score -= (ratio - 1.2) * 30
-        if a_val > t_val and param != 'protein': param_score -= ((a_val / t_val) - 1.0) * 100
-        total_score += max(0, param_score)
+        if t_val == 0:
+            continue
 
-    final_score = total_score
-    day_calorie_ratio = actual.get('calories', 0) / (target.get('calories', 1) + 1e-6)
-    
-    # Более гибкий расчет на основе выполнения цели по калориям
-    if day_calorie_ratio < 1.0:
-        # Штраф за недобор, но не слишком сильный
-        final_score *= (1 - (1 - day_calorie_ratio) * 0.2)
+        ratio = a_val / t_val
+
+        if ratio <= 1.0:
+            # Недобор: линейный прогресс от 0 до weight
+            param_score = weight * ratio
+        else:
+            # Перебор: штраф за превышение (сильнее для жиров/углеводов)
+            excess_ratio = ratio - 1.0
+            if param in ('fat', 'carbohydrates'):
+                penalty = weight * (1.0 - excess_ratio * 1.5)
+            elif param == 'calories':
+                penalty = weight * (1.0 - excess_ratio * 1.0)
+            else:  # protein — перебор меньше штрафуется
+                penalty = weight * (1.0 - excess_ratio * 0.5)
+            param_score = max(0, penalty)
+
+        total_score += param_score
+
+    # Бонус за перебор по белку при нормальных калориях
+    cal_ratio = actual.get('calories', 0) / (target.get('calories', 1) + 1e-6)
+    prot_ratio = actual.get('protein', 0) / (target.get('protein', 1) + 1e-6)
+    if prot_ratio > 1.0 and cal_ratio <= 1.05:
+        total_score += 5.0
+
+    daily_score = round(max(0, min(total_score, 100)))
+
+    # Определяем цвет
+    if daily_score >= 95:
+        color = "#FFD700"  # gold
+    elif daily_score >= 80:
+        color = "#F0F0F0"  # white
+    elif daily_score >= 60:
+        color = "#f59e0b"  # amber
     else:
-        # Более сильный штраф за перебор
-        final_score *= (1 - (day_calorie_ratio - 1) * 0.5)
-
-    day_fat_ratio = actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)
-    day_carbs_ratio = actual.get('carbohydrates', 0) / (target.get('carbohydrates', 1) + 1e-6)
-    if day_fat_ratio > 1.15: final_score -= 10
-    if day_carbs_ratio < 0.85: final_score -= 5
-
-
-    if actual.get('protein', 0) > target.get('protein', 0) and actual.get('calories', 0) <= target.get('calories', 1) * 1.05:
-        bonus = (actual.get('protein', 0) / (target.get('protein', 1) + 1e-6) - 1.0) * 50
-        final_score += min(bonus, 20)
-
-    final_score = round(max(0, min(final_score, 120)))
-    color = "#e11d48"
-    if final_score > 105: color = "#FFD700"
-    elif 95 <= final_score <= 105: color = "#F0F0F0"
-    elif 80 <= final_score <= 94: color = "#f59e0b"
-    
-    status_tooltips = get_nutrient_tooltips(target, actual, time_factor, recommendations, coach_advice)
+        color = "#e11d48"  # red
 
     target_delta = {
         key: max(0, round(target.get(key, 0) - actual.get(key, 0)))
         for key in ['calories', 'protein', 'fat', 'carbohydrates']
     }
 
-    nutrient_statuses = {}
-    for key in ['calories', 'protein', 'fat', 'carbohydrates']:
-        t_val = target.get(key, 0)
-        a_val = actual.get(key, 0)
-        if t_val == 0:
-            nutrient_statuses[key] = "OK"
-            continue
-        ratio = a_val / t_val
-        if ratio > 1.10 and key != 'protein':
-            nutrient_statuses[key] = "CRITICAL_LIMIT"
-        elif ratio > 0.95 and key != 'protein':
-            nutrient_statuses[key] = "WARNING"
-        else:
-            nutrient_statuses[key] = "OK"
-
-    danger_status = False
-    if nutrient_statuses['fat'] == "CRITICAL_LIMIT" or nutrient_statuses['calories'] == "CRITICAL_LIMIT":
-        danger_status = True
-    if current_time < 12.0 and (actual.get('fat', 0) / (target.get('fat', 1) + 1e-6)) > 0.9:
-        danger_status = True
-    if current_time < 18.0 and (actual.get('calories', 0) / (target.get('calories', 1) + 1e-6)) > 0.95:
-        danger_status = True
-
-    probability_of_success = min(100, final_score)
-    remaining_time_factor = 1.0 - time_factor
-    
-    if danger_status:
-        probability_of_success = min(probability_of_success, 40)
-    elif remaining_time_factor < 0.2 and target_delta['calories'] > target.get('calories', 1) * 0.3:
-        probability_of_success = min(probability_of_success, 30)
-    elif target_delta['fat'] < 10 and remaining_time_factor > 0.25:
-        probability_of_success = min(probability_of_success, 60)
-
-    probability_of_success = round(max(0, probability_of_success))
-
     return {
-        "daily_score": final_score,
+        "daily_score": daily_score,
         "status_color": color,
-        "status_message": status_tooltips,
-        "y_axis_pos": final_score,
-        "time_progress": round(time_factor * 100, 1),
         "target_delta": target_delta,
-        "nutrient_statuses": nutrient_statuses,
-        "probability_of_success": probability_of_success,
-        "danger_status": danger_status,
-        "pace_recommendation": pace_recommendation,
+        "status_message": {},
+        "y_axis_pos": daily_score,
+        "time_progress": 0,
+        "nutrient_statuses": {},
+        "probability_of_success": daily_score,
+        "danger_status": False,
+        "pace_recommendation": {},
     }
 
 def get_user_features(user: User, db: Session) -> dict:

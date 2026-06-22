@@ -837,7 +837,7 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
         ringTooltip.style.top = `${top}px`;
         ringTooltip.style.left = `${left}px`;
 
-        ringTooltipTimeout = setTimeout(hideRingTooltip, 4000);
+        ringTooltipTimeout = setTimeout(hideRingTooltip, 25000);
     }
 
     function hideRingTooltip() {
@@ -1217,12 +1217,12 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
             if (scores.length > 0) {
                 const averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
                 avgScoreValue.textContent = averageScore;
-                updateRingWithStatus(document.getElementById('avg-score-ring'), averageScore, 120);
+                updateRingWithStatus(document.getElementById('avg-score-ring'), averageScore, 100);
 
                 let scoreColor = '#e11d48'; // red
-                if (averageScore > 105) scoreColor = '#FFD700'; // gold
-                else if (averageScore >= 95) scoreColor = '#F0F0F0'; // white
-                else if (averageScore >= 80) scoreColor = '#f59e0b'; // amber
+                if (averageScore >= 95) scoreColor = '#FFD700'; // gold
+                else if (averageScore >= 80) scoreColor = '#F0F0F0'; // white
+                else if (averageScore >= 60) scoreColor = '#f59e0b'; // amber
 
                 avgScoreValue.style.color = scoreColor;
                 avgScoreBar.style.stroke = scoreColor;
@@ -1346,7 +1346,7 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
     const avgScoreWrapper = document.getElementById('avg-score-wrapper');
     if (avgScoreWrapper) {
         avgScoreWrapper.addEventListener('click', () => {
-            const scoreTooltipText = "Оценка показывает, насколько равномерно вы идете к цели в течение дня. Переборы по калориям, жирам и углеводам срезают баллы, а вот выполнение нормы по белку — наоборот, поощряется бонусами. Чтобы набрать максимум, старайтесь избегать резких скачков и питайтесь равномерно в течении дня. Максимум 120 баллов.";
+            const scoreTooltipText = "Оценка показывает процент выполнения дневного плана питания (0-100).\n\n• Калории — 40% от оценки\n• Белки — 30% от оценки\n• Жиры — 15% от оценки\n• Углеводы — 15% от оценки\n\nПеребор по жирам и углеводам штрафуется сильнее. Перебор по белку при нормальных калориях даёт бонус +5.\n\n95-100 — отлично\n80-94 — хорошо\n60-79 — удовлетворительно\n<60 — нужно улучшить";
             const scoreColor = document.getElementById('avg-score-value').style.color || '#F0F0F0';
             showRingTooltip(avgScoreWrapper, 'Daily Score', scoreTooltipText, scoreColor);
         });
