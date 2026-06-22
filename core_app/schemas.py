@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, validator, computed_field
 from typing import Optional, List, Dict, Any, Literal
 from datetime import date, datetime
 import re
-from .models import UserRole, ProcessingLevel, MicronutrientDensity
+from .models import UserRole
 from .config import settings
 
 # --- AI Hub Chat Schema ---
@@ -142,19 +142,16 @@ class Recommendations(BaseModel):
 
 
 class IngredientCriteria(BaseModel):
-    """7 критериев оценки каждого ингредиента (0–10, где 10 — хуже для рисков / лучше для качества)."""
-    portion_confidence: int = Field(..., ge=0, le=10)
+    """Критерии оценки каждого ингредиента (0–10, где 10 — хуже для рисков / лучше для качества)."""
     processing: int = Field(..., ge=0, le=10)
     oil_absorption: int = Field(..., ge=0, le=10)
     hidden_ingredients: int = Field(..., ge=0, le=10)
     protein_quality: int = Field(..., ge=0, le=10)
     micronutrients: int = Field(..., ge=0, le=10)
-    calorie_density: int = Field(..., ge=0, le=10)
 
 
 class IngredientAnalysisDetail(BaseModel):
     name: str
-    estimated_weight_g: Optional[float] = None
     calories: Optional[float] = 0
     protein_g: Optional[float] = 0
     fat_g: Optional[float] = 0
@@ -168,13 +165,24 @@ class IngredientAnalysisDetail(BaseModel):
 
 class FoodQuality(BaseModel):
     ai_score: int = Field(..., ge=0, le=100)
-    processing_level: ProcessingLevel
-    satiety_index: int = Field(..., ge=1, le=5)
-    micronutrient_density: MicronutrientDensity
     toxic_coach_comment: str
     oil_absorption_score: int = Field(..., ge=0, le=10)
     ultra_processing_score: int = Field(..., ge=0, le=10)
     hidden_ingredients_risk: int = Field(..., ge=0, le=10)
+
+    # Метрики качества нутриентов
+    amino_acid_score: Optional[float] = Field(None, ge=0, le=120)
+    animal_protein_ratio: Optional[float] = Field(None, ge=0, le=1)
+    protein_density: Optional[float] = Field(None, ge=0)
+    omega6_omega3_ratio: Optional[float] = Field(None, ge=0)
+    trans_fat_ratio: Optional[float] = Field(None, ge=0, le=1)
+    saturated_fat_ratio: Optional[float] = Field(None, ge=0, le=1)
+    monounsaturated_fat_ratio: Optional[float] = Field(None, ge=0, le=1)
+    polyunsaturated_fat_ratio: Optional[float] = Field(None, ge=0, le=1)
+    glycemic_load: Optional[float] = Field(None, ge=0)
+    fiber_to_carb_ratio: Optional[float] = Field(None, ge=0)
+    added_sugar_ratio: Optional[float] = Field(None, ge=0, le=1)
+    nova_processing_level: Optional[int] = Field(None, ge=1, le=4)
 
 
 class AnalysisResponse(BaseModel):
@@ -193,13 +201,24 @@ class MealBase(BaseModel):
     food_name: Optional[str] = None
     ai_comment: Optional[str] = None
     ai_score: Optional[int] = None
-    processing_level: Optional[ProcessingLevel] = None
-    satiety_index: Optional[int] = None
-    micronutrient_density: Optional[MicronutrientDensity] = None
     oil_absorption_score: Optional[int] = Field(None, ge=0, le=10)
     ultra_processing_score: Optional[int] = Field(None, ge=0, le=10)
     hidden_ingredients_risk: Optional[int] = Field(None, ge=0, le=10)
     ai_analysis_details: Optional[List[IngredientAnalysisDetail]] = None
+
+    # Метрики качества нутриентов
+    amino_acid_score: Optional[float] = Field(None, ge=0, le=120)
+    animal_protein_ratio: Optional[float] = Field(None, ge=0, le=1)
+    protein_density: Optional[float] = Field(None, ge=0)
+    omega6_omega3_ratio: Optional[float] = Field(None, ge=0)
+    trans_fat_ratio: Optional[float] = Field(None, ge=0, le=1)
+    saturated_fat_ratio: Optional[float] = Field(None, ge=0, le=1)
+    monounsaturated_fat_ratio: Optional[float] = Field(None, ge=0, le=1)
+    polyunsaturated_fat_ratio: Optional[float] = Field(None, ge=0, le=1)
+    glycemic_load: Optional[float] = Field(None, ge=0)
+    fiber_to_carb_ratio: Optional[float] = Field(None, ge=0)
+    added_sugar_ratio: Optional[float] = Field(None, ge=0, le=1)
+    nova_processing_level: Optional[int] = Field(None, ge=1, le=4)
 
 class MealCreate(MealBase, MealTotals):
     pass

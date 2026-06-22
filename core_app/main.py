@@ -182,6 +182,30 @@ def _first_numeric_value(sources: list, *keys: str) -> float:
     return 0.0
 
 
+def _first_optional_float(sources: list, *keys: str) -> Optional[float]:
+    for src in sources:
+        if not isinstance(src, dict):
+            continue
+        for key in keys:
+            val = src.get(key)
+            if val is None or val == "":
+                continue
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
+def _clamp_float(val, min_value: float, max_value: float, default: Optional[float] = None) -> Optional[float]:
+    try:
+        if val is None or val == "":
+            return default
+        return max(min_value, min(max_value, float(val)))
+    except (TypeError, ValueError):
+        return default
+
+
 def _clamp_score_0_10(val, default: int = 5) -> int:
     try:
         return max(0, min(10, int(round(float(val)))))
@@ -264,14 +288,10 @@ def extract_food_quality(ai_response_data: dict) -> Optional[dict]:
     if not toxic and fq.get("ai_score") is None:
         return None
 
-    processing = fq.get("processing_level", "MINIMALLY_PROCESSED")
-    micronutrient = fq.get("micronutrient_density", "MEDIUM")
+    sources = [fq, ai_response_data]
 
     return {
         "ai_score": _clamp_score_0_100(fq.get("ai_score")),
-        "processing_level": processing,
-        "satiety_index": max(1, min(5, _clamp_score_0_10(fq.get("satiety_index"), default=3))),
-        "micronutrient_density": micronutrient,
         "toxic_coach_comment": toxic or "Без комментария.",
         "oil_absorption_score": _clamp_score_0_10(
             fq.get("oil_absorption_score", fq.get("oil_absorption"))
@@ -282,6 +302,42 @@ def extract_food_quality(ai_response_data: dict) -> Optional[dict]:
         "hidden_ingredients_risk": _clamp_score_0_10(
             fq.get("hidden_ingredients_risk", fq.get("hidden_ingredients"))
         ),
+        "amino_acid_score": _clamp_float(
+            _first_optional_float(sources, "amino_acid_score", "diaas_score"), 0, 120
+        ),
+        "animal_protein_ratio": _clamp_float(
+            _first_optional_float(sources, "animal_protein_ratio", "animal_protein_share"), 0, 1
+        ),
+        "protein_density": _clamp_float(
+            _first_optional_float(sources, "protein_density", "protein_per_100_kcal"), 0, 100
+        ),
+        "omega6_omega3_ratio": _clamp_float(
+            _first_optional_float(sources, "omega6_omega3_ratio", "omega_6_omega_3_ratio"), 0, 100
+        ),
+        "trans_fat_ratio": _clamp_float(
+            _first_optional_float(sources, "trans_fat_ratio", "trans_fat_share"), 0, 1
+        ),
+        "saturated_fat_ratio": _clamp_float(
+            _first_optional_float(sources, "saturated_fat_ratio", "saturated_fat_share"), 0, 1
+        ),
+        "monounsaturated_fat_ratio": _clamp_float(
+            _first_optional_float(sources, "monounsaturated_fat_ratio", "monounsaturated_fat_share"), 0, 1
+        ),
+        "polyunsaturated_fat_ratio": _clamp_float(
+            _first_optional_float(sources, "polyunsaturated_fat_ratio", "polyunsaturated_fat_share"), 0, 1
+        ),
+        "glycemic_load": _clamp_float(
+            _first_optional_float(sources, "glycemic_load", "GL"), 0, 1000
+        ),
+        "fiber_to_carb_ratio": _clamp_float(
+            _first_optional_float(sources, "fiber_to_carb_ratio", "fiber_carb_ratio"), 0, 1
+        ),
+        "added_sugar_ratio": _clamp_float(
+            _first_optional_float(sources, "added_sugar_ratio", "added_sugar_share"), 0, 1
+        ),
+        "nova_processing_level": _clamp_score_1_10(
+            _first_optional_float(sources, "nova_processing_level", "nova_level"), default=2
+        ) if _first_optional_float(sources, "nova_processing_level", "nova_level") is not None else None,
     }
 
 
@@ -295,8 +351,8 @@ def extract_ai_analysis_details(ai_response_data: dict) -> list:
         return []
 
     criteria_keys = (
-        "portion_confidence", "processing", "oil_absorption",
-        "hidden_ingredients", "protein_quality", "micronutrients", "calorie_density",
+        "processing", "oil_absorption",
+        "hidden_ingredients", "protein_quality", "micronutrients",
     )
     result = []
     for item in raw:
@@ -309,10 +365,6 @@ def extract_ai_analysis_details(ai_response_data: dict) -> list:
 
         result.append({
             "name": str(name),
-            "estimated_weight_g": (
-                w if (w := _first_numeric_value([item], "estimated_weight_g", "weight_g", "portion_g")) > 0
-                else None
-            ),
             "calories": _first_numeric_value([item], "calories", "kcal"),
             "protein_g": _first_numeric_value([item], "protein_g", "protein", "proteins_g"),
             "fat_g": _first_numeric_value([item], "fat_g", "fat", "fats_g"),
@@ -348,8 +400,8 @@ async def get_nutrition_analysis_and_advice(
     ### ЗАДАЧА:
     1.  **Сначала внимательно изучи ПРИКРЕПЛЁННОЕ ФОТО** (если оно есть) и/или описание еды.
     2.  **Оцени КБЖУ и клетчатку** именно этого блюда — белки, жиры, углеводы, клетчатку (`fiber_g`).
-    3.  **Оцени качество еды**: заполни ВСЕ поля в `food_quality`, включая шкалы 0–10.
-    4.  **Разбери ингредиенты**: заполни `ai_analysis_details` — каждый видимый ингредиент с КБЖУ и 7 критериями.
+    3.  **Оцени качество еды**: заполни ВСЕ поля в `food_quality`, включая шкалы 0–10 и новые метрики белков/жиров/углеводов.
+    4.  **Разбери ингредиенты**: заполни `ai_analysis_details` — каждый видимый ингредиент с КБЖУ и 5 критериями.
     5.  **Дай рекомендации**: `coach_advice` и `recommendations` с учётом контекста дня.
     6.  **Верни ТОЛЬКО ОДИН JSON-ОБЪЕКТ** без лишнего текста, пояснений и Markdown-разметки.
 
@@ -358,11 +410,28 @@ async def get_nutrition_analysis_and_advice(
     - Каждое новое фото — новый анализ: оценивай видимую порцию, состав и объём заново.
     - Используй ключи: `proteins_g`, `fats_g`, `carbs_g`, `fiber_g`.
 
+    ### НОВЫЕ МЕТРИКИ КАЧЕСТВА В food_quality:
+    - Белки:
+      - `amino_acid_score`: AAS/DIAAS-оценка аминокислотного профиля (0–120).
+      - `animal_protein_ratio`: доля животного белка от общего белка (0.0–1.0).
+      - `protein_density`: грамм белка на 100 ккал.
+    - Жиры:
+      - `omega6_omega3_ratio`: отношение Омега-6 / Омега-3.
+      - `trans_fat_ratio`: доля трансжиров от общего жира (0.0–1.0).
+      - `saturated_fat_ratio`: доля НЖК от общего жира (0.0–1.0).
+      - `monounsaturated_fat_ratio`: доля МНЖК от общего жира (0.0–1.0).
+      - `polyunsaturated_fat_ratio`: доля ПНЖК от общего жира (0.0–1.0).
+    - Углеводы:
+      - `glycemic_load`: гликемическая нагрузка порции.
+      - `fiber_to_carb_ratio`: клетчатка / углеводы, например 0.2 для 1:5.
+      - `added_sugar_ratio`: доля добавленного сахара от углеводов (0.0–1.0).
+      - `nova_processing_level`: степень обработки NOVA от 1 до 4.
+
     ### ШКАЛЫ 0–10 (food_quality и criteria):
     - `oil_absorption_score` — насколько блюдо пропитано маслом (0 = сухое, 10 = очень жирное).
     - `ultra_processing_score` — степень ультраобработки (0 = цельный продукт, 10 = фастфуд/УПП).
     - `hidden_ingredients_risk` — риск скрытых соусов, сахара, усилителей (0 = нет, 10 = высокий).
-    - В `criteria` каждого ингредиента: `portion_confidence`, `processing`, `oil_absorption`, `hidden_ingredients`, `protein_quality`, `micronutrients`, `calorie_density` (все 0–10).
+    - В `criteria` каждого ингредиента: `processing`, `oil_absorption`, `hidden_ingredients`, `protein_quality`, `micronutrients` (все 0–10).
     - **Дополнительные оценки качества нутриентов (1–10):**
       - `protein_quality_score`: аминокислотный профиль (9-10 для мяса/яиц/сыворотки, 4-5 для коллагена/хлеба).
       - `fat_quality_score`: баланс жиров (9-10 для Омега-3/мононенасыщенных, 1-2 при трансжирах).
@@ -376,9 +445,6 @@ async def get_nutrition_analysis_and_advice(
     ### ПРАВИЛА:
     -   **`food_name`**: Дай максимально подробное и адекватное название блюду. Например, не 'салат', а 'Салат с куриной грудкой, помидорами черри и соусом цезарь'.
     -   **`ai_score`**: Оцени качество еды от 0 до 100 (100 - идеально, 0 - ужасно).
-    -   **`processing_level`**: `WHOLE` (цельный), `MINIMALLY_PROCESSED` (минимально обработанный), `ULTRA_PROCESSED` (ультра-обработанный).
-    -   **`satiety_index`**: Оцени сытость от 1 до 5 (1 - не сытно, 5 - очень сытно).
-    -   **`micronutrient_density`**: `HIGH`, `MEDIUM` или `LOW`.
     -   **`oil_absorption_score`**, **`ultra_processing_score`**, **`hidden_ingredients_risk`**: целые 0–10 для всего блюда.
     -   **`toxic_coach_comment`**: Хлёсткий, саркастичный, но мотивирующий комментарий о качестве **именно этой еды**.
     -   **`coach_advice`**: Общий совет на **остаток дня** с учетом этого приема пищи.
@@ -398,31 +464,37 @@ async def get_nutrition_analysis_and_advice(
       }},
       "food_quality": {{
         "ai_score": 85,
-        "processing_level": "MINIMALLY_PROCESSED",
-        "satiety_index": 4,
-        "micronutrient_density": "HIGH",
         "oil_absorption_score": 3,
         "ultra_processing_score": 2,
         "hidden_ingredients_risk": 1,
+        "amino_acid_score": 95,
+        "animal_protein_ratio": 0.8,
+        "protein_density": 22.5,
+        "omega6_omega3_ratio": 3.5,
+        "trans_fat_ratio": 0.01,
+        "saturated_fat_ratio": 0.25,
+        "monounsaturated_fat_ratio": 0.45,
+        "polyunsaturated_fat_ratio": 0.30,
+        "glycemic_load": 18,
+        "fiber_to_carb_ratio": 0.12,
+        "added_sugar_ratio": 0.05,
+        "nova_processing_level": 2,
         "toxic_coach_comment": "Отличный выбор, белковый заряд!"
       }},
       "ai_analysis_details": [
         {{
           "name": "куриная грудка",
-          "estimated_weight_g": 150,
           "calories": 165,
           "protein_g": 31,
           "fat_g": 3,
           "carbs_g": 0,
           "fiber_g": 0,
           "criteria": {{
-            "portion_confidence": 8,
             "processing": 2,
             "oil_absorption": 1,
             "hidden_ingredients": 1,
             "protein_quality": 9,
-            "micronutrients": 6,
-            "calorie_density": 4
+            "micronutrients": 6
           }},
           "protein_quality_score": 9,
           "fat_quality_score": 8,
@@ -828,14 +900,42 @@ async def analyze_meal(
     recommendations = ai_response_data.get("recommendations")
     ai_analysis_details_raw = extract_ai_analysis_details(ai_response_data)
 
+    analyzed_meal_totals = extract_food_analysis(ai_response_data)
+
+    if food_quality_raw:
+        fq = food_quality_raw
+        cal = analyzed_meal_totals.get("total_calories", 0) or 0
+        prot = analyzed_meal_totals.get("total_protein", 0) or 0
+        fat = analyzed_meal_totals.get("total_fat", 0) or 0
+        carbs = analyzed_meal_totals.get("total_carbohydrates", 0) or 0
+        fiber = analyzed_meal_totals.get("total_fiber", 0) or 0
+        oil_score = fq.get("oil_absorption_score")
+        ultra_score = fq.get("ultra_processing_score")
+        hidden_score = fq.get("hidden_ingredients_risk")
+
+        if fq.get("amino_acid_score") is None:
+            fq["amino_acid_score"] = utils.calculate_protein_quality_score(ai_analysis_details_raw)
+        if fq.get("animal_protein_ratio") is None:
+            fq["animal_protein_ratio"] = utils.calculate_animal_protein_ratio(ai_analysis_details_raw)
+        if fq.get("protein_density") is None:
+            fq["protein_density"] = utils.calculate_protein_density(prot, cal)
+
+        fat_metrics = utils.calculate_fat_quality_scores(ai_analysis_details_raw, oil_score, ultra_score)
+        for key, val in fat_metrics.items():
+            if fq.get(key) is None:
+                fq[key] = val
+
+        carb_metrics = utils.calculate_carb_quality_scores(carbs, fiber, ai_analysis_details_raw, ultra_score, hidden_score)
+        for key, val in carb_metrics.items():
+            if fq.get(key) is None:
+                fq[key] = val
+
     # --- Кэширование рекомендаций ---
     if recommendations:
         recommendations_cache[current_user.id] = {
             "coach_advice": coach_advice,
             "nutrients": recommendations
         }
-
-    analyzed_meal_totals = extract_food_analysis(ai_response_data)
 
     food_quality = None
     if food_quality_raw:

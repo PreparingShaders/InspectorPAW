@@ -11,16 +11,11 @@ class UserRole(enum.Enum):
     ADMIN = "admin"
 
 
-class ProcessingLevel(enum.Enum):
-    WHOLE = "WHOLE"
-    MINIMALLY_PROCESSED = "MINIMALLY_PROCESSED"
-    ULTRA_PROCESSED = "ULTRA_PROCESSED"
-
-
-class MicronutrientDensity(enum.Enum):
-    HIGH = "HIGH"
-    MEDIUM = "MEDIUM"
-    LOW = "LOW"
+class NOVAProcessingLevel(enum.Enum):
+    NOVA_1 = 1
+    NOVA_2 = 2
+    NOVA_3 = 3
+    NOVA_4 = 4
 
 
 class User(Base):
@@ -97,20 +92,35 @@ class Meal(Base):
 
     # Оценка качества пищи от AI
     ai_comment = Column(String, nullable=True)
-    ai_score = Column(Integer, nullable=True)  # Общая оценка качества (0-100)
+    ai_score = Column(Integer, nullable=True)
 
-    # ПРАВКА: Числовые шкалы от 0 до 10 для гибкого скоринга на бэкенде
+    # Шкалы 0-10
     oil_absorption_score = Column(Integer, nullable=True)
     ultra_processing_score = Column(Integer, nullable=True)
     hidden_ingredients_risk = Column(Integer, nullable=True)
 
-    # ПРАВКА: Детализация: хранение 7 пунктов по каждому ингредиенту
+    # Детализация по ингредиентам
     ai_analysis_details = Column(JSON, nullable=True, default=list)
 
-    # Старые поля для совместимости (не трогаем, чтобы Alembic не пытался их удалить)
-    processing_level = Column(SAEnum(ProcessingLevel), nullable=True)
-    satiety_index = Column(Integer, nullable=True)
-    micronutrient_density = Column(SAEnum(MicronutrientDensity), nullable=True)
+    # --- Метрики качества нутриентов ---
+
+    # Белки
+    amino_acid_score = Column(Float, nullable=True)
+    animal_protein_ratio = Column(Float, nullable=True)
+    protein_density = Column(Float, nullable=True)
+
+    # Жиры
+    omega6_omega3_ratio = Column(Float, nullable=True)
+    trans_fat_ratio = Column(Float, nullable=True)
+    saturated_fat_ratio = Column(Float, nullable=True)
+    monounsaturated_fat_ratio = Column(Float, nullable=True)
+    polyunsaturated_fat_ratio = Column(Float, nullable=True)
+
+    # Углеводы
+    glycemic_load = Column(Float, nullable=True)
+    fiber_to_carb_ratio = Column(Float, nullable=True)
+    added_sugar_ratio = Column(Float, nullable=True)
+    nova_processing_level = Column(Integer, nullable=True)
 
     user = relationship("User", back_populates="meals")
 

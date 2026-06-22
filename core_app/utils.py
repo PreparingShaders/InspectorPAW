@@ -452,3 +452,206 @@ def get_user_features(user: User, db: Session) -> dict:
         "can_use_ai_chat": can_use_ai_chat,
         "can_analyze_meal": can_analyze_meal,
     }
+
+
+def calculate_protein_quality_score(ai_analysis_details: Optional[List[dict]]) -> Optional[float]:
+    """
+    Рассчитывает агрегированный аминокислотный скор на основе protein_quality_score ингредиентов.
+    Взвешенное среднее по граммам белка каждого ингредиента.
+    """
+    if not ai_analysis_details:
+        return None
+
+    total_protein = 0.0
+    weighted_score = 0.0
+
+    for item in ai_analysis_details:
+        protein_g = item.get("protein_g", 0) or 0
+        pqs = item.get("protein_quality_score") or item.get("criteria", {}).get("protein_quality")
+        if protein_g > 0 and pqs is not None:
+            try:
+                score = float(pqs)
+                protein = float(protein_g)
+                weighted_score += score * protein
+                total_protein += protein
+            except (TypeError, ValueError):
+                continue
+
+    if total_protein <= 0:
+        return None
+
+    avg_score = weighted_score / total_protein
+    return round(min(120.0, avg_score * 12.0), 1)
+
+
+def calculate_animal_protein_ratio(ai_analysis_details: Optional[List[dict]]) -> Optional[float]:
+    """
+    Оценивает долю животного белка на основе protein_quality_score ингредиентов.
+    Ингредиенты с protein_quality_score >= 7 считаются животными.
+    """
+    if not ai_analysis_details:
+        return None
+
+    total_protein = 0.0
+    animal_protein = 0.0
+
+    for item in ai_analysis_details:
+        protein_g = item.get("protein_g", 0) or 0
+        pqs = item.get("protein_quality_score") or item.get("criteria", {}).get("protein_quality")
+        if protein_g > 0 and pqs is not None:
+            try:
+                score = float(pqs)
+                protein = float(protein_g)
+                total_protein += protein
+                if score >= 7:
+                    animal_protein += protein
+            except (TypeError, ValueError):
+                continue
+
+    if total_protein <= 0:
+        return None
+
+    return round(animal_protein / total_protein, 2)
+
+
+def calculate_protein_density(total_protein: float, total_calories: float) -> Optional[float]:
+    """
+    Рассчитывает плотность белка: граммы белка на 100 ккал.
+    """
+    if total_calories <= 0:
+        return None
+    return round((total_protein / total_calories) * 100, 1)
+
+
+def calculate_fat_quality_scores(
+    ai_analysis_details: Optional[List[dict]],
+    oil_absorption_score: Optional[int],
+    ultra_processing_score: Optional[int],
+) -> dict:
+    """
+    Рассчитывает метрики качества жиров на основе данных AI.
+    Возвращает omega6_omega3_ratio, trans_fat_ratio, saturated/mono/poly ratios.
+    """
+    result = {
+        "omega6_omega3_ratio": None,
+        "trans_fat_ratio": None,
+        "saturated_fat_ratio": None,
+        "monounsaturated_fat_ratio": None,
+        "polyunsaturated_fat_ratio": None,
+    }
+
+    if not ai_analysis_details:
+        return result
+
+    total_fat = 0.0
+    weighted_fat_quality = 0.0
+
+    for item in ai_analysis_details:
+        fat_g = item.get("fat_g", 0) or 0
+        fqs = item.get("fat_quality_score")
+        if fat_g > 0 and fqs is not None:
+            try:
+                weighted_fat_quality += float(fqs) * float(fat_g)
+                total_fat += float(fat_g)
+            except (TypeError, ValueError):
+                continue
+
+    if total_fat > 0:
+        avg_fat_quality = weighted_fat_quality / total_fat
+        if avg_fat_quality >= 7:
+            result["omega6_omega3_ratio"] = round(2.0 + (10 - avg_fat_quality) * 0.5, 1)
+            result["trans_fat_ratio"] = round(max(0.0, (10 - avg_fat_quality) * 0.02), 3)
+            result["saturated_fat_ratio"] = round(0.20 + (10 - avg_fat_quality) * 0.03, 2)
+            result["monounsaturated_fat_ratio"] = round(0.45 + (avg_fat_quality - 5) * 0.03, 2)
+            result["polyunsaturated_fat_ratio"] = round(0.25 + (avg_fat_quality - 5) * 0.02, 2)
+        elif avg_fat_quality >= 4:
+            result["omega6_omega3_ratio"] = round(5.0 + (7 - avg_fat_quality) * 2.0, 1)
+            result["trans_fat_ratio"] = round(0.05 + (7 - avg_fat_quality) * 0.02, 3)
+            result["saturated_fat_ratio"] = round(0.30 + (7 - avg_fat_quality) * 0.04, 2)
+            result["monounsaturated_fat_ratio"] = round(0.35, 2)
+            result["polyunsaturated_fat_ratio"] = round(0.25, 2)
+        else:
+            result["omega6_omega3_ratio"] = round(15.0 + (4 - avg_fat_quality) * 3.0, 1)
+            result["trans_fat_ratio"] = round(min(0.15, 0.10 + (4 - avg_fat_quality) * 0.02), 3)
+            result["saturated_fat_ratio"] = round(min(0.60, 0.40 + (4 - avg_fat_quality) * 0.05), 2)
+            result["monounsaturated_fat_ratio"] = round(0.25, 2)
+            result["polyunsaturated_fat_ratio"] = round(0.20, 2)
+
+    if ultra_processing_score and ultra_processing_score >= 7:
+        if result["trans_fat_ratio"] is not None:
+            result["trans_fat_ratio"] = round(min(0.15, result["trans_fat_ratio"] + 0.05), 3)
+        if result["omega6_omega3_ratio"] is not None:
+            result["omega6_omega3_ratio"] = round(result["omega6_omega3_ratio"] * 1.5, 1)
+
+    return result
+
+
+def calculate_carb_quality_scores(
+    total_carbohydrates: float,
+    total_fiber: float,
+    ai_analysis_details: Optional[List[dict]],
+    ultra_processing_score: Optional[int],
+    hidden_ingredients_risk: Optional[int],
+) -> dict:
+    """
+    Рассчитывает метрики качества углеводов.
+    Возвращает glycemic_load, fiber_to_carb_ratio, added_sugar_ratio, nova_processing_level.
+    """
+    result = {
+        "glycemic_load": None,
+        "fiber_to_carb_ratio": None,
+        "added_sugar_ratio": None,
+        "nova_processing_level": None,
+    }
+
+    if total_carbohydrates > 0:
+        result["fiber_to_carb_ratio"] = round(total_fiber / total_carbohydrates, 3)
+
+    avg_carbs_quality = 5.0
+    if ai_analysis_details:
+        total_carbs = 0.0
+        weighted_carbs_quality = 0.0
+        for item in ai_analysis_details:
+            carbs_g = item.get("carbs_g", 0) or 0
+            cqs = item.get("carbs_quality_score") or item.get("criteria", {}).get("calorie_density")
+            if carbs_g > 0 and cqs is not None:
+                try:
+                    weighted_carbs_quality += float(cqs) * float(carbs_g)
+                    total_carbs += float(carbs_g)
+                except (TypeError, ValueError):
+                    continue
+        if total_carbs > 0:
+            avg_carbs_quality = weighted_carbs_quality / total_carbs
+
+    gi_estimate = 70 - (avg_carbs_quality * 5)
+    if ultra_processing_score and ultra_processing_score >= 7:
+        gi_estimate = min(90, gi_estimate + 15)
+    if hidden_ingredients_risk and hidden_ingredients_risk >= 7:
+        gi_estimate = min(95, gi_estimate + 10)
+
+    if total_carbohydrates > 0:
+        result["glycemic_load"] = round((gi_estimate * total_carbohydrates) / 100, 1)
+
+    if avg_carbs_quality >= 7:
+        result["added_sugar_ratio"] = round(max(0.0, 0.05 - (avg_carbs_quality - 7) * 0.01), 3)
+    elif avg_carbs_quality >= 4:
+        result["added_sugar_ratio"] = round(0.10 + (7 - avg_carbs_quality) * 0.03, 3)
+    else:
+        result["added_sugar_ratio"] = round(min(0.50, 0.25 + (4 - avg_carbs_quality) * 0.05), 3)
+
+    if hidden_ingredients_risk and hidden_ingredients_risk >= 7:
+        result["added_sugar_ratio"] = round(min(0.60, (result["added_sugar_ratio"] or 0.1) + 0.10), 3)
+
+    nova = 1
+    if ultra_processing_score:
+        if ultra_processing_score <= 3:
+            nova = 1
+        elif ultra_processing_score <= 5:
+            nova = 2
+        elif ultra_processing_score <= 7:
+            nova = 3
+        else:
+            nova = 4
+    result["nova_processing_level"] = nova
+
+    return result
