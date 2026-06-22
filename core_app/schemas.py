@@ -125,7 +125,13 @@ class MealTotals(BaseModel):
     total_protein: float = 0
     total_fat: float = 0
     total_carbohydrates: float = 0
-    total_fiber: float = 0
+    total_fiber: Optional[float] = 0
+
+    @validator('total_fiber', pre=True)
+    def set_default_fiber(cls, v):
+        if v is None:
+            return 0
+        return v
 
 # --- Analysis Schemas ---
 class Recommendations(BaseModel):
