@@ -1172,6 +1172,18 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
 
     async function fetchScoreGraphData(days) {
         try {
+            const averageStatsContainer = document.getElementById('average-stats');
+            const graphWrapper = document.getElementById('graph-wrapper');
+            const labelsContainer = document.getElementById('x-axis-labels-container');
+            const graphContainer = document.getElementById('score-graph-container');
+            const ringToggleEl = document.getElementById('ring-toggle');
+
+            // Сразу скрываем график и очищаем контейнеры ДО запроса
+            graphContainer.innerHTML = '';
+            labelsContainer.innerHTML = '';
+            graphWrapper.classList.add('opacity-0', 'pointer-events-none');
+            labelsContainer.classList.add('opacity-0', 'pointer-events-none');
+
             const res = await fetchWithAuth(`/users/me/stats/summary-by-period?days=${days}`);
             const data = await res.json();
 
@@ -1227,23 +1239,14 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
             // Обновляем кольцо качества питания
             updateDailyQualityRing(data.progress_lab_summary, data.period_summary);
 
-            const averageStatsContainer = document.getElementById('average-stats');
-            const graphWrapper = document.getElementById('graph-wrapper');
-            const labelsContainer = document.getElementById('x-axis-labels-container');
-            const graphContainer = document.getElementById('score-graph-container');
-            graphContainer.innerHTML = '';
-            labelsContainer.innerHTML = '';
-
             // Обновление меток КБЖУ
             const caloriesLabel = document.getElementById('avg-calories-label');
             const proteinLabel = document.getElementById('avg-protein-label');
             const fatLabel = document.getElementById('avg-fat-label');
             const carbsLabel = document.getElementById('avg-carbs-label');
-            const ringToggleEl = document.getElementById('ring-toggle');
 
             if (days === 1) {
-                graphWrapper.classList.add('opacity-0', 'h-0');
-                labelsContainer.classList.add('opacity-0', 'h-0');
+                // График уже скрыт и очищен выше
                 if (ringToggleEl) ringToggleEl.parentElement.classList.remove('hidden');
                 averageStatsContainer.classList.add('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
 
@@ -1253,8 +1256,8 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
                 carbsLabel.textContent = 'Углеводы';
 
             } else {
-                graphWrapper.classList.remove('opacity-0', 'h-0');
-                labelsContainer.classList.remove('opacity-0', 'h-0');
+                graphWrapper.classList.remove('opacity-0', 'pointer-events-none');
+                labelsContainer.classList.remove('opacity-0', 'pointer-events-none');
                 averageStatsContainer.classList.remove('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
                 if (ringToggleEl) ringToggleEl.parentElement.classList.add('hidden');
 
@@ -1262,43 +1265,44 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
                 proteinLabel.textContent = 'Б';
                 fatLabel.textContent = 'Ж';
                 carbsLabel.textContent = 'У';
-            }
 
-            const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
+                // Рендеринг графика
+                const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            sortedData.forEach((day, index) => {
-                const colWrapper = document.createElement('div');
-                colWrapper.className = 'flex-1 h-full flex flex-col justify-end items-center';
+                sortedData.forEach((day, index) => {
+                    const colWrapper = document.createElement('div');
+                    colWrapper.className = 'flex-1 h-full flex flex-col justify-end items-center';
 
-                if (day.daily_score !== null) {
-                    const barHeight = (day.daily_score / 120) * 100;
-                    const bar = document.createElement('div');
-                    const bgColor = day.status_color || '#F0F0F0';
+                    if (day.daily_score !== null) {
+                        const barHeight = (day.daily_score / 120) * 100;
+                        const bar = document.createElement('div');
+                        const bgColor = day.status_color || '#F0F0F0';
 
-                    bar.className = 'w-1/2 rounded-t-md cursor-pointer';
-                    bar.style.height = `${barHeight}%`;
-                    bar.style.backgroundColor = bgColor;
-                    bar.style.boxShadow = `0 0 8px ${bgColor}`;
-                    bar.onclick = (e) => { e.stopPropagation(); showTooltip(bar, day); };
-                    colWrapper.appendChild(bar);
-                }
-                graphContainer.appendChild(colWrapper);
-
-                const label = document.createElement('div');
-                label.className = 'text-center w-full';
-
-                if (days === 7) {
-                    const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-                    label.textContent = dayNames[new Date(day.date).getDay()];
-                } else {
-                    const maxLabels = 5;
-                    const interval = Math.max(1, Math.floor(sortedData.length / (maxLabels -1)));
-                    if (index === 0 || index === sortedData.length - 1 || (index > 0 && index < sortedData.length -1 && index % interval === 0)) {
-                        label.textContent = new Date(day.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+                        bar.className = 'w-1/2 rounded-t-md cursor-pointer';
+                        bar.style.height = `${barHeight}%`;
+                        bar.style.backgroundColor = bgColor;
+                        bar.style.boxShadow = `0 0 8px ${bgColor}`;
+                        bar.onclick = (e) => { e.stopPropagation(); showTooltip(bar, day); };
+                        colWrapper.appendChild(bar);
                     }
-                }
-                labelsContainer.appendChild(label);
-            });
+                    graphContainer.appendChild(colWrapper);
+
+                    const label = document.createElement('div');
+                    label.className = 'text-center w-full';
+
+                    if (days === 7) {
+                        const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+                        label.textContent = dayNames[new Date(day.date).getDay()];
+                    } else {
+                        const maxLabels = 5;
+                        const interval = Math.max(1, Math.floor(sortedData.length / (maxLabels -1)));
+                        if (index === 0 || index === sortedData.length - 1 || (index > 0 && index < sortedData.length -1 && index % interval === 0)) {
+                            label.textContent = new Date(day.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+                        }
+                    }
+                    labelsContainer.appendChild(label);
+                });
+            }
         } catch (e) { console.error("Ошибка графика:", e); }
         document.getElementById('stats-graph-panel')?.classList.remove('opacity-0');
     }
