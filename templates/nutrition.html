@@ -139,18 +139,6 @@
             flex-direction: column;
             align-items: center;
         }
-        #average-stats.day-view-active > div {
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 0.25rem;
-            width: auto !important;
-        }
-        #average-stats.day-view-active #nutrient-rings-wrapper {
-            justify-content: center;
-            flex-wrap: nowrap;
-            width: auto !important;
-        }
         #average-stats.day-view-active #avg-score-wrapper {
             cursor: pointer;
         }
@@ -164,9 +152,6 @@
         #average-stats.day-view-active #nutrient-rings-wrapper .ring-container {
             width: 4rem; /* 64px */
             height: 4rem;
-        }
-        #average-stats.day-view-active {
-            padding-right: 3.5rem;
         }
         #average-stats.day-view-active #nutrient-rings-wrapper .font-bold {
             font-size: 1.125rem; /* 18px */
@@ -302,8 +287,8 @@
                     <button id="three-months-btn" class="period-btn w-1/4 rounded-full py-1 text-sm font-semibold text-gray-400">3 мес</button>
                 </div>
             </div>
-<div id="stats-graph-panel" class="relative w-full glassmorphism rounded-2xl p-2 flex flex-col opacity-0 transition-opacity duration-200" style="height: 16rem;">
-                 <div id="average-stats" class="pt-0 transition-all duration-300">
+<div id="stats-graph-panel" class="relative w-full glassmorphism rounded-2xl p-2 flex flex-col opacity-0 transition-opacity duration-200" style="height: 12rem;">
+                 <div id="average-stats" class="flex-1 w-full flex flex-col items-center justify-center transition-all duration-300">
                      <svg width="0" height="0" style="position:absolute;">
                          <defs>
                              <linearGradient id="avg-grad-calories" x1="20%" y1="0%" x2="80%" y2="100%">
@@ -358,74 +343,72 @@
                              </filter>
                          </defs>
                      </svg>
-<div class="flex justify-center items-center w-full space-x-2">
-                            <div id="avg-score-wrapper" class="text-center flex flex-col items-center">
-                                <div id="avg-score-ring-container" class="ring-container w-20 h-20 relative">
-                                    <svg id="avg-score-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                        <circle id="avg-score-bar" class="progress-ring-bar" cx="60" cy="60" r="54" stroke-width="6" fill="none" stroke-linecap="round" />
-                                    </svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span id="avg-score-value" class="font-bold text-3xl">0</span>
+<div id="rings-container" class="flex justify-center items-center gap-2">
+                                <div id="avg-score-wrapper" class="text-center flex flex-col items-center">
+                                    <div id="avg-score-ring-container" class="ring-container w-16 h-16 relative">
+                                        <svg id="avg-score-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                            <circle id="avg-score-bar" class="progress-ring-bar" cx="60" cy="60" r="54" stroke-width="6" fill="none" stroke-linecap="round" />
+                                        </svg>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span id="avg-score-value" class="font-bold text-2xl">0</span>
+                                        </div>
                                     </div>
+                                    <p class="text-xs font-bold text-gray-400 mt-0.5">Score</p>
                                 </div>
-                                <p class="text-sm font-bold text-gray-400 mt-0.5">Score</p>
+                                <div id="avg-calories-wrapper" class="text-center flex flex-col items-center">
+                                    <div class="ring-container w-12 aspect-square relative">
+                                        <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                            <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
+                                            <circle data-nutrient="calories" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-calories)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-calories)" />
+                                        </svg>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span id="avg-calories-value" class="font-bold text-sm" style="color: #FCD34D;">0</span>
+                                        </div>
+                                    </div>
+                                    <p id="avg-calories-label" class="text-xs font-semibold text-gray-400 mt-0.5">Калории</p>
+                                </div>
+                                <div id="avg-protein-wrapper" class="text-center flex flex-col items-center">
+                                    <div class="ring-container w-12 aspect-square relative">
+                                        <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                            <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
+                                            <circle data-nutrient="protein" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-protein)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-protein)" />
+                                        </svg>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span id="avg-protein-value" class="font-bold text-sm" style="color: #FFFFFF;">0</span>
+                                        </div>
+                                    </div>
+                                    <p id="avg-protein-label" class="text-xs font-semibold text-gray-400 mt-0.5">Белки</p>
+                                </div>
+                                <div id="avg-fat-wrapper" class="text-center flex flex-col items-center">
+                                    <div class="ring-container w-12 aspect-square relative">
+                                        <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                            <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
+                                            <circle data-nutrient="fat" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-fat)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-fat)" />
+                                        </svg>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span id="avg-fat-value" class="font-bold text-sm" style="color: #F0D878;">0</span>
+                                        </div>
+                                    </div>
+                                    <p id="avg-fat-label" class="text-xs font-semibold text-gray-400 mt-0.5">Жиры</p>
+                                </div>
+                                <div id="avg-carbs-wrapper" class="text-center flex flex-col items-center">
+                                    <div class="ring-container w-12 aspect-square relative">
+                                        <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                            <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
+                                            <circle data-nutrient="carbohydrates" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-carbs)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-carbs)" />
+                                        </svg>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span id="avg-carbs-value" class="font-bold text-sm" style="color: #86EFAC;">0</span>
+                                        </div>
+                                    </div>
+                                    <p id="avg-carbs-label" class="text-xs font-semibold text-gray-400 mt-0.5">Углеводы</p>
+                                </div>
                             </div>
-                            <div id="nutrient-rings-wrapper" class="flex justify-center w-full gap-2">
-                               <div class="text-center flex flex-col items-center">
-                                   <div class="ring-container w-14 aspect-square relative">
-                                       <svg id="avg-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                           <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
-                                           <circle data-nutrient="calories" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-calories)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-calories)" />
-                                       </svg>
-                                       <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                           <span id="avg-calories-value" class="font-bold text-base" style="color: #FCD34D;">0</span>
-                                       </div>
-                                   </div>
-                                   <p id="avg-calories-label" class="text-xs font-semibold text-gray-400 mt-0.5">Калории</p>
-                               </div>
-                               <div class="text-center flex flex-col items-center">
-                                   <div class="ring-container w-14 aspect-square relative">
-                                       <svg id="avg-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                           <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
-                                           <circle data-nutrient="protein" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-protein)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-protein)" />
-                                       </svg>
-                                       <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                           <span id="avg-protein-value" class="font-bold text-base" style="color: #FFFFFF;">0</span>
-                                       </div>
-                                   </div>
-                                   <p id="avg-protein-label" class="text-xs font-semibold text-gray-400 mt-0.5">Белки</p>
-                               </div>
-                               <div class="text-center flex flex-col items-center">
-                                   <div class="ring-container w-14 aspect-square relative">
-                                       <svg id="avg-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                           <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
-                                           <circle data-nutrient="fat" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-fat)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-fat)" />
-                                       </svg>
-                                       <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                           <span id="avg-fat-value" class="font-bold text-base" style="color: #F0D878;">0</span>
-                                       </div>
-                                   </div>
-                                   <p id="avg-fat-label" class="text-xs font-semibold text-gray-400 mt-0.5">Жиры</p>
-                               </div>
-                               <div class="text-center flex flex-col items-center">
-                                   <div class="ring-container w-14 aspect-square relative">
-                                       <svg id="avg-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                           <circle cx="60" cy="60" r="54" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" />
-                                           <circle data-nutrient="carbohydrates" class="progress-ring-bar" cx="60" cy="60" r="54" stroke="url(#avg-grad-carbs)" stroke-width="6" fill="none" stroke-linecap="round" filter="url(#avg-glow-carbs)" />
-                                       </svg>
-                                       <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                           <span id="avg-carbs-value" class="font-bold text-base" style="color: #86EFAC;">0</span>
-                                       </div>
-                                   </div>
-                                   <p id="avg-carbs-label" class="text-xs font-semibold text-gray-400 mt-0.5">Углеводы</p>
-                               </div>
-                            </div>
-<div class="flex items-center justify-center gap-1.5 mt-0.5">
+                            <div class="flex items-center justify-center gap-1.5 mt-2">
                                 <span class="text-[10px] text-gray-400 font-medium">Потрачено</span>
                                 <div id="ring-toggle" class="ring-toggle-switch"></div>
                                 <span class="text-[10px] text-gray-400 font-medium">Остаток</span>
                             </div>
-                        </div>
                    </div>
                   <div id="graph-wrapper" class="relative h-24 w-full flex items-end justify-around transition-opacity duration-300 overflow-hidden">
                     <div id="score-graph-container" class="flex justify-around w-full h-full items-end relative z-10"></div>
