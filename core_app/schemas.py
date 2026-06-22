@@ -317,6 +317,11 @@ class UserUpdateAdmin(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     user_id: int
+
+
+class DailyQualityResponse(BaseModel):
+    meals: List[Meal]
+    total: Optional[Dict[str, Any]] = None
     new_password: str = Field(..., min_length=8, max_length=72)
 
 # --- Password Reset Schemas ---

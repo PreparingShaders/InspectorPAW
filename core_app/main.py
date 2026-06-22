@@ -992,6 +992,62 @@ def read_user_meals(
     return crud.get_meals_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
 
 
+@app.get("/users/me/daily-quality", response_model=schemas.DailyQualityResponse)
+def get_daily_quality(
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(auth.get_current_active_user)
+):
+    today = date.today()
+    start = datetime.combine(today, datetime.min.time())
+    end = datetime.combine(today, datetime.max.time())
+
+    meals = (
+        db.query(models.Meal)
+        .filter(
+            models.Meal.user_id == current_user.id,
+            models.Meal.timestamp >= start,
+            models.Meal.timestamp <= end,
+        )
+        .order_by(models.Meal.timestamp.asc())
+        .all()
+    )
+
+    total = None
+    if meals:
+        n = len(meals)
+        def avg_or_none(values):
+            valid = [v for v in values if v is not None]
+            return round(sum(valid) / len(valid), 2) if valid else None
+
+        total = {
+            "food_name": "Итого за день",
+            "meal_count": n,
+            "total_calories": round(sum(m.total_calories or 0 for m in meals), 1),
+            "total_protein": round(sum(m.total_protein or 0 for m in meals), 1),
+            "total_fat": round(sum(m.total_fat or 0 for m in meals), 1),
+            "total_carbohydrates": round(sum(m.total_carbohydrates or 0 for m in meals), 1),
+            "total_fiber": round(sum(m.total_fiber or 0 for m in meals), 1),
+            "ai_score": avg_or_none([m.ai_score for m in meals]),
+            "amino_acid_score": avg_or_none([m.amino_acid_score for m in meals]),
+            "animal_protein_ratio": avg_or_none([m.animal_protein_ratio for m in meals]),
+            "protein_density": avg_or_none([m.protein_density for m in meals]),
+            "omega6_omega3_ratio": avg_or_none([m.omega6_omega3_ratio for m in meals]),
+            "trans_fat_ratio": avg_or_none([m.trans_fat_ratio for m in meals]),
+            "saturated_fat_ratio": avg_or_none([m.saturated_fat_ratio for m in meals]),
+            "monounsaturated_fat_ratio": avg_or_none([m.monounsaturated_fat_ratio for m in meals]),
+            "polyunsaturated_fat_ratio": avg_or_none([m.polyunsaturated_fat_ratio for m in meals]),
+            "glycemic_load": round(sum(m.glycemic_load or 0 for m in meals), 1),
+            "fiber_to_carb_ratio": avg_or_none([m.fiber_to_carb_ratio for m in meals]),
+            "added_sugar_ratio": avg_or_none([m.added_sugar_ratio for m in meals]),
+            "nova_processing_level": max((m.nova_processing_level for m in meals if m.nova_processing_level), default=None),
+            "oil_absorption_score": avg_or_none([m.oil_absorption_score for m in meals]),
+            "ultra_processing_score": avg_or_none([m.ultra_processing_score for m in meals]),
+            "hidden_ingredients_risk": avg_or_none([m.hidden_ingredients_risk for m in meals]),
+        }
+
+    return schemas.DailyQualityResponse(meals=meals, total=total)
+
+
 @app.delete("/meals/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_meal(
         meal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)

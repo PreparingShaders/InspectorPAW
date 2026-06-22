@@ -39,6 +39,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentAiScore = null;
     let ringDisplayMode = 'progress';
 
+    // --- Слайдер приёмов пищи ---
+    let dailyMeals = [];
+    let dailyTotal = null;
+    let currentMealIndex = 0;
+    let isTotalView = false;
+
     const steps = {
         1: document.getElementById('step-1'),
         2: document.getElementById('step-2'),
@@ -575,6 +581,198 @@ document.addEventListener('DOMContentLoaded', async () => {
         interactiveRingsContainer.appendChild(svg);
     }
 
+    function getScoreColor(score) {
+        if (score === null || score === undefined) return 'rgba(255,255,255,0.3)';
+        if (score <= 40) return '#EF4444';
+        if (score <= 70) return '#F59E0B';
+        return '#10B981';
+    }
+
+    function getScoreLabel(score) {
+        if (score === null || score === undefined) return '—';
+        if (score <= 40) return 'Плохо';
+        if (score <= 70) return 'Средне';
+        return 'Отлично';
+    }
+
+    function renderQualityCards(meal) {
+        const container = document.getElementById('quality-cards');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const cards = [];
+
+        const aas = meal.amino_acid_score;
+        const apr = meal.animal_protein_ratio;
+        if (aas !== null || apr !== null) {
+            let hint = '';
+            if (aas !== null) {
+                if (aas >= 90) hint = 'Полный аминокислотный профиль';
+                else if (aas >= 60) hint = 'Хороший профиль';
+                else hint = 'Нехватает незаменимых аминокислот';
+            }
+            if (apr !== null) {
+                hint += hint ? '. ' : '';
+                if (apr >= 0.6) hint += 'Преобладает животный белок';
+                else if (apr >= 0.4) hint += 'Сбалансированный белок';
+                else hint += 'Преобладает растительный белок';
+            }
+            const badge = aas >= 80 ? 'good' : aas >= 50 ? 'warn' : 'bad';
+            cards.push({
+                icon: '🥩', iconClass: 'icon-protein',
+                title: 'Белки',
+                value: aas !== null ? `${Math.round(aas)}/100` : '—',
+                hint,
+                badge,
+                badgeText: aas >= 80 ? 'Хорошо' : aas >= 50 ? 'Средне' : 'Плохо'
+            });
+        }
+
+        const o63 = meal.omega6_omega3_ratio;
+        const tfr = meal.trans_fat_ratio;
+        if (o63 !== null || tfr !== null) {
+            let hint = '';
+            if (o63 !== null) {
+                if (o63 <= 4) hint = 'Идеальный баланс Омега-6/3';
+                else if (o63 <= 10) hint = 'Приемлемый баланс';
+                else hint = 'Слишком много Омега-6 — воспаление';
+            }
+            if (tfr !== null) {
+                hint += hint ? '. ' : '';
+                if (tfr <= 0.01) hint = 'Безопасный уровень трансжиров';
+                else if (tfr <= 0.03) hint = 'Немного трансжиров';
+                else hint = 'Много трансжиров!';
+            }
+            const badge = (o63 !== null && o63 <= 4) ? 'good' : (o63 !== null && o63 <= 10) ? 'warn' : 'bad';
+            cards.push({
+                icon: '🫒', iconClass: 'icon-fat',
+                title: 'Жиры',
+                value: o63 !== null ? `Ω6/3: ${o63.toFixed(1)}` : '—',
+                hint,
+                badge,
+                badgeText: o63 <= 4 ? 'Хорошо' : o63 <= 10 ? 'Средне' : 'Плохо'
+            });
+        }
+
+        const gl = meal.glycemic_load;
+        const fcr = meal.fiber_to_carb_ratio;
+        if (gl !== null || fcr !== null) {
+            let hint = '';
+            if (gl !== null) {
+                if (gl <= 10) hint = 'Низкая гликемическая нагрузка';
+                else if (gl <= 20) hint = 'Средняя нагрузка';
+                else hint = 'Высокая нагрузка — скачок сахара';
+            }
+            if (fcr !== null) {
+                hint += hint ? '. ' : '';
+                if (fcr >= 0.15) hint = 'Много клетчатки — хорошо';
+                else if (fcr >= 0.08) hint = 'Среднее количество клетчатки';
+                else hint = 'Мало клетчатки';
+            }
+            const badge = (gl !== null && gl <= 10) ? 'good' : (gl !== null && gl <= 20) ? 'warn' : 'bad';
+            cards.push({
+                icon: '🌾', iconClass: 'icon-carb',
+                title: 'Углеводы',
+                value: gl !== null ? `GL: ${Math.round(gl)}` : '—',
+                hint,
+                badge,
+                badgeText: gl <= 10 ? 'Хорошо' : gl <= 20 ? 'Средне' : 'Плохо'
+            });
+        }
+
+        const nova = meal.nova_processing_level;
+        if (nova !== null) {
+            const novaLabels = ['', 'Цельный', 'Минимальная', 'Обработанный', 'Ультра-обработанный'];
+            const badge = nova <= 2 ? 'good' : nova === 3 ? 'warn' : 'bad';
+            cards.push({
+                icon: '⚙️', iconClass: 'icon-nova',
+                title: 'Обработка',
+                value: novaLabels[nova] || `NOVA ${nova}`,
+                hint: nova <= 2 ? 'Натуральная еда' : nova === 3 ? 'Обработанный продукт' : 'Фастфуд / УПП',
+                badge,
+                badgeText: nova <= 2 ? 'Хорошо' : nova === 3 ? 'Средне' : 'Плохо'
+            });
+        }
+
+        cards.forEach(card => {
+            const el = document.createElement('div');
+            el.className = 'quality-card';
+            el.innerHTML = `
+                <div class="quality-card-icon ${card.iconClass}">${card.icon}</div>
+                <div class="quality-card-content">
+                    <div class="quality-card-title">${card.title}</div>
+                    <div class="quality-card-value">${card.value}</div>
+                    <div class="quality-card-hint">${card.hint}</div>
+                </div>
+                <span class="quality-badge badge-${card.badge}">${card.badgeText}</span>
+            `;
+            container.appendChild(el);
+        });
+
+        if (cards.length === 0) {
+            container.innerHTML = '<p class="text-xs text-center opacity-40 mt-2">Нет данных о качестве. Добавьте приём пищи.</p>';
+        }
+    }
+
+    function renderMealSliderDots() {
+        const container = document.getElementById('meal-slider-dots');
+        if (!container) return;
+        container.innerHTML = '';
+
+        dailyMeals.forEach((meal, idx) => {
+            const dot = document.createElement('div');
+            dot.className = `meal-dot ${idx === currentMealIndex && !isTotalView ? 'active' : ''}`;
+            dot.title = meal.food_name || `Приём ${idx + 1}`;
+            dot.addEventListener('click', () => {
+                currentMealIndex = idx;
+                isTotalView = false;
+                renderMealView();
+            });
+            container.appendChild(dot);
+        });
+
+        if (dailyTotal) {
+            const totalDot = document.createElement('div');
+            totalDot.className = `meal-dot total-dot ${isTotalView ? 'active' : ''}`;
+            totalDot.title = 'Итого за день';
+            totalDot.addEventListener('click', () => {
+                isTotalView = true;
+                renderMealView();
+            });
+            container.appendChild(totalDot);
+        }
+    }
+
+    function renderMealView() {
+        renderMealSliderDots();
+        const meal = isTotalView ? dailyTotal : dailyMeals[currentMealIndex];
+        if (!meal) {
+            renderDailyQualityRing(null, 0);
+            renderQualityCards({});
+            return;
+        }
+
+        const label = document.getElementById('daily-quality-label');
+        if (label) {
+            if (isTotalView) {
+                label.textContent = `Итого за день · ${meal.meal_count} приёмов`;
+            } else {
+                const time = meal.formatted_time || '';
+                label.textContent = `${meal.food_name || 'Приём пищи'} ${time ? '· ' + time : ''}`;
+            }
+        }
+
+        renderDailyQualityRing({
+            protein: meal.total_protein || 0,
+            fat: meal.total_fat || 0,
+            carbohydrates: meal.total_carbohydrates || 0,
+            fiber: meal.total_fiber || 0,
+            _score: meal.ai_score || 0
+        }, isTotalView ? (meal.meal_count || 1) : 1);
+
+        renderQualityCards(meal);
+    }
+
     function renderDailyQualityRing(nutrientValues, mealCount) {
         const container = document.getElementById('daily-quality-ring');
         if (!container) return;
@@ -677,7 +875,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return { shadow, segment };
             });
 
-const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
+            const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
             const labelsGroup = document.createElementNS(svgNS, "g");
 
             segmentsData.forEach(item => {
@@ -716,12 +914,13 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
             svg.appendChild(labelsGroup);
         }
 
-        const score = nutrientValues?._avgScore || 0;
-        const scoreColor = mealCount === 0 ? "rgba(255,255,255,0.3)" : score <= 40 ? "#EF4444" : score <= 70 ? "#F59E0B" : "#10B981";
+        const score = nutrientValues?._score || 0;
+        const scoreColor = getScoreColor(score);
+        const scoreLabel = getScoreLabel(score);
 
         const scoreText = document.createElementNS(svgNS, "text");
         scoreText.setAttribute("x", center);
-        scoreText.setAttribute("y", center - 8);
+        scoreText.setAttribute("y", center - 10);
         scoreText.setAttribute("text-anchor", "middle");
         scoreText.setAttribute("dominant-baseline", "central");
         scoreText.setAttribute("fill", scoreColor);
@@ -730,16 +929,16 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
         scoreText.textContent = mealCount === 0 ? '—' : Math.round(score);
         svg.appendChild(scoreText);
 
-        const scoreLabel = document.createElementNS(svgNS, "text");
-        scoreLabel.setAttribute("x", center);
-        scoreLabel.setAttribute("y", center + 12);
-        scoreLabel.setAttribute("text-anchor", "middle");
-        scoreLabel.setAttribute("dominant-baseline", "central");
-        scoreLabel.setAttribute("fill", "rgba(255,255,255,0.5)");
-        scoreLabel.style.fontSize = '12px';
-        scoreLabel.style.fontWeight = '600';
-        scoreLabel.textContent = 'Score';
-        svg.appendChild(scoreLabel);
+        const scoreLabelEl = document.createElementNS(svgNS, "text");
+        scoreLabelEl.setAttribute("x", center);
+        scoreLabelEl.setAttribute("y", center + 10);
+        scoreLabelEl.setAttribute("text-anchor", "middle");
+        scoreLabelEl.setAttribute("dominant-baseline", "central");
+        scoreLabelEl.setAttribute("fill", scoreColor);
+        scoreLabelEl.style.fontSize = '13px';
+        scoreLabelEl.style.fontWeight = '700';
+        scoreLabelEl.textContent = mealCount === 0 ? 'Нет данных' : scoreLabel;
+        svg.appendChild(scoreLabelEl);
 
         const mealCountText = document.createElementNS(svgNS, "text");
         mealCountText.setAttribute("x", center);
@@ -748,7 +947,7 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
         mealCountText.setAttribute("dominant-baseline", "central");
         mealCountText.setAttribute("fill", "rgba(255,255,255,0.35)");
         mealCountText.style.fontSize = '10px';
-        mealCountText.textContent = mealCount === 0 ? 'Нет приёмов пищи' : `${mealCount} ${mealCount === 1 ? 'приём' : mealCount < 5 ? 'приёма' : 'приёмов'}`;
+        mealCountText.textContent = mealCount === 0 ? '' : (isTotalView ? `${mealCount} приёмов` : '1 приём');
         svg.appendChild(mealCountText);
 
         container.appendChild(svg);
@@ -779,12 +978,21 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
             total_fiber: currentMealAnalysis?.total_fiber ?? 0,
             ai_comment: currentFoodQuality ? currentFoodQuality.toxic_coach_comment : null,
             ai_score: currentFoodQuality ? currentFoodQuality.ai_score : null,
-            processing_level: currentFoodQuality ? currentFoodQuality.processing_level : null,
-            satiety_index: currentFoodQuality ? currentFoodQuality.satiety_index : null,
-            micronutrient_density: currentFoodQuality ? currentFoodQuality.micronutrient_density : null,
             oil_absorption_score: currentFoodQuality?.oil_absorption_score ?? null,
             ultra_processing_score: currentFoodQuality?.ultra_processing_score ?? null,
             hidden_ingredients_risk: currentFoodQuality?.hidden_ingredients_risk ?? null,
+            amino_acid_score: currentFoodQuality?.amino_acid_score ?? null,
+            animal_protein_ratio: currentFoodQuality?.animal_protein_ratio ?? null,
+            protein_density: currentFoodQuality?.protein_density ?? null,
+            omega6_omega3_ratio: currentFoodQuality?.omega6_omega3_ratio ?? null,
+            trans_fat_ratio: currentFoodQuality?.trans_fat_ratio ?? null,
+            saturated_fat_ratio: currentFoodQuality?.saturated_fat_ratio ?? null,
+            monounsaturated_fat_ratio: currentFoodQuality?.monounsaturated_fat_ratio ?? null,
+            polyunsaturated_fat_ratio: currentFoodQuality?.polyunsaturated_fat_ratio ?? null,
+            glycemic_load: currentFoodQuality?.glycemic_load ?? null,
+            fiber_to_carb_ratio: currentFoodQuality?.fiber_to_carb_ratio ?? null,
+            added_sugar_ratio: currentFoodQuality?.added_sugar_ratio ?? null,
+            nova_processing_level: currentFoodQuality?.nova_processing_level ?? null,
             ai_analysis_details: currentMealAnalysis?.ai_analysis_details ?? null,
         };
 
@@ -851,33 +1059,19 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
     function updateDailyQualityRing(summary, periodSummary) {
         const loadQuality = async () => {
             try {
-                const res = await fetchWithAuth('/meals/');
-                const meals = await res.json();
-                const today = new Date().toISOString().split('T')[0];
-                const todayMeals = meals.filter(m => m.timestamp && m.timestamp.startsWith(today));
-
-                if (todayMeals.length === 0) {
-                    renderDailyQualityRing(null, 0);
-                    return;
-                }
-
-                const avgProtein = Math.round(todayMeals.reduce((sum, m) => sum + (m.total_protein || 0), 0) / todayMeals.length);
-                const avgFat = Math.round(todayMeals.reduce((sum, m) => sum + (m.total_fat || 0), 0) / todayMeals.length);
-                const avgCarbs = Math.round(todayMeals.reduce((sum, m) => sum + (m.total_carbohydrates || 0), 0) / todayMeals.length);
-                const avgFiber = Math.round(todayMeals.reduce((sum, m) => sum + (m.total_fiber || 0), 0) / todayMeals.length);
-                const scores = todayMeals.map(m => m.ai_score).filter(s => s !== null && s !== undefined);
-                const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-
-                renderDailyQualityRing({
-                    protein: avgProtein,
-                    fat: avgFat,
-                    carbohydrates: avgCarbs,
-                    fiber: avgFiber,
-                    _avgScore: avgScore
-                }, todayMeals.length);
+                const res = await fetchWithAuth('/users/me/daily-quality');
+                const data = await res.json();
+                dailyMeals = data.meals || [];
+                dailyTotal = data.total || null;
+                currentMealIndex = 0;
+                isTotalView = dailyMeals.length === 0;
+                renderMealView();
             } catch (e) {
                 console.error("Ошибка загрузки качества:", e);
+                dailyMeals = [];
+                dailyTotal = null;
                 renderDailyQualityRing(null, 0);
+                renderQualityCards({});
             }
         };
         loadQuality();
@@ -1367,6 +1561,38 @@ const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
             ringDisplayMode = ringDisplayMode === 'progress' ? 'remaining' : 'progress';
             ringToggleEl.classList.toggle('mode-remaining', ringDisplayMode === 'remaining');
             fetchScoreGraphData(1);
+        });
+    }
+
+    // --- Свайп по кольцу качества ---
+    const qualityContainer = document.getElementById('daily-quality-ring-container');
+    if (qualityContainer) {
+        let touchStartX = 0;
+        qualityContainer.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        });
+        qualityContainer.addEventListener('touchend', (e) => {
+            const diff = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(diff) > 50) {
+                if (diff < 0 && !isTotalView) {
+                    if (currentMealIndex < dailyMeals.length - 1) {
+                        currentMealIndex++;
+                        renderMealView();
+                    } else if (dailyTotal) {
+                        isTotalView = true;
+                        renderMealView();
+                    }
+                } else if (diff > 0) {
+                    if (isTotalView) {
+                        isTotalView = false;
+                        currentMealIndex = dailyMeals.length - 1;
+                        renderMealView();
+                    } else if (currentMealIndex > 0) {
+                        currentMealIndex--;
+                        renderMealView();
+                    }
+                }
+            }
         });
     }
 });
