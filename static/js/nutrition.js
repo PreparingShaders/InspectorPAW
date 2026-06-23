@@ -791,13 +791,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             carbohydrates: meal.total_carbohydrates || 0,
             fiber: meal.total_fiber || 0,
             _score: meal.ai_score || 0,
-            _calories: meal.total_calories || 0
+            _calories: meal.total_calories || 0,
+            _quality: {
+                protein: meal.amino_acid_score !== null && meal.amino_acid_score !== undefined
+                    ? { text: meal.amino_acid_score >= 80 ? 'Хорошо' : meal.amino_acid_score >= 50 ? 'Средне' : 'Плохо', color: meal.amino_acid_score >= 80 ? '#4ADE80' : meal.amino_acid_score >= 50 ? '#FBBF24' : '#F87171' }
+                    : null,
+                fat: meal.omega6_omega3_ratio !== null && meal.omega6_omega3_ratio !== undefined
+                    ? { text: meal.omega6_omega3_ratio <= 4 ? 'Хорошо' : meal.omega6_omega3_ratio <= 10 ? 'Средне' : 'Плохо', color: meal.omega6_omega3_ratio <= 4 ? '#4ADE80' : meal.omega6_omega3_ratio <= 10 ? '#FBBF24' : '#F87171' }
+                    : null,
+                carbohydrates: meal.glycemic_load !== null && meal.glycemic_load !== undefined
+                    ? { text: meal.glycemic_load <= 10 ? 'Хорошо' : meal.glycemic_load <= 20 ? 'Средне' : 'Плохо', color: meal.glycemic_load <= 10 ? '#4ADE80' : meal.glycemic_load <= 20 ? '#FBBF24' : '#F87171' }
+                    : null,
+                fiber: meal.total_fiber > 0
+                    ? { text: 'Есть', color: '#4ADE80' }
+                    : null
+            }
         }, isTotalView ? (meal.meal_count || 1) : 1);
 
         renderQualityCards(meal);
     }
 
-    function renderDailyQualityRing(nutrientValues, mealCount) {
+    function renderDailyQualityRing(nutrientValues, mealCount, qualityData) {
         const container = document.getElementById('daily-quality-ring');
         if (!container) return;
         container.innerHTML = '';
@@ -929,6 +943,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 valueLabel.style.fontWeight = '500';
                 valueLabel.textContent = `${Math.round(nutrientValues[item.key])}г`;
                 labelsGroup.appendChild(valueLabel);
+
+                // Индикатор качества
+                const q = nutrientValues?._quality?.[item.key];
+                if (q) {
+                    const qLabel = document.createElementNS(svgNS, "text");
+                    qLabel.setAttribute("x", x);
+                    qLabel.setAttribute("y", y + 26);
+                    qLabel.setAttribute("text-anchor", "middle");
+                    qLabel.setAttribute("dominant-baseline", "central");
+                    qLabel.setAttribute("fill", q.color);
+                    qLabel.style.fontSize = '9px';
+                    qLabel.style.fontWeight = '600';
+                    qLabel.textContent = q.text;
+                    labelsGroup.appendChild(qLabel);
+                }
             });
 
             segmentElements.forEach(({ shadow, segment }) => {
