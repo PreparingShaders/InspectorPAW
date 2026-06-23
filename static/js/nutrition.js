@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Слайдер приёмов пищи ---
     let dailyMeals = [];
     let dailyTotal = null;
-    let currentMealIndex = 0;
+    let currentMealIndex = -1;
     let isTotalView = false;
 
     const steps = {
@@ -719,18 +719,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!container) return;
         container.innerHTML = '';
 
-        dailyMeals.forEach((meal, idx) => {
-            const dot = document.createElement('div');
-            dot.className = `meal-dot ${idx === currentMealIndex && !isTotalView ? 'active' : ''}`;
-            dot.title = meal.food_name || `Приём ${idx + 1}`;
-            dot.addEventListener('click', () => {
-                currentMealIndex = idx;
-                isTotalView = false;
-                renderMealView();
-            });
-            container.appendChild(dot);
-        });
-
         if (dailyTotal) {
             const totalDot = document.createElement('div');
             totalDot.className = `meal-dot total-dot ${isTotalView ? 'active' : ''}`;
@@ -740,6 +728,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderMealView();
             });
             container.appendChild(totalDot);
+        }
+
+        // Приёмы в обратном порядке: новый приём ближе к Total, первый — в конце
+        for (let idx = dailyMeals.length - 1; idx >= 0; idx--) {
+            const meal = dailyMeals[idx];
+            const dot = document.createElement('div');
+            const isActive = idx === currentMealIndex && !isTotalView;
+            dot.className = `meal-dot ${isActive ? 'active' : ''}`;
+            dot.title = meal.food_name || `Приём ${idx + 1}`;
+            dot.addEventListener('click', () => {
+                currentMealIndex = idx;
+                isTotalView = false;
+                renderMealView();
+            });
+            container.appendChild(dot);
         }
     }
 
@@ -767,7 +770,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             fat: meal.total_fat || 0,
             carbohydrates: meal.total_carbohydrates || 0,
             fiber: meal.total_fiber || 0,
-            _score: meal.ai_score || 0
+            _score: meal.ai_score || 0,
+            _calories: meal.total_calories || 0
         }, isTotalView ? (meal.meal_count || 1) : 1);
 
         renderQualityCards(meal);
@@ -917,10 +921,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const score = nutrientValues?._score || 0;
         const scoreColor = getScoreColor(score);
         const scoreLabel = getScoreLabel(score);
+        const calories = nutrientValues?._calories || 0;
 
         const scoreText = document.createElementNS(svgNS, "text");
         scoreText.setAttribute("x", center);
-        scoreText.setAttribute("y", center - 10);
+        scoreText.setAttribute("y", center - 28);
         scoreText.setAttribute("text-anchor", "middle");
         scoreText.setAttribute("dominant-baseline", "central");
         scoreText.setAttribute("fill", scoreColor);
@@ -940,15 +945,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         scoreLabelEl.textContent = mealCount === 0 ? 'Нет данных' : scoreLabel;
         svg.appendChild(scoreLabelEl);
 
-        const mealCountText = document.createElementNS(svgNS, "text");
-        mealCountText.setAttribute("x", center);
-        mealCountText.setAttribute("y", center + 28);
-        mealCountText.setAttribute("text-anchor", "middle");
-        mealCountText.setAttribute("dominant-baseline", "central");
-        mealCountText.setAttribute("fill", "rgba(255,255,255,0.35)");
-        mealCountText.style.fontSize = '10px';
-        mealCountText.textContent = mealCount === 0 ? '' : (isTotalView ? `${mealCount} приёмов` : '1 приём');
-        svg.appendChild(mealCountText);
+        const calText = document.createElementNS(svgNS, "text");
+        calText.setAttribute("x", center);
+        calText.setAttribute("y", center + 28);
+        calText.setAttribute("text-anchor", "middle");
+        calText.setAttribute("dominant-baseline", "central");
+        calText.setAttribute("fill", "rgba(255,255,255,0.35)");
+        calText.style.fontSize = '10px';
+        calText.textContent = mealCount === 0 ? '' : `${Math.round(calories)} ккал`;
+        svg.appendChild(calText);
 
         container.appendChild(svg);
     }
@@ -1067,8 +1072,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await res.json();
                 dailyMeals = data.meals || [];
                 dailyTotal = data.total || null;
-                currentMealIndex = 0;
-                isTotalView = dailyMeals.length === 0;
+                if (dailyMeals.length > 0) {
+                    currentMealIndex = dailyMeals.length - 1;
+                    isTotalView = false;
+                } else {
+                    currentMealIndex = -1;
+                    isTotalView = true;
+                }
                 renderMealView();
             } catch (e) {
                 console.error("Ошибка загрузки качества:", e);
