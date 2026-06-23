@@ -1568,42 +1568,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Переключение табов ---
     const tabNutrition = document.getElementById('tab-nutrition');
-    const tabStats = document.getElementById('tab-stats');
     const tabHistory = document.getElementById('tab-history');
     const viewNutrition = document.getElementById('view-nutrition');
-    const viewStats = document.getElementById('view-stats');
     const viewHistory = document.getElementById('view-history');
 
     let currentTab = 'nutrition';
 
     function switchTab(tab) {
         currentTab = tab;
-        [tabNutrition, tabStats, tabHistory].forEach(btn => {
+        [tabNutrition, tabHistory].forEach(btn => {
             btn.classList.remove('active');
             btn.classList.add('text-gray-400');
         });
-        [viewNutrition, viewStats, viewHistory].forEach(v => v.classList.add('hidden'));
+        [viewNutrition, viewHistory].forEach(v => v.classList.add('hidden'));
 
         if (tab === 'nutrition') {
             tabNutrition.classList.add('active');
             tabNutrition.classList.remove('text-gray-400');
             viewNutrition.classList.remove('hidden');
             loadDailyQuality();
-        } else if (tab === 'stats') {
-            tabStats.classList.add('active');
-            tabStats.classList.remove('text-gray-400');
-            viewStats.classList.remove('hidden');
-            fetchScoreGraphData(1);
         } else if (tab === 'history') {
             tabHistory.classList.add('active');
             tabHistory.classList.remove('text-gray-400');
             viewHistory.classList.remove('hidden');
+            fetchScoreGraphData(1);
             fetchAndDisplayMealHistory({});
         }
     }
 
     if (tabNutrition) tabNutrition.onclick = () => switchTab('nutrition');
-    if (tabStats) tabStats.onclick = () => switchTab('stats');
     if (tabHistory) tabHistory.onclick = () => switchTab('history');
 
     // --- Первоначальная загрузка данных ---
