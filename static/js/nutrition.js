@@ -758,10 +758,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = document.getElementById('daily-quality-label');
         if (label) {
             if (isTotalView) {
-                label.textContent = `Итого за день · ${meal.meal_count} приёмов`;
+                const today = new Date();
+                const day = today.getDate();
+                const month = today.toLocaleDateString('ru-RU', { month: 'long' });
+                label.textContent = `${day} ${month} · Итоги дня`;
+                label.className = 'text-center daily-quality-label-total';
             } else {
+                const mealTypeNames = {
+                    breakfast: 'Завтрак',
+                    lunch: 'Обед',
+                    dinner: 'Ужин',
+                    snack: 'Перекус'
+                };
+                const typeLabel = mealTypeNames[meal.meal_type] || '';
                 const time = meal.formatted_time || '';
-                label.textContent = `${meal.food_name || 'Приём пищи'} ${time ? '· ' + time : ''}`;
+                const name = meal.food_name || 'Приём пищи';
+                const desc = meal.description || '';
+
+                const today = new Date();
+                const day = today.getDate();
+                const month = today.toLocaleDateString('ru-RU', { month: 'long' });
+
+                const parts = [typeLabel, `${day} ${month}`, name, desc].filter(Boolean);
+                label.textContent = parts.join('  ');
+                label.className = 'text-center daily-quality-label-meal';
             }
         }
 
@@ -905,7 +925,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 valueLabel.setAttribute("text-anchor", "middle");
                 valueLabel.setAttribute("dominant-baseline", "central");
                 valueLabel.setAttribute("fill", "rgba(255,255,255,0.5)");
-                valueLabel.style.fontSize = '9px';
+                valueLabel.style.fontSize = '11px';
                 valueLabel.style.fontWeight = '500';
                 valueLabel.textContent = `${Math.round(nutrientValues[item.key])}г`;
                 labelsGroup.appendChild(valueLabel);
@@ -950,8 +970,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         calText.setAttribute("y", center + 28);
         calText.setAttribute("text-anchor", "middle");
         calText.setAttribute("dominant-baseline", "central");
-        calText.setAttribute("fill", "rgba(255,255,255,0.35)");
-        calText.style.fontSize = '10px';
+        calText.setAttribute("fill", "rgba(252, 211, 77, 0.7)");
+        calText.style.fontSize = '12px';
+        calText.style.fontWeight = '600';
         calText.textContent = mealCount === 0 ? '' : `${Math.round(calories)} ккал`;
         svg.appendChild(calText);
 
