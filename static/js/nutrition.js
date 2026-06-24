@@ -352,233 +352,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderInteractiveRings() {
-        interactiveRingsContainer.innerHTML = '';
+        const oldContainer = document.getElementById('interactive-rings-container');
+        if (!oldContainer) return;
+        const parent = oldContainer.parentNode;
+        const container = document.createElement('div');
+        container.id = 'interactive-rings-container';
+        parent.replaceChild(container, oldContainer);
 
-        const svgNS = "http://www.w3.org/2000/svg";
-        const svg = document.createElementNS(svgNS, "svg");
-        const viewBoxSize = 280;
-        svg.setAttribute("viewBox", `0 0 ${viewBoxSize} ${viewBoxSize}`);
+        const { protein, fat, carbohydrates, fiber } = nutrientValues;
+        const score = currentAiScore || 0;
+        const calories = nutrientValues.calories || 0;
 
-        const defs = document.createElementNS(svgNS, "defs");
-        createRingGradient(defs, 'grad-protein', '#FFFFFF', '#9CA3AF');
-        createRingGradient(defs, 'grad-fat', '#F0D878', '#DAA520');
-        createRingGradient(defs, 'grad-carbs', '#86EFAC', '#16A34A');
-        createRingGradient(defs, 'grad-fiber', '#D2B48C', '#8B4513');
-        createRingGlowFilter(defs, 'glow-protein', '#FFFFFF');
-        createRingGlowFilter(defs, 'glow-fat', '#DAA520');
-        createRingGlowFilter(defs, 'glow-carbs', '#4ADE80');
-        createRingGlowFilter(defs, 'glow-fiber', '#8B4513');
-
-        const centerTextFilter = document.createElementNS(svgNS, "filter");
-        centerTextFilter.setAttribute("id", "glow-calories-text");
-        centerTextFilter.setAttribute("x", "-30%");
-        centerTextFilter.setAttribute("y", "-30%");
-        centerTextFilter.setAttribute("width", "160%");
-        centerTextFilter.setAttribute("height", "160%");
-        centerTextFilter.innerHTML = `<feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#DEB887" flood-opacity="0.45"/>`;
-        defs.appendChild(centerTextFilter);
-        svg.appendChild(defs);
-
-        const center = viewBoxSize / 2;
-        const radius = 86;
-        const strokeWidth = 17;
-        const circumference = 2 * Math.PI * radius;
-        const gapDegrees = 3;
-
-        const nutrientConfig = {
-            protein: { label: 'Белки', color: '#FFFFFF', gradient: 'url(#grad-protein)', filter: 'url(#glow-protein)' },
-            fat: { label: 'Жиры', color: 'var(--color-golden-orange)', gradient: 'url(#grad-fat)', filter: 'url(#glow-fat)' },
-            carbohydrates: { label: 'Углеводы', color: '#4ADE80', gradient: 'url(#grad-carbs)', filter: 'url(#glow-carbs)' },
-            fiber: { label: 'Клетчатка', color: '#8B4513', gradient: 'url(#grad-fiber)', filter: 'url(#glow-fiber)' }
-        };
-
-        const { protein, fat, carbohydrates, fiber, calories } = nutrientValues;
-        const totalGrams = protein + fat + carbohydrates + fiber;
-
-        if (totalGrams === 0) {
-            return;
-        }
-
-        const trackRing = document.createElementNS(svgNS, "circle");
-        trackRing.setAttribute("cx", center);
-        trackRing.setAttribute("cy", center);
-        trackRing.setAttribute("r", radius);
-        trackRing.setAttribute("stroke", "rgba(255,255,255,0.07)");
-        trackRing.setAttribute("stroke-width", strokeWidth + 2);
-        trackRing.setAttribute("fill", "none");
-        svg.appendChild(trackRing);
-
-        let currentAngle = 0;
-        const segmentsData = [];
-        const drawOrder = ['protein', 'fat', 'carbohydrates', 'fiber'];
-
-        drawOrder.forEach(key => {
-            const value = nutrientValues[key];
-            if (value > 0) {
-                const percentage = value / totalGrams;
-                const angle = percentage * 360;
-                segmentsData.push({ key, angle, ...nutrientConfig[key] });
-            }
-        });
-
-        const totalGaps = segmentsData.length * gapDegrees;
-        const scaleFactor = (360 - totalGaps) / 360;
-
-        const segmentElements = segmentsData.map(item => {
-            const angle = item.angle * scaleFactor;
-            const arcLength = (circumference / 360) * angle;
-            const rotation = `${currentAngle - 90 + gapDegrees / 2}deg`;
-
-            const shadow = document.createElementNS(svgNS, "circle");
-            shadow.setAttribute("cx", center);
-            shadow.setAttribute("cy", center);
-            shadow.setAttribute("r", radius);
-            shadow.setAttribute("stroke", "rgba(0,0,0,0.35)");
-            shadow.setAttribute("stroke-width", strokeWidth + 2);
-            shadow.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
-            shadow.setAttribute("stroke-linecap", "round");
-            shadow.setAttribute("fill", "none");
-            shadow.style.transformOrigin = 'center';
-            shadow.style.transform = `rotate(${rotation}) translateY(2px)`;
-
-            const segment = document.createElementNS(svgNS, "circle");
-            segment.setAttribute("cx", center);
-            segment.setAttribute("cy", center);
-            segment.setAttribute("r", radius);
-            segment.setAttribute("stroke", item.gradient);
-            segment.setAttribute("stroke-width", strokeWidth);
-            segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
-            segment.setAttribute("stroke-linecap", "round");
-            segment.setAttribute("fill", "none");
-            segment.setAttribute("filter", item.filter);
-            segment.style.transformOrigin = 'center';
-            segment.style.transform = `rotate(${rotation})`;
-
-            item.startAngle = currentAngle;
-            item.endAngle = currentAngle + angle;
-            currentAngle += angle + gapDegrees;
-
-            return { shadow, segment };
-        });
-
-        const labelsGroup = document.createElementNS(svgNS, "g");
-        const labelOffsets = { protein: 28, fat: 28, carbohydrates: 34, fiber: 42 };
-        const qualityScores = calculateNutrientQualityScores();
-        segmentsData.forEach(item => {
-            const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
-            const labelRadius = radius + strokeWidth / 2 + labelOffsets[item.key];
-            const x = center + labelRadius * Math.cos(midAngleRad);
-            const y = center + labelRadius * Math.sin(midAngleRad);
-            const isCarbs = item.key === 'carbohydrates';
-            const nameFontSize = isCarbs ? '10px' : '11px';
-
-            const label = document.createElementNS(svgNS, "text");
-            label.setAttribute("x", x);
-            label.setAttribute("y", y);
-            label.setAttribute("text-anchor", "middle");
-            label.setAttribute("dominant-baseline", "middle");
-            label.setAttribute("fill", item.color);
-            label.style.fontSize = nameFontSize;
-            label.style.fontWeight = 'bold';
-            label.textContent = item.label;
-            labelsGroup.appendChild(label);
-
-            const valueLabel = document.createElementNS(svgNS, "text");
-            valueLabel.setAttribute("x", x);
-            valueLabel.setAttribute("y", y + 14);
-            valueLabel.setAttribute("text-anchor", "middle");
-            valueLabel.setAttribute("dominant-baseline", "middle");
-            valueLabel.setAttribute("fill", "var(--text-secondary)");
-            valueLabel.style.fontSize = '10px';
-            valueLabel.style.fontWeight = '500';
-            valueLabel.textContent = `${nutrientValues[item.key]}г`;
-            labelsGroup.appendChild(valueLabel);
-
-            const score = qualityScores?.[item.key];
-            if (score !== null && score !== undefined && item.key !== 'fiber') {
-                const scoreLabel = document.createElementNS(svgNS, "text");
-                scoreLabel.setAttribute("x", x);
-                scoreLabel.setAttribute("y", y + 28);
-                scoreLabel.setAttribute("text-anchor", "middle");
-                scoreLabel.setAttribute("dominant-baseline", "middle");
-                scoreLabel.setAttribute("fill", getQualityBadgeColor(score));
-                scoreLabel.style.fontSize = '9px';
-                scoreLabel.style.fontWeight = '600';
-                scoreLabel.textContent = `Качество ${score}/10`;
-                labelsGroup.appendChild(scoreLabel);
-            }
-        });
-
-        segmentElements.forEach(({ shadow, segment }) => {
-            svg.appendChild(shadow);
-            svg.appendChild(segment);
-        });
-        svg.appendChild(labelsGroup);
-
-        const calStr = String(calories);
-        const calFontSize = calStr.length >= 4 ? 20 : calStr.length === 3 ? 22 : 26;
-
-        const calValueText = document.createElementNS(svgNS, "text");
-        calValueText.setAttribute("x", center);
-        calValueText.setAttribute("y", center + 18);
-        calValueText.setAttribute("text-anchor", "middle");
-        calValueText.setAttribute("dominant-baseline", "middle");
-        calValueText.setAttribute("fill", "var(--color-amber)");
-        calValueText.setAttribute("filter", "url(#glow-calories-text)");
-        calValueText.style.fontSize = '12px';
-        calValueText.style.fontWeight = 'bold';
-        calValueText.style.letterSpacing = '-0.5px';
-        calValueText.textContent = `${Math.round(calories)} ккал`;
-
-        const scoreColor = getScoreColor(currentAiScore);
-        const scoreText = document.createElementNS(svgNS, "text");
-        scoreText.setAttribute("x", center);
-        scoreText.setAttribute("y", center - 10);
-        scoreText.setAttribute("text-anchor", "middle");
-        scoreText.setAttribute("dominant-baseline", "middle");
-        scoreText.setAttribute("fill", scoreColor);
-        scoreText.style.fontSize = '40px';
-        scoreText.style.fontWeight = '900';
-        scoreText.textContent = currentAiScore !== null && currentAiScore !== undefined ? currentAiScore : '—';
-
-        const scoreLabel = document.createElementNS(svgNS, "text");
-        scoreLabel.setAttribute("x", center);
-        scoreLabel.setAttribute("y", center + 6);
-        scoreLabel.setAttribute("text-anchor", "middle");
-        scoreLabel.setAttribute("dominant-baseline", "middle");
-        scoreLabel.setAttribute("fill", "var(--text-secondary)");
-        scoreLabel.style.fontSize = '11px';
-        scoreLabel.style.fontWeight = '600';
-        scoreLabel.textContent = 'Score';
-
-        svg.appendChild(scoreText);
-        svg.appendChild(scoreLabel);
-        svg.appendChild(calValueText);
-
-        svg.addEventListener('click', (event) => {
-            const rect = svg.getBoundingClientRect();
-            const clickX = (event.clientX - rect.left) * (viewBoxSize / rect.width);
-            const clickY = (event.clientY - rect.top) * (viewBoxSize / rect.height);
-
-            const dx = clickX - center;
-            const dy = clickY - center;
-
-            let clickAngle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
-
-            const clickedSegment = segmentsData.find(item => {
-                const start = item.startAngle;
-                const end = item.endAngle + gapDegrees;
-                return clickAngle >= start && clickAngle < end;
-            });
-
-            if (clickedSegment) {
-                showEditModal(clickedSegment.key, clickedSegment);
-            } else if (Math.sqrt(dx*dx + dy*dy) < (radius - strokeWidth / 2)) {
-                showEditModal('calories', { label: 'Ккал' });
-            }
-        });
-
-        interactiveRingsContainer.appendChild(svg);
+        renderDailyQualityRing({
+            protein: protein || 0,
+            fat: fat || 0,
+            carbohydrates: carbohydrates || 0,
+            fiber: fiber || 0,
+            _score: score,
+            _calories: calories
+        }, 1, 'interactive-rings-container');
     }
 
     function getScoreColor(score) {
@@ -825,10 +617,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderQualityCards(meal);
     }
 
-    function renderDailyQualityRing(nutrientValues, mealCount, qualityData) {
-        const container = document.getElementById('daily-quality-ring');
-        if (!container) return;
-        container.innerHTML = '';
+    function renderDailyQualityRing(nutrientValues, mealCount, containerId) {
+         const targetContainerId = containerId || 'daily-quality-ring';
+         const container = document.getElementById(targetContainerId);
+         if (!container) return;
+         container.innerHTML = '';
 
         const svgNS = "http://www.w3.org/2000/svg";
         const viewBoxSize = 260;
