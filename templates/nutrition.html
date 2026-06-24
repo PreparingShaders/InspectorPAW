@@ -293,45 +293,76 @@
                line-height: 1.3;
            }
           /* --- Карточки качества --- */
-         .quality-card {
-             background: rgba(255,255,255,0.04);
-             border: 1px solid rgba(255,255,255,0.08);
-             border-radius: 0.75rem;
-             padding: 0.6rem 0.75rem;
-             display: flex;
-             align-items: center;
-             gap: 0.6rem;
-         }
-         .quality-card-icon {
-             width: 32px;
-             height: 32px;
-             border-radius: 8px;
-             display: flex;
-             align-items: center;
-             justify-content: center;
-             font-size: 16px;
-             flex-shrink: 0;
-         }
-         .quality-card-content { flex: 1; min-width: 0; }
-         .quality-card-title { font-size: 0.7rem; font-weight: 600; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.03em; }
-         .quality-card-value { font-size: 0.95rem; font-weight: 700; margin-top: 1px; }
-         .quality-card-hint { font-size: 0.65rem; opacity: 0.5; margin-top: 2px; line-height: 1.3; }
-         .quality-badge {
-             font-size: 0.6rem;
-             font-weight: 700;
-             padding: 2px 8px;
-             border-radius: 10px;
-             text-transform: uppercase;
-             letter-spacing: 0.05em;
-             flex-shrink: 0;
-         }
-         .badge-good { background: rgba(34,197,94,0.2); color: #4ADE80; }
-         .badge-warn { background: rgba(245,158,11,0.2); color: #FBBF24; }
-         .badge-bad  { background: rgba(239,68,68,0.2); color: #F87171; }
-         .icon-protein { background: rgba(255,255,255,0.1); }
-         .icon-fat    { background: rgba(218,165,32,0.15); }
-         .icon-carb   { background: rgba(74,222,128,0.15); }
-         .icon-nova   { background: rgba(192,132,252,0.15); }
+          .quality-card {
+              background: rgba(255,255,255,0.06);
+              border: 1px solid rgba(255,255,255,0.1);
+              border-radius: 0.6rem;
+              padding: 0.4rem 0.5rem;
+              cursor: pointer;
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              position: relative;
+              overflow: hidden;
+              backdrop-filter: blur(4px);
+              -webkit-backdrop-filter: blur(4px);
+          }
+          .quality-card:hover {
+              background: rgba(255,255,255,0.1);
+              border-color: rgba(255,255,255,0.2);
+          }
+          .quality-card.active {
+              background: rgba(28, 28, 40, 0.95);
+              border-color: rgba(255,255,255,0.25);
+              box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+              z-index: 10;
+          }
+          .quality-card-main {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+          }
+          .quality-card-icon {
+              width: 28px;
+              height: 28px;
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              flex-shrink: 0;
+          }
+          .quality-card-body { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.4rem; }
+          .quality-card-title { font-size: 0.65rem; font-weight: 600; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.03em; }
+          .quality-card-value { font-size: 0.85rem; font-weight: 700; }
+          .quality-card-hint {
+              font-size: 0.6rem;
+              opacity: 0.6;
+              line-height: 1.4;
+              max-height: 0;
+              overflow: hidden;
+              transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+              padding-top: 0;
+          }
+          .quality-card.active .quality-card-hint {
+              max-height: 80px;
+              opacity: 0.9;
+              padding-top: 6px;
+          }
+          .quality-badge {
+              font-size: 0.55rem;
+              font-weight: 700;
+              padding: 2px 6px;
+              border-radius: 8px;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              flex-shrink: 0;
+          }
+          .badge-good { background: rgba(34,197,94,0.2); color: #4ADE80; }
+          .badge-warn { background: rgba(245,158,11,0.2); color: #FBBF24; }
+          .badge-bad  { background: rgba(239,68,68,0.2); color: #F87171; }
+          .icon-protein { background: rgba(255,255,255,0.1); }
+          .icon-fat    { background: rgba(218,165,32,0.15); }
+          .icon-carb   { background: rgba(74,222,128,0.15); }
+          .icon-nova   { background: rgba(192,132,252,0.15); }
     </style>
 </head>
 <body class="h-dvh flex flex-col">
@@ -380,7 +411,7 @@
                                  <div id="daily-quality-ring"></div>
                              </div>
                              <div id="meal-slider-dots" class="flex justify-center gap-2 mt-3"></div>
-                            <div id="quality-cards" class="w-full mt-3 space-y-2"></div>
+                             <div id="quality-cards" class="w-full mt-2 space-y-1"></div>
                         </div>
 
                         <div class="w-full pb-2 pt-2">

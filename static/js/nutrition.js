@@ -694,18 +694,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        cards.forEach(card => {
+        const cardCount = cards.length;
+        cards.forEach((card, idx) => {
             const el = document.createElement('div');
             el.className = 'quality-card';
             el.innerHTML = `
-                <div class="quality-card-icon ${card.iconClass}">${card.icon}</div>
-                <div class="quality-card-content">
-                    <div class="quality-card-title">${card.title}</div>
-                    <div class="quality-card-value">${card.value}</div>
-                    <div class="quality-card-hint">${card.hint}</div>
+                <div class="quality-card-main">
+                    <div class="quality-card-icon ${card.iconClass}">${card.icon}</div>
+                    <div class="quality-card-body">
+                        <div class="quality-card-title">${card.title}</div>
+                        <div class="quality-card-value">${card.value}</div>
+                    </div>
+                    <span class="quality-badge badge-${card.badge}">${card.badgeText}</span>
                 </div>
-                <span class="quality-badge badge-${card.badge}">${card.badgeText}</span>
+                <div class="quality-card-hint">${card.hint}</div>
             `;
+            el.addEventListener('click', () => {
+                const isActive = el.classList.contains('active');
+                container.querySelectorAll('.quality-card').forEach(c => c.classList.remove('active'));
+                if (!isActive) el.classList.add('active');
+            });
             container.appendChild(el);
         });
 
