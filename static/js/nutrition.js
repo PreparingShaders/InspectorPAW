@@ -359,6 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const parent = oldContainer.parentNode;
         const container = document.createElement('div');
         container.id = 'interactive-rings-container';
+        container.style.cssText = 'width: 260px; height: 260px; margin: 0.5rem auto; position: relative; flex-shrink: 0;';
         parent.replaceChild(container, oldContainer);
 
         const { protein, fat, carbohydrates, fiber } = nutrientValues;
