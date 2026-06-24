@@ -223,7 +223,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const toxicComment = currentFoodQuality ? currentFoodQuality.toxic_coach_comment : '';
 
             aiCoachTitle.textContent = `Совет от AI (${result.coach_model_used || 'Vision'})`;
-            aiCoachAdvice.innerHTML = `Блюдо: ${foodName}<br><br>${toxicComment}`;
+            const step3Label = document.getElementById('step-3-daily-quality-label');
+            if (step3Label) step3Label.textContent = `Блюдо: ${foodName}`;
+            aiCoachAdvice.innerHTML = toxicComment;
             currentFoodName = foodName;
 
             initialNutrientValues = {
