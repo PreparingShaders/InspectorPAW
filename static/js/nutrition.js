@@ -775,7 +775,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const desc = meal.description || '';
 
                 const parts = [typeLabel, dateStr, name, desc].filter(Boolean);
-                label.textContent = parts.join('  ');
+                if (desc) {
+                    const descSpan = document.createElement('span');
+                    descSpan.style.color = 'rgba(192, 132, 252, 0.85)';
+                    descSpan.style.fontStyle = 'italic';
+                    descSpan.style.fontSize = '0.65rem';
+                    descSpan.textContent = desc;
+                    const mainText = parts.filter(p => p !== desc).join('  ');
+                    label.textContent = mainText + '  ';
+                    label.appendChild(descSpan);
+                } else {
+                    label.textContent = parts.join('  ');
+                }
                 label.className = 'text-center daily-quality-label-meal';
             }
         }
@@ -923,7 +934,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 label.setAttribute("text-anchor", "middle");
                 label.setAttribute("dominant-baseline", "central");
                 label.setAttribute("fill", item.color);
-                label.style.fontSize = '11px';
+                label.style.fontSize = '12px';
                 label.style.fontWeight = 'bold';
                 label.textContent = item.label;
                 labelsGroup.appendChild(label);
@@ -934,25 +945,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 valueLabel.setAttribute("text-anchor", "middle");
                 valueLabel.setAttribute("dominant-baseline", "central");
                 valueLabel.setAttribute("fill", "rgba(255,255,255,0.5)");
-                valueLabel.style.fontSize = '11px';
+                valueLabel.style.fontSize = '12px';
                 valueLabel.style.fontWeight = '500';
                 valueLabel.textContent = `${Math.round(nutrientValues[item.key])}г`;
                 labelsGroup.appendChild(valueLabel);
-
-                // Индикатор качества
-                const q = nutrientValues?._quality?.[item.key];
-                if (q) {
-                    const qLabel = document.createElementNS(svgNS, "text");
-                    qLabel.setAttribute("x", x);
-                    qLabel.setAttribute("y", y + 26);
-                    qLabel.setAttribute("text-anchor", "middle");
-                    qLabel.setAttribute("dominant-baseline", "central");
-                    qLabel.setAttribute("fill", q.color);
-                    qLabel.style.fontSize = '9px';
-                    qLabel.style.fontWeight = '600';
-                    qLabel.textContent = q.text;
-                    labelsGroup.appendChild(qLabel);
-                }
             });
 
             segmentElements.forEach(({ shadow, segment }) => {
