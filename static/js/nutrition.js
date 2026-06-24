@@ -823,7 +823,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = '';
 
         const svgNS = "http://www.w3.org/2000/svg";
-        const viewBoxSize = 280;
+        const viewBoxSize = 260;
         const center = viewBoxSize / 2;
         const radius = 78;
         const strokeWidth = 14;
@@ -919,7 +919,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return { shadow, segment };
             });
 
-            const labelOffsets = { protein: 24, fat: 24, carbohydrates: 30, fiber: 38 };
+            const labelOffsets = { protein: 28, fat: 28, carbohydrates: 28, fiber: 28 };
             const labelsGroup = document.createElementNS(svgNS, "g");
 
             segmentsData.forEach(item => {
