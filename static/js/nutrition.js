@@ -757,11 +757,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const label = document.getElementById('daily-quality-label');
         if (label) {
+            const mealDate = meal.timestamp ? new Date(meal.timestamp) : new Date();
+            const dateStr = mealDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
             if (isTotalView) {
-                const today = new Date();
-                const day = today.getDate();
-                const month = today.toLocaleDateString('ru-RU', { month: 'long' });
-                label.textContent = `${day} ${month} · Итоги дня`;
+                label.textContent = `${dateStr} · Итоги дня`;
                 label.className = 'text-center daily-quality-label-total';
             } else {
                 const mealTypeNames = {
@@ -775,11 +774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const name = meal.food_name || 'Приём пищи';
                 const desc = meal.description || '';
 
-                const today = new Date();
-                const day = today.getDate();
-                const month = today.toLocaleDateString('ru-RU', { month: 'long' });
-
-                const parts = [typeLabel, `${day} ${month}`, name, desc].filter(Boolean);
+                const parts = [typeLabel, dateStr, name, desc].filter(Boolean);
                 label.textContent = parts.join('  ');
                 label.className = 'text-center daily-quality-label-meal';
             }
