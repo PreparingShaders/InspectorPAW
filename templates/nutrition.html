@@ -414,10 +414,19 @@
                               <div id="quality-cards" class="w-full mt-2 space-y-1"></div>
                          </div>
 
-                         <div class="w-full pb-2 pt-2">
-                             <label for="meal-image" class="upload-button-label block w-full text-center py-4 cursor-pointer text-lg font-semibold rounded-xl transition-all active:scale-95 border border-white/20">
-                                 Добавить фото
-                             </label>
+                          <div class="w-full flex justify-center mt-1.5" style="transform: scale(0.85); transform-origin: top center;">
+                              <div class="relative flex w-full max-w-sm rounded-full glassmorphism" style="padding: 4px;">
+                                  <button type="button" id="prev-step-btn" class="flex items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-white transition-all">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                  </button>
+                                  <label for="meal-image" class="upload-button-label flex-1 flex items-center justify-center py-2.5 cursor-pointer text-sm font-semibold text-white rounded-full tab-btn transition-all active:scale-95">
+                                      Добавить фото
+                                  </label>
+                                  <button type="button" id="next-step-btn" class="flex items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-white transition-all">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                  </button>
+                              </div>
+                          </div>
                              <input type="file" id="meal-image" accept="image/*" class="hidden" {% if not features.can_analyze_meal %}disabled{% endif %}>
                              {% if not features.can_analyze_meal %}
                              <p class="text-red-500 text-xs text-center mt-2">
