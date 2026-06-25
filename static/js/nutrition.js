@@ -464,15 +464,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         const labelsGroup = document.createElementNS(svgNS, "g");
-        const labelOffsets = { protein: 28, fat: 28, carbohydrates: 34, fiber: 42 };
-        const qualityScores = calculateNutrientQualityScores();
+        const labelOffsets = { protein: 28, fat: 28, carbohydrates: 28, fiber: 28 };
+
         segmentsData.forEach(item => {
             const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
             const labelRadius = radius + strokeWidth / 2 + labelOffsets[item.key];
             const x = center + labelRadius * Math.cos(midAngleRad);
             const y = center + labelRadius * Math.sin(midAngleRad);
-            const isCarbs = item.key === 'carbohydrates';
-            const nameFontSize = isCarbs ? '10px' : '11px';
 
             const label = document.createElementNS(svgNS, "text");
             label.setAttribute("x", x);
@@ -480,7 +478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             label.setAttribute("text-anchor", "middle");
             label.setAttribute("dominant-baseline", "middle");
             label.setAttribute("fill", item.color);
-            label.style.fontSize = nameFontSize;
+            label.style.fontSize = '11px';
             label.style.fontWeight = 'bold';
             label.textContent = item.label;
             labelsGroup.appendChild(label);
@@ -495,20 +493,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             valueLabel.style.fontWeight = '500';
             valueLabel.textContent = `${nutrientValues[item.key]}г`;
             labelsGroup.appendChild(valueLabel);
-
-            const score = qualityScores?.[item.key];
-            if (score !== null && score !== undefined && item.key !== 'fiber') {
-                const scoreLabel = document.createElementNS(svgNS, "text");
-                scoreLabel.setAttribute("x", x);
-                scoreLabel.setAttribute("y", y + 28);
-                scoreLabel.setAttribute("text-anchor", "middle");
-                scoreLabel.setAttribute("dominant-baseline", "middle");
-                scoreLabel.setAttribute("fill", getQualityBadgeColor(score));
-                scoreLabel.style.fontSize = '9px';
-                scoreLabel.style.fontWeight = '600';
-                scoreLabel.textContent = `Качество ${score}/10`;
-                labelsGroup.appendChild(scoreLabel);
-            }
         });
 
         segmentElements.forEach(({ shadow, segment }) => {
@@ -519,36 +503,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const calValueText = document.createElementNS(svgNS, "text");
         calValueText.setAttribute("x", center);
-        calValueText.setAttribute("y", center + 18);
+        calValueText.setAttribute("y", center + 28);
         calValueText.setAttribute("text-anchor", "middle");
-        calValueText.setAttribute("dominant-baseline", "middle");
-        calValueText.setAttribute("fill", "var(--color-amber)");
-        calValueText.setAttribute("filter", "url(#glow-calories-text)");
+        calValueText.setAttribute("dominant-baseline", "central");
+        calValueText.setAttribute("fill", "rgba(252, 211, 77, 0.7)");
+        calValueText.removeAttribute("filter");
         calValueText.style.fontSize = '12px';
-        calValueText.style.fontWeight = 'bold';
-        calValueText.style.letterSpacing = '-0.5px';
+        calValueText.style.fontWeight = '600';
+        calValueText.style.letterSpacing = '';
         calValueText.textContent = `${Math.round(calories)} ккал`;
 
         const scoreColor = getScoreColor(currentAiScore);
         const scoreText = document.createElementNS(svgNS, "text");
         scoreText.setAttribute("x", center);
-        scoreText.setAttribute("y", center - 10);
+        scoreText.setAttribute("y", center - 28);
         scoreText.setAttribute("text-anchor", "middle");
-        scoreText.setAttribute("dominant-baseline", "middle");
+        scoreText.setAttribute("dominant-baseline", "central");
         scoreText.setAttribute("fill", scoreColor);
-        scoreText.style.fontSize = '40px';
+        scoreText.style.fontSize = '44px';
         scoreText.style.fontWeight = '900';
         scoreText.textContent = currentAiScore !== null && currentAiScore !== undefined ? currentAiScore : '—';
 
         const scoreLabel = document.createElementNS(svgNS, "text");
         scoreLabel.setAttribute("x", center);
-        scoreLabel.setAttribute("y", center + 6);
+        scoreLabel.setAttribute("y", center + 10);
         scoreLabel.setAttribute("text-anchor", "middle");
-        scoreLabel.setAttribute("dominant-baseline", "middle");
-        scoreLabel.setAttribute("fill", "var(--text-secondary)");
-        scoreLabel.style.fontSize = '11px';
-        scoreLabel.style.fontWeight = '600';
-        scoreLabel.textContent = 'Score';
+        scoreLabel.setAttribute("dominant-baseline", "central");
+        scoreLabel.setAttribute("fill", scoreColor);
+        scoreLabel.style.fontSize = '13px';
+        scoreLabel.style.fontWeight = '700';
+        scoreLabel.textContent = currentAiScore !== null && currentAiScore !== undefined ? getScoreLabel(currentAiScore) : 'Нет данных';
 
         svg.appendChild(scoreText);
         svg.appendChild(scoreLabel);

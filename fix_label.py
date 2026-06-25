@@ -1,0 +1,8 @@
+f = open("templates/nutrition.html", "r", encoding="utf-8")
+c = f.read()
+f.close()
+c = c.replace('for="meal-type" class="block text-sm font-medium text-gray-400 mb-1"', 'class="block text-sm font-medium text-gray-400 mb-1"')
+f = open("templates/nutrition.html", "w", encoding="utf-8")
+f.write(c)
+f.close()
+print("done")
