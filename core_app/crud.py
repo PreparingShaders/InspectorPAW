@@ -244,6 +244,10 @@ def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.M
         fiber_to_carb_ratio=meal.fiber_to_carb_ratio,
         added_sugar_ratio=meal.added_sugar_ratio,
         nova_processing_level=meal.nova_processing_level,
+        protein_ai_tip=meal.protein_ai_tip,
+        fat_ai_tip=meal.fat_ai_tip,
+        carb_ai_tip=meal.carb_ai_tip,
+        processing_ai_tip=meal.processing_ai_tip,
         timestamp=datetime.now(settings.MSK_TZ)
     )
     db.add(db_meal)

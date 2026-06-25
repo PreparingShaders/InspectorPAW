@@ -122,6 +122,12 @@ class Meal(Base):
     added_sugar_ratio = Column(Float, nullable=True)
     nova_processing_level = Column(Integer, nullable=True)
 
+    # --- AI советы по метрикам ---
+    protein_ai_tip = Column(String, nullable=True)
+    fat_ai_tip = Column(String, nullable=True)
+    carb_ai_tip = Column(String, nullable=True)
+    processing_ai_tip = Column(String, nullable=True)
+
     user = relationship("User", back_populates="meals")
 
 

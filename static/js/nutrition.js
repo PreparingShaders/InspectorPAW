@@ -218,6 +218,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentMealAnalysis = {
                 total_fiber: result.suggested_totals?.total_fiber || 0,
                 ai_analysis_details: result.ai_analysis_details || null,
+                ai_tips: result.ai_tips || null,
             };
             currentAiScore = result.food_quality?.ai_score ?? null;
             const toxicComment = currentFoodQuality ? currentFoodQuality.toxic_coach_comment : '';
@@ -587,18 +588,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const aas = meal.amino_acid_score;
         const apr = meal.animal_protein_ratio;
+        const proteinTip = meal.ai_tips?.protein_ai_tip || '';
         if (aas !== null || apr !== null) {
-            let hint = '';
-            if (aas !== null) {
-                if (aas >= 90) hint = 'Полный аминокислотный профиль';
-                else if (aas >= 60) hint = 'Хороший профиль';
-                else hint = 'Нехватает незаменимых аминокислот';
-            }
-            if (apr !== null) {
-                hint += hint ? '. ' : '';
-                if (apr >= 0.6) hint += 'Преобладает животный белок';
-                else if (apr >= 0.4) hint += 'Сбалансированный белок';
-                else hint += 'Преобладает растительный белок';
+            let hint = proteinTip;
+            if (!hint) {
+                if (aas !== null) {
+                    if (aas >= 90) hint = 'Полный аминокислотный профиль';
+                    else if (aas >= 60) hint = 'Хороший профиль';
+                    else hint = 'Нехватает незаменимых аминокислот';
+                }
+                if (apr !== null) {
+                    hint += hint ? '. ' : '';
+                    if (apr >= 0.6) hint += 'Преобладает животный белок';
+                    else if (apr >= 0.4) hint += 'Сбалансированный белок';
+                    else hint += 'Преобладает растительный белок';
+                }
             }
             const badge = aas >= 80 ? 'good' : aas >= 50 ? 'warn' : 'bad';
             cards.push({
@@ -613,18 +617,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const o63 = meal.omega6_omega3_ratio;
         const tfr = meal.trans_fat_ratio;
+        const fatTip = meal.ai_tips?.fat_ai_tip || '';
         if (o63 !== null || tfr !== null) {
-            let hint = '';
-            if (o63 !== null) {
-                if (o63 <= 4) hint = 'Идеальный баланс Омега-6/3';
-                else if (o63 <= 10) hint = 'Приемлемый баланс';
-                else hint = 'Слишком много Омега-6 — воспаление';
-            }
-            if (tfr !== null) {
-                hint += hint ? '. ' : '';
-                if (tfr <= 0.01) hint = 'Безопасный уровень трансжиров';
-                else if (tfr <= 0.03) hint = 'Немного трансжиров';
-                else hint = 'Много трансжиров!';
+            let hint = fatTip;
+            if (!hint) {
+                if (o63 !== null) {
+                    if (o63 <= 4) hint = 'Идеальный баланс Омега-6/3';
+                    else if (o63 <= 10) hint = 'Приемлемый баланс';
+                    else hint = 'Слишком много Омега-6 — воспаление';
+                }
+                if (tfr !== null) {
+                    hint += hint ? '. ' : '';
+                    if (tfr <= 0.01) hint = 'Безопасный уровень трансжиров';
+                    else if (tfr <= 0.03) hint = 'Немного трансжиров';
+                    else hint = 'Много трансжиров!';
+                }
             }
             const badge = (o63 !== null && o63 <= 4) ? 'good' : (o63 !== null && o63 <= 10) ? 'warn' : 'bad';
             cards.push({
@@ -639,18 +646,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const gl = meal.glycemic_load;
         const fcr = meal.fiber_to_carb_ratio;
+        const carbTip = meal.ai_tips?.carb_ai_tip || '';
         if (gl !== null || fcr !== null) {
-            let hint = '';
-            if (gl !== null) {
-                if (gl <= 10) hint = 'Низкая гликемическая нагрузка';
-                else if (gl <= 20) hint = 'Средняя нагрузка';
-                else hint = 'Высокая нагрузка — скачок сахара';
-            }
-            if (fcr !== null) {
-                hint += hint ? '. ' : '';
-                if (fcr >= 0.15) hint = 'Много клетчатки — хорошо';
-                else if (fcr >= 0.08) hint = 'Среднее количество клетчатки';
-                else hint = 'Мало клетчатки';
+            let hint = carbTip;
+            if (!hint) {
+                if (gl !== null) {
+                    if (gl <= 10) hint = 'Низкая гликемическая нагрузка';
+                    else if (gl <= 20) hint = 'Средняя нагрузка';
+                    else hint = 'Высокая нагрузка — скачок сахара';
+                }
+                if (fcr !== null) {
+                    hint += hint ? '. ' : '';
+                    if (fcr >= 0.15) hint = 'Много клетчатки — хорошо';
+                    else if (fcr >= 0.08) hint = 'Среднее количество клетчатки';
+                    else hint = 'Мало клетчатки';
+                }
             }
             const badge = (gl !== null && gl <= 10) ? 'good' : (gl !== null && gl <= 20) ? 'warn' : 'bad';
             cards.push({
@@ -664,6 +674,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const nova = meal.nova_processing_level;
+        const processingTip = meal.ai_tips?.processing_ai_tip || '';
         if (nova !== null) {
             const novaLabels = ['', 'Цельный', 'Минимальная', 'Обработанный', 'Ультра-обработанный'];
             const badge = nova <= 2 ? 'good' : nova === 3 ? 'warn' : 'bad';
@@ -671,7 +682,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 icon: '⚙️', iconClass: 'icon-nova',
                 title: 'Обработка',
                 value: novaLabels[nova] || `NOVA ${nova}`,
-                hint: nova <= 2 ? 'Натуральная еда' : nova === 3 ? 'Обработанный продукт' : 'Фастфуд / УПП',
+                hint: processingTip || (nova <= 2 ? 'Натуральная еда' : nova === 3 ? 'Обработанный продукт' : 'Фастфуд / УПП'),
                 badge,
                 badgeText: nova <= 2 ? 'Хорошо' : nova === 3 ? 'Средне' : 'Плохо'
             });

@@ -184,11 +184,18 @@ class FoodQuality(BaseModel):
     added_sugar_ratio: Optional[float] = Field(None, ge=0, le=1)
     nova_processing_level: Optional[int] = Field(None, ge=1, le=4)
 
+    # AI советы по метрикам
+    protein_ai_tip: Optional[str] = None
+    fat_ai_tip: Optional[str] = None
+    carb_ai_tip: Optional[str] = None
+    processing_ai_tip: Optional[str] = None
+
 
 class AnalysisResponse(BaseModel):
     suggested_totals: MealTotals
     food_quality: Optional[FoodQuality] = None
     ai_analysis_details: Optional[List[IngredientAnalysisDetail]] = None
+    ai_tips: Optional[dict] = None
     ai_response_text: str
     ai_coach_advice: Optional[str] = None
     recommendations: Optional[Recommendations] = None
@@ -219,6 +226,13 @@ class MealBase(BaseModel):
     fiber_to_carb_ratio: Optional[float] = Field(None, ge=0)
     added_sugar_ratio: Optional[float] = Field(None, ge=0, le=1)
     nova_processing_level: Optional[int] = Field(None, ge=1, le=4)
+
+    # AI советы по метрикам
+    protein_ai_tip: Optional[str] = None
+    fat_ai_tip: Optional[str] = None
+    carb_ai_tip: Optional[str] = None
+    processing_ai_tip: Optional[str] = None
+
 
 class MealCreate(MealBase, MealTotals):
     pass

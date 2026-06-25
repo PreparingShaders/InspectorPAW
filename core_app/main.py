@@ -341,6 +341,18 @@ def extract_food_quality(ai_response_data: dict) -> Optional[dict]:
     }
 
 
+def extract_ai_tips(ai_response_data: dict) -> Optional[dict]:
+    tips = ai_response_data.get("ai_tips") or {}
+    if not isinstance(tips, dict):
+        return None
+    return {
+        "protein_ai_tip": tips.get("protein_ai_tip") or None,
+        "fat_ai_tip": tips.get("fat_ai_tip") or None,
+        "carb_ai_tip": tips.get("carb_ai_tip") or None,
+        "processing_ai_tip": tips.get("processing_ai_tip") or None,
+    }
+
+
 def extract_ai_analysis_details(ai_response_data: dict) -> list:
     raw = (
         ai_response_data.get("ai_analysis_details")
@@ -427,15 +439,22 @@ async def get_nutrition_analysis_and_advice(
       - `added_sugar_ratio`: доля добавленного сахара от углеводов (0.0–1.0).
       - `nova_processing_level`: степень обработки NOVA от 1 до 4.
 
-    ### ШКАЛЫ 0–10 (food_quality и criteria):
-    - `oil_absorption_score` — насколько блюдо пропитано маслом (0 = сухое, 10 = очень жирное).
-    - `ultra_processing_score` — степень ультраобработки (0 = цельный продукт, 10 = фастфуд/УПП).
-    - `hidden_ingredients_risk` — риск скрытых соусов, сахара, усилителей (0 = нет, 10 = высокий).
-    - В `criteria` каждого ингредиента: `processing`, `oil_absorption`, `hidden_ingredients`, `protein_quality`, `micronutrients` (все 0–10).
-    - **Дополнительные оценки качества нутриентов (1–10):**
-      - `protein_quality_score`: аминокислотный профиль (9-10 для мяса/яиц/сыворотки, 4-5 для коллагена/хлеба).
-      - `fat_quality_score`: баланс жиров (9-10 для Омега-3/мононенасыщенных, 1-2 при трансжирах).
-      - `carbs_quality_score`: скорость усвоения и сытость (высокий для сложных углеводов с низким ГИ, низкий для сахара; повышается после тренировки).
+     ### ШКАЛЫ 0–10 (food_quality и criteria):
+     - `oil_absorption_score` — насколько блюдо пропитано маслом (0 = сухое, 10 = очень жирное).
+     - `ultra_processing_score` — степень ультраобработки (0 = цельный продукт, 10 = фастфуд/УПП).
+     - `hidden_ingredients_risk` — риск скрытых соусов, сахара, усилителей (0 = нет, 10 = высокий).
+     - В `criteria` каждого ингредиента: `processing`, `oil_absorption`, `hidden_ingredients`, `protein_quality`, `micronutrients` (все 0–10).
+     - **Дополнительные оценки качества нутриентов (1–10):**
+       - `protein_quality_score`: аминокислотный профиль (9-10 для мяса/яиц/сыворотки, 4-5 для коллагена/хлеба).
+       - `fat_quality_score`: баланс жиров (9-10 для Омега-3/мононенасыщенных, 1-2 при трансжирах).
+       - `carbs_quality_score`: скорость усвоения и сытость (высокий для сложных углеводов с низким ГИ, низкий для сахара; повышается после тренировки).
+
+     ### AI СОВЕТЫ ПО МЕТРИКАМ (ai_tips):
+     Для каждой группы нутриентов дай персонализированный совет (2-3 предложения) на основе метрик текущего блюда:
+     - `protein_ai_tip`: совет по белкам (например, "Добавьте яйца или творог для улучшения аминокислотного профиля").
+     - `fat_ai_tip`: совет по жирам (например, "Добавьте авокадо или рыбу для улучшения баланса Омега-3").
+     - `carb_ai_tip`: совет по углеводам (например, "Замените белый хлеб на цельнозерновой для снижения гликемической нагрузки").
+     - `processing_ai_tip`: совет по обработке (например, "Попробуйте приготовить это блюдо дома для контроля ингредиентов").
 
     ### КОНТЕКСТ ДНЯ ПОЛЬЗОВАТЕЛЯ:
     ```json
@@ -478,10 +497,16 @@ async def get_nutrition_analysis_and_advice(
         "glycemic_load": 18,
         "fiber_to_carb_ratio": 0.12,
         "added_sugar_ratio": 0.05,
-        "nova_processing_level": 2,
-        "toxic_coach_comment": "Отличный выбор, белковый заряд!"
-      }},
-      "ai_analysis_details": [
+         "nova_processing_level": 2,
+         "toxic_coach_comment": "Отличный выбор, белковый заряд!"
+       }},
+       "ai_tips": {{
+         "protein_ai_tip": "Добавьте яйца или творог для улучшения аминокислотного профиля.",
+         "fat_ai_tip": "Добавьте авокадо или рыбу для улучшения баланса Омега-3.",
+         "carb_ai_tip": "Замените белый хлеб на цельнозерновой для снижения гликемической нагрузки.",
+         "processing_ai_tip": "Попробуйте приготовить это блюдо дома для контроля ингредиентов."
+       }},
+       "ai_analysis_details": [
         {{
           "name": "куриная грудка",
           "calories": 165,
@@ -896,6 +921,7 @@ async def analyze_meal(
 
     # --- Обработка ответа ---
     food_quality_raw = extract_food_quality(ai_response_data)
+    ai_tips_raw = extract_ai_tips(ai_response_data)
     coach_advice = ai_response_data.get("coach_advice", "Не удалось получить совет от AI.")
     recommendations = ai_response_data.get("recommendations")
     ai_analysis_details_raw = extract_ai_analysis_details(ai_response_data)
@@ -958,6 +984,7 @@ async def analyze_meal(
         suggested_totals=schemas.MealTotals(**analyzed_meal_totals),
         food_quality=food_quality,
         ai_analysis_details=ai_analysis_details,
+        ai_tips=ai_tips_raw,
         ai_response_text=analyzed_meal_totals["food_name"],
         ai_coach_advice=coach_advice,
         recommendations=recommendations,
