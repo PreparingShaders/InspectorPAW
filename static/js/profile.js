@@ -189,11 +189,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     targetsDisplay.style.display = 'none';
                 } else {
                     targetsDisplay.style.display = 'block';
-                    const maxValues = { calories: 4000, protein: 300, fat: 200, carbs: 500 };
+                    const maxValues = { calories: 4000, protein: 300, fat: 200, carbs: 500, fiber: 60 };
                     updateRing('profile-calories-ring', targets.target_calories, maxValues.calories);
                     updateRing('profile-protein-ring', targets.target_protein, maxValues.protein);
                     updateRing('profile-fat-ring', targets.target_fat, maxValues.fat);
                     updateRing('profile-carbs-ring', targets.target_carbohydrates, maxValues.carbs);
+                    updateRing('profile-fiber-ring', targets.target_fiber || 25, maxValues.fiber);
                 }
             } catch (error) {
                 console.error('Fetch Error:', error);
@@ -225,7 +226,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateDaysInMonth(today.getDate());
         }
 
-        if (user.gender) document.getElementById('gender').value = user.gender;
+        if (user.gender) {
+            document.getElementById('gender').value = user.gender;
+            const activeBtn = document.getElementById(`gender-${user.gender}`);
+            if (activeBtn) {
+                document.querySelectorAll('.gender-btn').forEach(b => { b.classList.remove('text-white'); b.classList.add('text-gray-400'); });
+                activeBtn.classList.remove('text-gray-400');
+                activeBtn.classList.add('text-white');
+            }
+        }
         if (user.height_cm) document.getElementById('height_cm').value = user.height_cm;
         if (user.activity_level) document.getElementById('activity_level').value = user.activity_level;
         if (user.goal) document.getElementById('goal').value = user.goal;
@@ -325,7 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => {
                 saveProfileButton.textContent = originalButtonText;
                 saveProfileButton.className = originalButtonClass;
-                window.location.href = '/dashboard';
+                window.location.href = '/nutrition';
             }, 1500);
 
         } catch (error) {
@@ -339,11 +348,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- Обработчик кнопки "Выйти" ---
+// --- Обработчик кнопки "Выйти" ---
     if (logoutButton) {
         logoutButton.addEventListener('click', () => {
             localStorage.removeItem('accessToken');
-            window.location.href = '/'; // Перенаправление на страницу входа
+            window.location.href = '/';
         });
     }
+
+    // --- Переключение пола ---
+    document.querySelectorAll('.gender-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.gender-btn').forEach(b => {
+                b.classList.remove('text-white');
+                b.classList.add('text-gray-400');
+            });
+            btn.classList.remove('text-gray-400');
+            btn.classList.add('text-white');
+            document.getElementById('gender').value = btn.dataset.value;
+        });
+    });
 });

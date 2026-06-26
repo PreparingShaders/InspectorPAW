@@ -38,23 +38,22 @@
                 <div class="form-group">
                     <label for="date_of_birth_day">Дата рождения</label>
                     <div class="grid grid-cols-3 gap-2">
-                        <select id="date_of_birth_day" required>
-                        </select>
-                        <select id="date_of_birth_month" required>
-                        </select>
-                        <select id="date_of_birth_year" required>
-                        </select>
-                    </div>
+                         <select id="date_of_birth_day" required style="font-size: 0.8rem; padding: 0.25rem;">
+                         </select>
+                         <select id="date_of_birth_month" required style="font-size: 0.8rem; padding: 0.25rem;">
+                         </select>
+                         <select id="date_of_birth_year" required style="font-size: 0.8rem; padding: 0.25rem;">
+                         </select>
+                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="gender">Пол</label>
-                    <select id="gender" required>
-                        <option value="">Выберите пол</option>
-                        <option value="male">Мужской</option>
-                        <option value="female">Женский</option>
-                    </select>
-                </div>
+<div class="form-group">
+                     <div class="relative flex w-full p-1 rounded-full glassmorphism border border-white/10">
+                         <button type="button" id="gender-male" class="gender-btn flex-1 rounded-full py-2 text-sm font-semibold transition-all" data-value="male">Мужской</button>
+                         <button type="button" id="gender-female" class="gender-btn flex-1 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all" data-value="female">Женский</button>
+                     </div>
+                     <input type="hidden" id="gender" value="">
+                 </div>
 
                 <div class="form-group">
                     <label for="height_cm">Рост (см)</label>
@@ -94,63 +93,76 @@
                 </div>
 
                 <!-- Блок с кольцами для КБЖУ (теперь перед ползунком) -->
-                <div id="calculated-targets" class="pt-4">
-                    <h3 class="text-lg font-semibold text-center mb-4">Ваша норма</h3>
-                    <div class="flex justify-around w-full">
-                        <!-- Калории -->
-                        <div class="text-center flex flex-col items-center space-y-1">
-                            <div class="ring-container w-16 aspect-square neon-glow-amber relative">
-                                <svg id="profile-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                    <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                    <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
-                                </svg>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span id="profile-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
-                                </div>
-                            </div>
-                            <span class="label-text text-xs mt-1">Калории</span>
-                        </div>
-                        <!-- Белки -->
-                        <div class="text-center flex flex-col items-center space-y-1">
-                            <div class="ring-container w-16 aspect-square neon-glow-protein-white relative">
-                                <svg id="profile-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                    <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                    <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
-                                </svg>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span id="profile-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
-                                </div>
-                            </div>
-                            <span class="label-text text-xs mt-1">Белки</span>
-                        </div>
-                        <!-- Жиры -->
-                        <div class="text-center flex flex-col items-center space-y-1">
-                            <div class="ring-container w-16 aspect-square neon-glow-golden-orange relative">
-                                <svg id="profile-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                    <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                    <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
-                                </svg>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span id="profile-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
-                                </div>
-                            </div>
-                            <span class="label-text text-xs mt-1">Жиры</span>
-                        </div>
-                        <!-- Углеводы -->
-                        <div class="text-center flex flex-col items-center space-y-1">
-                            <div class="ring-container w-16 aspect-square neon-glow-muted-teal relative">
-                                <svg id="profile-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                                    <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                                    <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
-                                </svg>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span id="profile-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
-                                </div>
-                            </div>
-                            <span class="label-text text-xs mt-1">Углеводы</span>
-                        </div>
-                    </div>
-                </div>
+<div id="calculated-targets" class="pt-4">
+                     <h3 class="text-lg font-semibold text-center mb-4">Ваша норма</h3>
+                     <div class="flex justify-around w-full">
+                         <!-- Калории -->
+                         <div class="text-center flex flex-col items-center space-y-1">
+                             <div class="ring-container w-16 aspect-square neon-glow-amber relative">
+                                 <svg id="profile-calories-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                     <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                     <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-amber);" />
+                                 </svg>
+                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                     <span id="profile-calories-value" class="font-bold text-lg" style="color: var(--color-amber);">0</span>
+                                 </div>
+                             </div>
+                             <span class="label-text text-xs mt-1">Калории</span>
+                         </div>
+                         <!-- Белки -->
+                         <div class="text-center flex flex-col items-center space-y-1">
+                             <div class="ring-container w-16 aspect-square neon-glow-protein-white relative">
+                                 <svg id="profile-protein-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                     <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                     <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-protein-white);" />
+                                 </svg>
+                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                     <span id="profile-protein-value" class="font-bold text-lg" style="color: var(--color-protein-white);">0</span>
+                                 </div>
+                             </div>
+                             <span class="label-text text-xs mt-1">Белки</span>
+                         </div>
+                         <!-- Жиры -->
+                         <div class="text-center flex flex-col items-center space-y-1">
+                             <div class="ring-container w-16 aspect-square neon-glow-golden-orange relative">
+                                 <svg id="profile-fat-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                     <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                     <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-golden-orange);" />
+                                 </svg>
+                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                     <span id="profile-fat-value" class="font-bold text-lg" style="color: var(--color-golden-orange);">0</span>
+                                 </div>
+                             </div>
+                             <span class="label-text text-xs mt-1">Жиры</span>
+                         </div>
+                         <!-- Углеводы -->
+                         <div class="text-center flex flex-col items-center space-y-1">
+                             <div class="ring-container w-16 aspect-square neon-glow-muted-teal relative">
+                                 <svg id="profile-carbs-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                     <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                     <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-muted-teal);" />
+                                 </svg>
+                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                     <span id="profile-carbs-value" class="font-bold text-lg" style="color: var(--color-muted-teal);">0</span>
+                                 </div>
+                             </div>
+                             <span class="label-text text-xs mt-1">Углеводы</span>
+                         </div>
+                         <!-- Клетчатка -->
+                         <div class="text-center flex flex-col items-center space-y-1">
+                             <div class="ring-container w-16 aspect-square relative">
+                                 <svg id="profile-fiber-ring" class="progress-ring-svg" viewBox="0 0 120 120">
+                                     <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                     <circle class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: #8B4513;" />
+                                 </svg>
+                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                     <span id="profile-fiber-value" class="font-bold text-lg" style="color: #8B4513;">0</span>
+                                 </div>
+                             </div>
+                             <span class="label-text text-xs mt-1">Клетчатка</span>
+                         </div>
+                     </div>
+                 </div>
 
                 <div class="form-group" id="goal-intensity-group" style="display: none;">
                     <label for="goal_intensity" class="text-center block">
