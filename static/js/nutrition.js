@@ -1234,11 +1234,16 @@ container.innerHTML = '';
 
         const showRemaining = ringDisplayMode === 'remaining';
 
-        const protein = showRemaining ? Math.max(0, (s.target_protein || 0) - (s.avg_protein || 0)) : (s.avg_protein || 0);
-        const fat = showRemaining ? Math.max(0, (s.target_fat || 0) - (s.avg_fat || 0)) : (s.avg_fat || 0);
-        const carbohydrates = showRemaining ? Math.max(0, (s.target_carbohydrates || 0) - (s.avg_carbohydrates || 0)) : (s.avg_carbohydrates || 0);
+        const protein = showRemaining ? (s.target_protein || 0) - (s.avg_protein || 0) : (s.avg_protein || 0);
+        const fat = showRemaining ? (s.target_fat || 0) - (s.avg_fat || 0) : (s.avg_fat || 0);
+        const carbohydrates = showRemaining ? (s.target_carbohydrates || 0) - (s.avg_carbohydrates || 0) : (s.avg_carbohydrates || 0);
 
-        const totalGrams = protein + fat + carbohydrates;
+        const totalGrams = ['protein', 'fat', 'carbohydrates'].reduce((sum, key) => {
+            const v = { protein, fat, carbohydrates }[key];
+            if (v > 0) return sum + v;
+            if (v < 0) return sum + Math.abs(v);
+            return sum;
+        }, 0);
 
         const drawOrder = ['protein', 'fat', 'carbohydrates'];
         const segmentsData = [];
@@ -1254,6 +1259,22 @@ container.innerHTML = '';
                 }
             });
 
+            // --- Excess segments (negative values in remaining mode) ---
+            const excessStyles = {
+                protein: { label: 'Белки', color: '#FFFFFF', gradient: 'url(#hist-grad-protein)', filter: 'url(#hist-glow-protein)' },
+                fat: { label: 'Жиры', color: '#EF4444', gradient: '#EF4444', filter: '' },
+                carbohydrates: { label: 'Углеводы', color: '#EF4444', gradient: '#EF4444', filter: '' },
+            };
+
+            drawOrder.forEach(key => {
+                const value = { protein, fat, carbohydrates }[key];
+                if (value < 0) {
+                    const percentage = Math.abs(value) / totalGrams;
+                    const angle = percentage * 360;
+                    segmentsData.push({ key, angle, value: Math.abs(value), ...excessStyles[key], isExcess: true });
+                }
+            });
+
             const totalGaps = segmentsData.length * gapDegrees;
             const scaleFactor = (360 - totalGaps) / 360;
 
@@ -1262,39 +1283,54 @@ container.innerHTML = '';
                 const arcLength = (circumference / 360) * angle;
                 const rotation = `${currentAngle - 90 + gapDegrees / 2}deg`;
 
-                const shadow = document.createElementNS(svgNS, "circle");
-                shadow.setAttribute("cx", center);
-                shadow.setAttribute("cy", center);
-                shadow.setAttribute("r", radius);
-                shadow.setAttribute("stroke", "rgba(0,0,0,0.35)");
-                shadow.setAttribute("stroke-width", strokeWidth + 2);
-                shadow.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
-                shadow.setAttribute("stroke-linecap", "round");
-                shadow.setAttribute("fill", "none");
-                shadow.style.transformOrigin = 'center';
-                shadow.style.transform = `rotate(${rotation}) translateY(2px)`;
-                svg.appendChild(shadow);
+                let shadow = null;
+                if (!item.isExcess) {
+                    shadow = document.createElementNS(svgNS, "circle");
+                    shadow.setAttribute("cx", center);
+                    shadow.setAttribute("cy", center);
+                    shadow.setAttribute("r", radius);
+                    shadow.setAttribute("stroke", "rgba(0,0,0,0.35)");
+                    shadow.setAttribute("stroke-width", strokeWidth + 2);
+                    shadow.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
+                    shadow.setAttribute("stroke-linecap", "round");
+                    shadow.setAttribute("fill", "none");
+                    shadow.style.transformOrigin = 'center';
+                    shadow.style.transform = `rotate(${rotation}) translateY(2px)`;
+                }
 
                 const segment = document.createElementNS(svgNS, "circle");
                 segment.setAttribute("cx", center);
                 segment.setAttribute("cy", center);
                 segment.setAttribute("r", radius);
-                segment.setAttribute("stroke", item.gradient);
+                const isBadExcess = item.isExcess && (item.key === 'fat' || item.key === 'carbohydrates');
+                segment.setAttribute("stroke", isBadExcess ? '#EF4444' : item.gradient);
                 segment.setAttribute("stroke-width", strokeWidth);
                 segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
                 segment.setAttribute("stroke-linecap", "round");
                 segment.setAttribute("fill", "none");
-                segment.setAttribute("filter", item.filter);
+                if (!isBadExcess) {
+                    segment.setAttribute("filter", item.filter);
+                } else {
+                    segment.style.opacity = '0.7';
+                }
                 segment.style.transformOrigin = 'center';
                 segment.style.transform = `rotate(${rotation})`;
-                svg.appendChild(segment);
 
                 item.startAngle = currentAngle;
                 item.endAngle = currentAngle + angle;
                 currentAngle += angle + gapDegrees;
+
+                return { shadow, segment };
             });
 
             const labelOffsets = { protein: 28, fat: 28, carbohydrates: 28 };
+            const labelsGroup = document.createElementNS(svgNS, "g");
+
+            segmentElements.forEach(({ shadow, segment }) => {
+                if (shadow) svg.appendChild(shadow);
+                svg.appendChild(segment);
+            });
+
             segmentsData.forEach(item => {
                 const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
                 const labelRadius = radius + strokeWidth / 2 + labelOffsets[item.key];
@@ -1310,20 +1346,26 @@ container.innerHTML = '';
                 label.style.fontSize = '12px';
                 label.style.fontWeight = 'bold';
                 label.textContent = item.label;
-                svg.appendChild(label);
+                labelsGroup.appendChild(label);
 
                 const valueLabel = document.createElementNS(svgNS, "text");
                 valueLabel.setAttribute("x", x);
                 valueLabel.setAttribute("y", y + 14);
                 valueLabel.setAttribute("text-anchor", "middle");
                 valueLabel.setAttribute("dominant-baseline", "central");
-                valueLabel.setAttribute("fill", 'rgba(255,255,255,0.5)');
+                valueLabel.setAttribute("fill", item.isExcess ? '#EF4444' : 'rgba(255,255,255,0.5)');
                 valueLabel.style.fontSize = '12px';
                 valueLabel.style.fontWeight = '500';
-                valueLabel.textContent = `${Math.round(item.value)}г`;
-                if (showRemaining) valueLabel.textContent += ' ост';
-                svg.appendChild(valueLabel);
+                if (item.isExcess) {
+                    valueLabel.textContent = `+${Math.round(item.value)}г`;
+                } else {
+                    valueLabel.textContent = `${Math.round(item.value)}г`;
+                    if (showRemaining) valueLabel.textContent += ' ост';
+                }
+                labelsGroup.appendChild(valueLabel);
             });
+
+            svg.appendChild(labelsGroup);
         }
 
         const scoreColor = getScoreColor(periodCombinedScore);
