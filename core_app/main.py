@@ -965,6 +965,8 @@ async def analyze_meal(
 
     food_quality = None
     if food_quality_raw:
+        if ai_tips_raw:
+            food_quality_raw.update(ai_tips_raw)
         try:
             food_quality = schemas.FoodQuality(**food_quality_raw)
         except Exception as e:
