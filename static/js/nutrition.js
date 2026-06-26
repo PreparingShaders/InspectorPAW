@@ -1675,28 +1675,26 @@ container.innerHTML = '';
             // Передаем цели в историю приемов пищи
             fetchAndDisplayMealHistory(s);
 
-            const scores = data.daily_breakdown.map(d => d.daily_score).filter(s => s !== null && s !== undefined);
+            // --- Обновление кольца AI Score ---
             const avgScoreValue = document.getElementById('avg-score-value');
             const avgScoreBar = document.getElementById('avg-score-bar');
             const avgScoreRingContainer = document.getElementById('avg-score-ring-container');
 
-            if (scores.length > 0) {
-                const averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-                avgScoreValue.textContent = averageScore;
-                updateRingWithStatus(document.getElementById('avg-score-ring'), averageScore, 100);
+            if (s.avg_ai_score !== null && s.avg_ai_score !== undefined) {
+                const aiScore = Math.round(s.avg_ai_score);
+                avgScoreValue.textContent = aiScore;
+                updateRingWithStatus(document.getElementById('avg-score-ring'), aiScore, 100);
 
-                let scoreColor = '#e11d48'; // red
-                if (averageScore >= 95) scoreColor = '#FFD700'; // gold
-                else if (averageScore >= 80) scoreColor = '#F0F0F0'; // white
-                else if (averageScore >= 60) scoreColor = '#f59e0b'; // amber
+                let scoreColor = '#10B981';
+                if (aiScore <= 40) scoreColor = '#EF4444';
+                else if (aiScore <= 70) scoreColor = '#F59E0B';
 
                 avgScoreValue.style.color = scoreColor;
                 avgScoreBar.style.stroke = scoreColor;
                 avgScoreRingContainer.style.boxShadow = `0 0 8px 1px ${scoreColor}`;
-
             } else {
                 avgScoreValue.textContent = '0';
-                updateRingWithStatus(document.getElementById('avg-score-ring'), 0, 120);
+                updateRingWithStatus(document.getElementById('avg-score-ring'), 0, 100);
                 avgScoreValue.style.color = '#A0A0A0';
                 avgScoreBar.style.stroke = '#A0A0A0';
                 avgScoreRingContainer.style.boxShadow = 'none';
@@ -1784,13 +1782,12 @@ container.innerHTML = '';
         }
     });
 
-    const oneDayBtn = document.getElementById('one-day-btn');
     const sevenDaysBtn = document.getElementById('seven-days-btn');
     const oneMonthBtn = document.getElementById('one-month-btn');
     const threeMonthsBtn = document.getElementById('three-months-btn');
 
-    if (oneDayBtn && sevenDaysBtn && oneMonthBtn && threeMonthsBtn) {
-        const buttons = [oneDayBtn, sevenDaysBtn, oneMonthBtn, threeMonthsBtn];
+    if (sevenDaysBtn && oneMonthBtn && threeMonthsBtn) {
+        const buttons = [sevenDaysBtn, oneMonthBtn, threeMonthsBtn];
         const updateBtns = (activeIndex) => {
             buttons.forEach((btn, index) => {
                 if (index === activeIndex) {
@@ -1803,10 +1800,9 @@ container.innerHTML = '';
             });
         };
 
-        oneDayBtn.onclick = () => { updateBtns(0); fetchScoreGraphData(1); };
-        sevenDaysBtn.onclick = () => { updateBtns(1); fetchScoreGraphData(7); };
-        oneMonthBtn.onclick = () => { updateBtns(2); fetchScoreGraphData(30); };
-        threeMonthsBtn.onclick = () => { updateBtns(3); fetchScoreGraphData(90); };
+        sevenDaysBtn.onclick = () => { updateBtns(0); fetchScoreGraphData(7); };
+        oneMonthBtn.onclick = () => { updateBtns(1); fetchScoreGraphData(30); };
+        threeMonthsBtn.onclick = () => { updateBtns(2); fetchScoreGraphData(90); };
     }
 
     const avgScoreWrapper = document.getElementById('avg-score-wrapper');
@@ -1843,7 +1839,7 @@ container.innerHTML = '';
             tabHistory.classList.add('active');
             tabHistory.classList.remove('text-gray-400');
             viewHistory.classList.remove('hidden');
-            fetchScoreGraphData(1);
+            fetchScoreGraphData(7);
             fetchAndDisplayMealHistory({});
         }
     }
@@ -1852,10 +1848,6 @@ container.innerHTML = '';
     if (tabHistory) tabHistory.onclick = () => switchTab('history');
 
     // --- Первоначальная загрузка данных ---
-    if (oneDayBtn) {
-        oneDayBtn.classList.add('active');
-        oneDayBtn.classList.remove('text-gray-400');
-    }
     switchTab('nutrition');
     resetWizard();
 
@@ -1865,7 +1857,7 @@ container.innerHTML = '';
         ringToggleEl.addEventListener('click', () => {
             ringDisplayMode = ringDisplayMode === 'progress' ? 'remaining' : 'progress';
             ringToggleEl.classList.toggle('mode-remaining', ringDisplayMode === 'remaining');
-            fetchScoreGraphData(1);
+            fetchScoreGraphData(7);
         });
     }
 

@@ -182,6 +182,19 @@ def get_user_stats_by_period(db: Session, user_id: int, start_date: date, end_da
     return query.first()
 
 
+def get_avg_ai_score_for_period(db: Session, user_id: int, start_date: date, end_date: date) -> Optional[float]:
+    """Считает средний ai_score за период."""
+    result = db.query(func.avg(models.Meal.ai_score)).filter(
+        models.Meal.user_id == user_id,
+        models.Meal.ai_score.isnot(None),
+        func.date(models.Meal.timestamp) >= start_date,
+        func.date(models.Meal.timestamp) <= end_date
+    ).scalar()
+    if result is not None:
+        return round(float(result), 1)
+    return None
+
+
 # --- Meal CRUD ---
 
 def count_meals_today(db: Session, user_id: int) -> int:

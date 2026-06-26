@@ -66,6 +66,7 @@ class AverageSummary(BaseModel):
     avg_fat: float
     avg_carbohydrates: float
     avg_fiber: float = 0
+    avg_ai_score: Optional[float] = None
     target_calories: float
     target_protein: float
     target_fat: float

@@ -76,6 +76,9 @@ class UserMetrics(Base):
 
 class Meal(Base):
     __tablename__ = "meals"
+    __table_args__ = (
+        Index("ix_meals_user_timestamp", "user_id", "timestamp"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
