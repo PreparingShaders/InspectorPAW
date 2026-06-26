@@ -601,7 +601,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const aas = meal.amino_acid_score;
         const apr = meal.animal_protein_ratio;
-        const proteinTip = meal.ai_tips?.protein_ai_tip || '';
+        const proteinTip = meal.protein_ai_tip || '';
         if (aas !== null || apr !== null) {
             let hint = proteinTip;
             if (!hint) {
@@ -630,7 +630,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const o63 = meal.omega6_omega3_ratio;
         const tfr = meal.trans_fat_ratio;
-        const fatTip = meal.ai_tips?.fat_ai_tip || '';
+        const fatTip = meal.fat_ai_tip || '';
         if (o63 !== null || tfr !== null) {
             let hint = fatTip;
             if (!hint) {
@@ -659,7 +659,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const gl = meal.glycemic_load;
         const fcr = meal.fiber_to_carb_ratio;
-        const carbTip = meal.ai_tips?.carb_ai_tip || '';
+        const carbTip = meal.carb_ai_tip || '';
         if (gl !== null || fcr !== null) {
             let hint = carbTip;
             if (!hint) {
@@ -687,7 +687,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const nova = meal.nova_processing_level;
-        const processingTip = meal.ai_tips?.processing_ai_tip || '';
+        const processingTip = meal.processing_ai_tip || '';
         if (nova !== null) {
             const novaLabels = ['', 'Цельный', 'Минимальная', 'Обработанный', 'Ультра-обработанный'];
             const badge = nova <= 2 ? 'good' : nova === 3 ? 'warn' : 'bad';
@@ -1056,6 +1056,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             added_sugar_ratio: currentFoodQuality?.added_sugar_ratio ?? null,
             nova_processing_level: currentFoodQuality?.nova_processing_level ?? null,
             ai_analysis_details: currentMealAnalysis?.ai_analysis_details ?? null,
+            protein_ai_tip: currentMealAnalysis?.ai_tips?.protein_ai_tip ?? null,
+            fat_ai_tip: currentMealAnalysis?.ai_tips?.fat_ai_tip ?? null,
+            carb_ai_tip: currentMealAnalysis?.ai_tips?.carb_ai_tip ?? null,
+            processing_ai_tip: currentMealAnalysis?.ai_tips?.processing_ai_tip ?? null,
         };
 
         try {
