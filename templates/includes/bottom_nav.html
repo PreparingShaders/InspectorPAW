@@ -45,16 +45,8 @@
      }
 </style>
 
-<div style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 28rem; z-index: 50;">
+<div style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateZ(0); width: 95%; max-width: 28rem; z-index: 50; will-change: transform;">
      <nav class="flex justify-around items-center rounded-full glassmorphism" style="height: 3.5rem; padding: 0.25rem;">
-         <a href="/dashboard" class="nav-link flex-1 text-center py-2 rounded-full transition-all {% if active_page == 'dashboard' %}nav-link-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'dashboard' %}var(--color-amber){% else %}var(--color-inactive-icon){% endif %};">
-             <div class="flex items-center justify-center h-7 w-7 mx-auto">
-                 <svg class="w-5 h-5 nav-icon-base" fill="currentColor" viewBox="0 0 20 20">
-                     <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-                 </svg>
-             </div>
-             <span style="font-size: 9px; font-weight: 600; margin-top: 2px; display: block; text-transform: uppercase;">Главная</span>
-         </a>
 
          <a href="/workouts" class="nav-link flex-1 text-center py-2 rounded-full transition-all {% if active_page == 'workouts' %}nav-link-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'workouts' %}var(--color-amber){% else %}var(--color-inactive-icon){% endif %};">
              <div class="flex items-center justify-center h-7 w-7 mx-auto">
@@ -63,11 +55,6 @@
                  </svg>
              </div>
              <span style="font-size: 9px; font-weight: 600; margin-top: 2px; display: block; text-transform: uppercase;">Тренировки</span>
-         </a>
-
-         <a href="/ai-hub" class="nav-link flex-1 text-center py-2 rounded-full transition-all" style="text-decoration: none; color: var(--color-inactive-icon);">
-             <div class="ai-icon-text" style="width: 28px; height: 28px; font-size: 16px;">AI</div>
-             <span style="font-size: 9px; font-weight: 600; margin-top: 2px; display: block; text-transform: uppercase;">AI HUB</span>
          </a>
 
          <a href="/nutrition" class="nav-link flex-1 text-center py-2 rounded-full transition-all {% if active_page == 'nutrition' %}nav-link-active{% endif %}" style="text-decoration: none; color: {% if active_page == 'nutrition' %}var(--color-amber){% else %}var(--color-inactive-icon){% endif %};">
@@ -88,4 +75,4 @@
              <span style="font-size: 9px; font-weight: 600; margin-top: 2px; display: block; text-transform: uppercase;">Профиль</span>
          </a>
      </nav>
-</div>
+ </div>

@@ -870,6 +870,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderMealView() {
+        const skeleton = document.getElementById('nutrition-skeleton');
+        if (skeleton) skeleton.remove();
         renderMealSliderDots();
         const meal = isTotalView ? dailyTotal : dailyMeals[currentMealIndex];
         if (!meal) {
@@ -970,7 +972,9 @@ document.addEventListener('DOMContentLoaded', async () => {
          const targetContainerId = containerId || 'daily-quality-ring';
          const container = document.getElementById(targetContainerId);
          if (!container) return;
-         container.innerHTML = '';
+container.innerHTML = '';
+        container.style.opacity = '0';
+        container.style.transition = 'opacity 0.15s ease';
 
         const svgNS = "http://www.w3.org/2000/svg";
         const viewBoxSize = 260;
@@ -1179,6 +1183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         svg.appendChild(calText);
 
         container.appendChild(svg);
+        requestAnimationFrame(() => { container.style.opacity = '1'; });
     }
 
 
