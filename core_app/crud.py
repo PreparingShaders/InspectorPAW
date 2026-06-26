@@ -149,7 +149,8 @@ def get_daily_stats_for_period(db: Session, user_id: int, start_date: date, end_
         func.sum(models.Meal.total_calories).label("total_calories"),
         func.sum(models.Meal.total_protein).label("total_protein"),
         func.sum(models.Meal.total_fat).label("total_fat"),
-        func.sum(models.Meal.total_carbohydrates).label("total_carbohydrates")
+        func.sum(models.Meal.total_carbohydrates).label("total_carbohydrates"),
+        func.avg(models.Meal.ai_score).label("avg_ai_score")
     ).filter(
         models.Meal.user_id == user_id,
         func.date(models.Meal.timestamp) >= start_date,
@@ -164,6 +165,7 @@ def get_daily_stats_for_period(db: Session, user_id: int, start_date: date, end_
             "total_protein": r.total_protein or 0,
             "total_fat": r.total_fat or 0,
             "total_carbohydrates": r.total_carbohydrates or 0,
+            "avg_ai_score": round(float(r.avg_ai_score), 1) if r.avg_ai_score is not None else None,
         } for r in results
     ]
 

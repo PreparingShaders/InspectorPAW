@@ -54,6 +54,8 @@ class DailyStatDetail(BaseModel):
     status: str
     # Новые поля для ProgressLab Score
     daily_score: Optional[int] = None
+    avg_ai_score: Optional[float] = None
+    combined_score: Optional[int] = None
     status_color: Optional[str] = None
     status_message: Optional[Dict[str, Any]] = None
     y_axis_pos: Optional[int] = None

@@ -1272,6 +1272,16 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
             end_of_day_dt = datetime.combine(current_date, datetime.min.time().replace(hour=23))
             score_result = utils.calculate_progress_lab_score(target_macros, actual_macros, current_dt=end_of_day_dt)
 
+        day_avg_ai = consumed.get("avg_ai_score")
+        daily_score_val = score_result.get("daily_score")
+        combined = None
+        if daily_score_val is not None and day_avg_ai is not None:
+            combined = round((daily_score_val + day_avg_ai) / 2)
+        elif daily_score_val is not None:
+            combined = daily_score_val
+        elif day_avg_ai is not None:
+            combined = round(day_avg_ai)
+
         daily_breakdown.append(schemas.DailyStatDetail(
             date=current_date,
             consumed_calories=consumed_calories,
@@ -1283,7 +1293,9 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
             target_fat=target_fat,
             target_carbohydrates=target_carbohydrates,
             status="calculated",
-            daily_score=score_result.get("daily_score"),
+            daily_score=daily_score_val,
+            avg_ai_score=day_avg_ai,
+            combined_score=combined,
             status_color=score_result.get("status_color"),
             status_message=score_result.get("status_message"),
             y_axis_pos=score_result.get("y_axis_pos"),
@@ -1302,8 +1314,8 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
     avg_carbohydrates = (total_consumed["carbohydrates"] / days_with_data) if days_with_data > 0 else 0
     avg_fiber = 0
 
-    daily_scores = [d.daily_score for d in daily_breakdown if d.daily_score is not None]
-    avg_kbzhu_score = round(sum(daily_scores) / len(daily_scores)) if daily_scores else None
+    combined_scores = [d.combined_score for d in daily_breakdown if d.combined_score is not None]
+    avg_kbzhu_score = round(sum(combined_scores) / len(combined_scores)) if combined_scores else None
 
     period_summary = schemas.AverageSummary(
         avg_calories=round(avg_calories),

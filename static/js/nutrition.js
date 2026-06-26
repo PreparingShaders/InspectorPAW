@@ -666,13 +666,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         interactiveRingsContainer.appendChild(svg);
     }
 
-    function getScoreColor(score) {
-        if (score === null || score === undefined) return 'rgba(255,255,255,0.3)';
-        if (score <= 40) return '#EF4444';
-        if (score <= 70) return '#F59E0B';
-        return '#10B981';
-    }
-
     function getScoreLabel(score) {
         if (score === null || score === undefined) return '—';
         if (score <= 40) return 'Плохо';
@@ -1186,6 +1179,194 @@ container.innerHTML = '';
         requestAnimationFrame(() => { container.style.opacity = '1'; });
     }
 
+    function renderHistoryCompositeRing(data) {
+        const container = document.getElementById('history-composite-ring');
+        if (!container) return;
+        container.innerHTML = '';
+        container.style.opacity = '0';
+        container.style.transition = 'opacity 0.15s ease';
+
+        const s = data.period_summary;
+        if (!s) return;
+
+        const combinedScores = data.daily_breakdown
+            .map(d => d.combined_score)
+            .filter(v => v !== null && v !== undefined);
+        const periodCombinedScore = combinedScores.length
+            ? Math.round(combinedScores.reduce((a, b) => a + b, 0) / combinedScores.length)
+            : 0;
+
+        const svgNS = "http://www.w3.org/2000/svg";
+        const viewBoxSize = 260;
+        const center = viewBoxSize / 2;
+        const radius = 82;
+        const strokeWidth = 14;
+        const circumference = 2 * Math.PI * radius;
+        const gapDegrees = 3;
+
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("viewBox", `0 0 ${viewBoxSize} ${viewBoxSize}`);
+        svg.setAttribute("class", "composite-ring-svg");
+
+        const defs = document.createElementNS(svgNS, "defs");
+        createRingGradient(defs, 'hist-grad-protein', '#FFFFFF', '#9CA3AF');
+        createRingGradient(defs, 'hist-grad-fat', '#F0D878', '#DAA520');
+        createRingGradient(defs, 'hist-grad-carbs', '#86EFAC', '#16A34A');
+        createRingGlowFilter(defs, 'hist-glow-protein', '#FFFFFF');
+        createRingGlowFilter(defs, 'hist-glow-fat', '#DAA520');
+        createRingGlowFilter(defs, 'hist-glow-carbs', '#4ADE80');
+        svg.appendChild(defs);
+
+        const trackRing = document.createElementNS(svgNS, "circle");
+        trackRing.setAttribute("cx", center);
+        trackRing.setAttribute("cy", center);
+        trackRing.setAttribute("r", radius);
+        trackRing.setAttribute("stroke", "rgba(255,255,255,0.07)");
+        trackRing.setAttribute("stroke-width", strokeWidth + 2);
+        trackRing.setAttribute("fill", "none");
+        svg.appendChild(trackRing);
+
+        const nutrientConfig = {
+            protein: { label: 'Белки', color: '#FFFFFF', gradient: 'url(#hist-grad-protein)', filter: 'url(#hist-glow-protein)' },
+            fat: { label: 'Жиры', color: 'var(--color-golden-orange)', gradient: 'url(#hist-grad-fat)', filter: 'url(#hist-glow-fat)' },
+            carbohydrates: { label: 'Углеводы', color: '#4ADE80', gradient: 'url(#hist-grad-carbs)', filter: 'url(#hist-glow-carbs)' },
+        };
+
+        const showRemaining = ringDisplayMode === 'remaining';
+
+        const protein = showRemaining ? Math.max(0, (s.target_protein || 0) - (s.avg_protein || 0)) : (s.avg_protein || 0);
+        const fat = showRemaining ? Math.max(0, (s.target_fat || 0) - (s.avg_fat || 0)) : (s.avg_fat || 0);
+        const carbohydrates = showRemaining ? Math.max(0, (s.target_carbohydrates || 0) - (s.avg_carbohydrates || 0)) : (s.avg_carbohydrates || 0);
+
+        const totalGrams = protein + fat + carbohydrates;
+
+        const drawOrder = ['protein', 'fat', 'carbohydrates'];
+        const segmentsData = [];
+        let currentAngle = 0;
+
+        if (totalGrams > 0) {
+            drawOrder.forEach(key => {
+                const value = { protein, fat, carbohydrates }[key];
+                if (value > 0) {
+                    const percentage = value / totalGrams;
+                    const angle = percentage * 360;
+                    segmentsData.push({ key, angle, value, ...nutrientConfig[key] });
+                }
+            });
+
+            const totalGaps = segmentsData.length * gapDegrees;
+            const scaleFactor = (360 - totalGaps) / 360;
+
+            const segmentElements = segmentsData.map(item => {
+                const angle = item.angle * scaleFactor;
+                const arcLength = (circumference / 360) * angle;
+                const rotation = `${currentAngle - 90 + gapDegrees / 2}deg`;
+
+                const shadow = document.createElementNS(svgNS, "circle");
+                shadow.setAttribute("cx", center);
+                shadow.setAttribute("cy", center);
+                shadow.setAttribute("r", radius);
+                shadow.setAttribute("stroke", "rgba(0,0,0,0.35)");
+                shadow.setAttribute("stroke-width", strokeWidth + 2);
+                shadow.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
+                shadow.setAttribute("stroke-linecap", "round");
+                shadow.setAttribute("fill", "none");
+                shadow.style.transformOrigin = 'center';
+                shadow.style.transform = `rotate(${rotation}) translateY(2px)`;
+                svg.appendChild(shadow);
+
+                const segment = document.createElementNS(svgNS, "circle");
+                segment.setAttribute("cx", center);
+                segment.setAttribute("cy", center);
+                segment.setAttribute("r", radius);
+                segment.setAttribute("stroke", item.gradient);
+                segment.setAttribute("stroke-width", strokeWidth);
+                segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
+                segment.setAttribute("stroke-linecap", "round");
+                segment.setAttribute("fill", "none");
+                segment.setAttribute("filter", item.filter);
+                segment.style.transformOrigin = 'center';
+                segment.style.transform = `rotate(${rotation})`;
+                svg.appendChild(segment);
+
+                item.startAngle = currentAngle;
+                item.endAngle = currentAngle + angle;
+                currentAngle += angle + gapDegrees;
+            });
+
+            const labelOffsets = { protein: 28, fat: 28, carbohydrates: 28 };
+            segmentsData.forEach(item => {
+                const midAngleRad = (item.startAngle + (item.endAngle - item.startAngle) / 2 - 90) * Math.PI / 180;
+                const labelRadius = radius + strokeWidth / 2 + labelOffsets[item.key];
+                const x = center + labelRadius * Math.cos(midAngleRad);
+                const y = center + labelRadius * Math.sin(midAngleRad);
+
+                const label = document.createElementNS(svgNS, "text");
+                label.setAttribute("x", x);
+                label.setAttribute("y", y);
+                label.setAttribute("text-anchor", "middle");
+                label.setAttribute("dominant-baseline", "central");
+                label.setAttribute("fill", item.color);
+                label.style.fontSize = '12px';
+                label.style.fontWeight = 'bold';
+                label.textContent = item.label;
+                svg.appendChild(label);
+
+                const valueLabel = document.createElementNS(svgNS, "text");
+                valueLabel.setAttribute("x", x);
+                valueLabel.setAttribute("y", y + 14);
+                valueLabel.setAttribute("text-anchor", "middle");
+                valueLabel.setAttribute("dominant-baseline", "central");
+                valueLabel.setAttribute("fill", 'rgba(255,255,255,0.5)');
+                valueLabel.style.fontSize = '12px';
+                valueLabel.style.fontWeight = '500';
+                valueLabel.textContent = `${Math.round(item.value)}г`;
+                if (showRemaining) valueLabel.textContent += ' ост';
+                svg.appendChild(valueLabel);
+            });
+        }
+
+        const scoreColor = getScoreColor(periodCombinedScore);
+        const scoreLabel = getScoreLabel(periodCombinedScore);
+
+        const scoreText = document.createElementNS(svgNS, "text");
+        scoreText.setAttribute("x", center);
+        scoreText.setAttribute("y", center - 28);
+        scoreText.setAttribute("text-anchor", "middle");
+        scoreText.setAttribute("dominant-baseline", "central");
+        scoreText.setAttribute("fill", scoreColor);
+        scoreText.style.fontSize = '44px';
+        scoreText.style.fontWeight = '900';
+        scoreText.textContent = periodCombinedScore || '—';
+        svg.appendChild(scoreText);
+
+        const scoreLabelEl = document.createElementNS(svgNS, "text");
+        scoreLabelEl.setAttribute("x", center);
+        scoreLabelEl.setAttribute("y", center + 10);
+        scoreLabelEl.setAttribute("text-anchor", "middle");
+        scoreLabelEl.setAttribute("dominant-baseline", "central");
+        scoreLabelEl.setAttribute("fill", scoreColor);
+        scoreLabelEl.style.fontSize = '13px';
+        scoreLabelEl.style.fontWeight = '700';
+        scoreLabelEl.textContent = scoreLabel;
+        svg.appendChild(scoreLabelEl);
+
+        const avgCalories = showRemaining ? Math.max(0, (s.target_calories || 0) - (s.avg_calories || 0)) : (s.avg_calories || 0);
+        const calText = document.createElementNS(svgNS, "text");
+        calText.setAttribute("x", center);
+        calText.setAttribute("y", center + 28);
+        calText.setAttribute("text-anchor", "middle");
+        calText.setAttribute("dominant-baseline", "central");
+        calText.setAttribute("fill", 'rgba(252, 211, 77, 0.7)');
+        calText.style.fontSize = '12px';
+        calText.style.fontWeight = '600';
+        calText.textContent = showRemaining ? `Остаток ${Math.round(avgCalories)} ккал` : `${Math.round(avgCalories)} ккал`;
+        svg.appendChild(calText);
+
+        container.appendChild(svg);
+        requestAnimationFrame(() => { container.style.opacity = '1'; });
+    }
+
 
     function recalculateCalories() {
         const { protein, fat, carbohydrates } = nutrientValues;
@@ -1592,7 +1773,7 @@ container.innerHTML = '';
         const tooltips = dayData.status_message;
         messageContainer.innerHTML = (typeof tooltips === 'object' && tooltips !== null) ? Object.values(tooltips).map(msg => `<p>${msg}</p>`).join('') : tooltips || '';
         document.getElementById('tooltip-date').textContent = new Date(dayData.date).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
-        document.getElementById('tooltip-score').textContent = dayData.daily_score;
+        document.getElementById('tooltip-score').textContent = dayData.combined_score ?? dayData.daily_score ?? '—';
         document.getElementById('tooltip-calories').textContent = Math.round(dayData.consumed_calories);
         document.getElementById('tooltip-target-calories').textContent = Math.round(dayData.target_calories);
         document.getElementById('tooltip-protein').textContent = Math.round(dayData.consumed_protein);
@@ -1652,80 +1833,23 @@ container.innerHTML = '';
 
             const res = await fetchWithAuth(`/users/me/stats/summary-by-period?days=${days}`);
             const data = await res.json();
-
-            // Обновляем средние показатели
             const s = data.period_summary;
-            updateRingWithStatus(document.getElementById('avg-calories-ring'), s.avg_calories, s.target_calories, 'calories');
-            updateRingWithStatus(document.getElementById('avg-protein-ring'), s.avg_protein, s.target_protein, 'protein');
-            updateRingWithStatus(document.getElementById('avg-fat-ring'), s.avg_fat, s.target_fat, 'fat');
-            updateRingWithStatus(document.getElementById('avg-carbs-ring'), s.avg_carbohydrates, s.target_carbohydrates, 'carbohydrates');
-
-            if (ringDisplayMode === 'remaining') {
-                document.getElementById('avg-calories-value').textContent = Math.round(s.target_calories - s.avg_calories);
-                document.getElementById('avg-protein-value').textContent = Math.round(s.target_protein - s.avg_protein);
-                document.getElementById('avg-fat-value').textContent = Math.round(s.target_fat - s.avg_fat);
-                document.getElementById('avg-carbs-value').textContent = Math.round(s.target_carbohydrates - s.avg_carbohydrates);
-            } else {
-                document.getElementById('avg-calories-value').textContent = Math.round(s.avg_calories);
-                document.getElementById('avg-protein-value').textContent = Math.round(s.avg_protein);
-                document.getElementById('avg-fat-value').textContent = Math.round(s.avg_fat);
-                document.getElementById('avg-carbs-value').textContent = Math.round(s.avg_carbohydrates);
-            }
 
             // Передаем цели в историю приемов пищи
             fetchAndDisplayMealHistory(s);
 
-            // --- Обновление кольца AI Score ---
-            const avgScoreValue = document.getElementById('avg-score-value');
-            const avgScoreBar = document.getElementById('avg-score-bar');
-            const avgScoreRingContainer = document.getElementById('avg-score-ring-container');
+            // --- Обновление композитного кольца истории ---
+            renderHistoryCompositeRing(data);
 
-            if (s.avg_ai_score !== null && s.avg_ai_score !== undefined) {
-                const aiScore = Math.round(s.avg_ai_score);
-                avgScoreValue.textContent = aiScore;
-                updateRingWithStatus(document.getElementById('avg-score-ring'), aiScore, 100);
-
-                let scoreColor = '#10B981';
-                if (aiScore <= 40) scoreColor = '#EF4444';
-                else if (aiScore <= 70) scoreColor = '#F59E0B';
-
-                avgScoreValue.style.color = scoreColor;
-                avgScoreBar.style.stroke = scoreColor;
-                avgScoreRingContainer.style.boxShadow = `0 0 8px 1px ${scoreColor}`;
-            } else {
-                avgScoreValue.textContent = '0';
-                updateRingWithStatus(document.getElementById('avg-score-ring'), 0, 100);
-                avgScoreValue.style.color = '#A0A0A0';
-                avgScoreBar.style.stroke = '#A0A0A0';
-                avgScoreRingContainer.style.boxShadow = 'none';
-            }
-
-            // Обновляем кольцо качества питания
+            // Обновление кольца качества питания
             updateDailyQualityRing(data.progress_lab_summary, data.period_summary);
-
-            // Обновление меток КБЖУ
-            const caloriesLabel = document.getElementById('avg-calories-label');
-            const proteinLabel = document.getElementById('avg-protein-label');
-            const fatLabel = document.getElementById('avg-fat-label');
-            const carbsLabel = document.getElementById('avg-carbs-label');
 
             if (days === 1) {
                 averageStatsContainer.classList.add('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
-
-                caloriesLabel.textContent = 'Калории';
-                proteinLabel.textContent = 'Белки';
-                fatLabel.textContent = 'Жиры';
-                carbsLabel.textContent = 'Углеводы';
-
             } else {
                 graphWrapper.classList.remove('opacity-0', 'pointer-events-none');
                 labelsContainer.classList.remove('opacity-0', 'pointer-events-none');
                 averageStatsContainer.classList.remove('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
-
-                caloriesLabel.textContent = 'Ккал';
-                proteinLabel.textContent = 'Б';
-                fatLabel.textContent = 'Ж';
-                carbsLabel.textContent = 'У';
 
                 // Рендеринг графика
                 const sortedData = data.daily_breakdown.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1734,8 +1858,8 @@ container.innerHTML = '';
                     const colWrapper = document.createElement('div');
                     colWrapper.className = 'flex-1 h-full flex flex-col justify-end items-center';
 
-                    if (day.daily_score !== null) {
-                        const barHeight = (day.daily_score / 120) * 100;
+                    if (day.combined_score !== null) {
+                        const barHeight = (day.combined_score / 120) * 100;
                         const bar = document.createElement('div');
                         const bgColor = day.status_color || '#F0F0F0';
 
@@ -1800,15 +1924,6 @@ container.innerHTML = '';
         sevenDaysBtn.onclick = () => { updateBtns(0); fetchScoreGraphData(7); };
         oneMonthBtn.onclick = () => { updateBtns(1); fetchScoreGraphData(30); };
         threeMonthsBtn.onclick = () => { updateBtns(2); fetchScoreGraphData(90); };
-    }
-
-    const avgScoreWrapper = document.getElementById('avg-score-wrapper');
-    if (avgScoreWrapper) {
-        avgScoreWrapper.addEventListener('click', () => {
-            const scoreTooltipText = "Оценка показывает процент выполнения дневного плана питания (0-100).\n\n• Калории — 40% от оценки\n• Белки — 30% от оценки\n• Жиры — 15% от оценки\n• Углеводы — 15% от оценки\n\nПеребор по жирам и углеводам штрафуется сильнее. Перебор по белку при нормальных калориях даёт бонус +5.\n\n95-100 — отлично\n80-94 — хорошо\n60-79 — удовлетворительно\n<60 — нужно улучшить";
-            const scoreColor = document.getElementById('avg-score-value').style.color || '#F0F0F0';
-            showRingTooltip(avgScoreWrapper, 'Daily Score', scoreTooltipText, scoreColor);
-        });
     }
 
     // --- Переключение табов ---
