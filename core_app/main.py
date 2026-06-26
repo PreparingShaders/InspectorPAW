@@ -1391,7 +1391,7 @@ def read_exercise_library(db: Session = Depends(get_db)):
 def create_exercise(
     exercise: schemas.ExerciseLibraryCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_admin_user),
+    current_user: models.User = Depends(auth.get_current_active_user),
 ):
     return crud.create_exercise(db, exercise)
 

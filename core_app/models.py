@@ -202,12 +202,15 @@ class WorkoutSet(Base):
     is_warmup = Column(Boolean, default=False)
 
     exercise_entry = relationship("WorkoutExercise", back_populates="sets")
+
+
+class TelegramPasswordResetToken(Base):
     __tablename__ = 'telegram_password_reset_tokens'
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     token = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(),
-                        nullable=False)  # ПРАВКА: единый таймзон-дефолт базы
+                        nullable=False)
     is_used = Column(Boolean, default=False, nullable=False)
 
     user = relationship("User")
