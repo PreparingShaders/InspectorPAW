@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!user.date_of_birth || !user.gender || !user.height_cm || !user.goal || user.metrics.length === 0) {
                 window.location.href = '/profile';
             } else {
-                window.location.href = '/nutrition';
+                window.location.href = '/daily-quality';
             }
 
         } catch (error) {

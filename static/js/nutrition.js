@@ -1710,8 +1710,6 @@ container.innerHTML = '';
             const carbsLabel = document.getElementById('avg-carbs-label');
 
             if (days === 1) {
-                // График уже скрыт и очищен выше
-                if (ringToggleEl) ringToggleEl.parentElement.classList.remove('hidden');
                 averageStatsContainer.classList.add('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
 
                 caloriesLabel.textContent = 'Калории';
@@ -1723,7 +1721,6 @@ container.innerHTML = '';
                 graphWrapper.classList.remove('opacity-0', 'pointer-events-none');
                 labelsContainer.classList.remove('opacity-0', 'pointer-events-none');
                 averageStatsContainer.classList.remove('flex-grow', 'flex', 'items-center', 'justify-center', 'day-view-active');
-                if (ringToggleEl) ringToggleEl.parentElement.classList.add('hidden');
 
                 caloriesLabel.textContent = 'Ккал';
                 proteinLabel.textContent = 'Б';

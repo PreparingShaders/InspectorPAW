@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/admin/users', { headers });
             if (response.status === 403) {
                 alert('Доступ запрещен. У вас нет прав администратора.');
-                window.location.href = '/dashboard';
+                window.location.href = '/daily-quality';
                 return;
             }
             if (!response.ok) {

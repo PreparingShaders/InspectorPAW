@@ -74,6 +74,12 @@ async def read_profile_page(request: Request, db: Session = Depends(get_db), cur
     return templates.TemplateResponse(request, "profile.html", context)
 
 
+@app.get("/daily-quality")
+async def read_daily_quality_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
+    features = utils.get_user_features(current_user, db)
+    return templates.TemplateResponse(request, "nutrition.html", {"features": features})
+
+
 @app.get("/nutrition")
 async def read_nutrition_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     features = utils.get_user_features(current_user, db)
@@ -700,7 +706,7 @@ async def verify_email_and_login(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     
-    response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(url="/daily-quality", status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
         key="access_token", 
         value=f"Bearer {access_token}", 
@@ -1084,6 +1090,23 @@ def get_daily_quality(
     latest_weight = latest_metric.weight_kg if latest_metric else None
     latest_bf = latest_metric.body_fat_percentage if latest_metric else None
 
+    if total and meals:
+        consumed = {
+            "calories": total["total_calories"],
+            "protein": total["total_protein"],
+            "fat": total["total_fat"],
+            "carbohydrates": total["total_carbohydrates"],
+        }
+        targets = utils.calculate_user_targets(current_user, latest_weight, latest_bf)
+        target_macros = {
+            "calories": targets["target_calories"],
+            "protein": targets["target_protein"],
+            "fat": targets["target_fat"],
+            "carbohydrates": targets["target_carbohydrates"],
+        }
+        score_result = utils.calculate_progress_lab_score(target_macros, consumed)
+        total["daily_score"] = score_result.get("daily_score")
+
     return schemas.DailyQualityResponse(meals=meals, total=total, targets=utils.calculate_user_targets(current_user, latest_weight, latest_bf))
 
 
@@ -1279,6 +1302,9 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
     avg_carbohydrates = (total_consumed["carbohydrates"] / days_with_data) if days_with_data > 0 else 0
     avg_fiber = 0
 
+    daily_scores = [d.daily_score for d in daily_breakdown if d.daily_score is not None]
+    avg_kbzhu_score = round(sum(daily_scores) / len(daily_scores)) if daily_scores else None
+
     period_summary = schemas.AverageSummary(
         avg_calories=round(avg_calories),
         avg_protein=round(avg_protein),
@@ -1286,6 +1312,7 @@ def get_summary_for_period(days: int, db: Session, current_user: models.User):
         avg_carbohydrates=round(avg_carbohydrates),
         avg_fiber=round(avg_fiber),
         avg_ai_score=crud.get_avg_ai_score_for_period(db, user_id=current_user.id, start_date=start_date, end_date=end_date),
+        avg_kbzhu_score=avg_kbzhu_score,
         target_calories=target_calories,
         target_protein=target_protein,
         target_fat=target_fat,
