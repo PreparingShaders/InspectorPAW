@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isTotalView = false;
 
     // --- Переключение quality-cards / ai-coach в step-3 ---
-    let step3ViewIndex = 0; // 0 = quality-cards, 1 = ai-coach
+    let step3ViewIndex = 1; // 0 = quality-cards, 1 = ai-coach
     const step3Views = ['quality-cards', 'ai-coach'];
 
     function updateStep3View() {
@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderInteractiveRings();
             renderQualityCards(currentFoodQuality, 'step-3-quality-cards');
             console.log('Rings rendered, going to step 3');
-            step3ViewIndex = 0;
+            step3ViewIndex = 1;
             updateStep3View();
             goToStep(3);
             console.log('Now at step 3');
@@ -1762,12 +1762,12 @@ container.innerHTML = '';
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="font-bold text-lg">${trans[m.meal_type]}</span>
-                                <span class="text-sm text-gray-400">${m.formatted_time}</span>
+                                <span class="text-sm text-gray-400">${m.formatted_time} · ${formatDateForLogs(m.timestamp)}</span>
                             </div>
                             <p class="text-sm text-gray-300 mt-1">${m.food_name.replace(/\n/g, '<br>')}</p>
                         </div>
                     </div>
-                    <div id="log-ring-${m.id}" class="daily-quality-ring-container"></div>
+                    <div id="log-ring-${m.id}" class="daily-quality-ring-container" style="width: 221px; height: 221px;"></div>
                     <div id="log-quality-${m.id}" class="w-full mt-2"></div>
                     <div id="log-coach-${m.id}" class="w-full rounded-2xl p-4 relative overflow-hidden ${m.ai_comment ? '' : 'hidden'}" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(168,85,247,0.35); box-shadow: 0 0 12px rgba(168,85,247,0.15), inset 0 0 12px rgba(168,85,247,0.05); font-size: 0.85em;">
                         <h4 class="text-sm font-bold mb-2 text-center" style="color: #c084fc; text-shadow: 0 0 8px rgba(192,132,252,0.4);">Совет от AI</h4>
