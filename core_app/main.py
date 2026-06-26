@@ -92,8 +92,9 @@ async def read_ai_hub_page(request: Request, db: Session = Depends(get_db), curr
     return templates.TemplateResponse(request, "ai_hub.html", {"features": features})
 
 @app.get("/workouts")
-async def read_workouts_page(request: Request):
-    return templates.TemplateResponse(request, "workouts.html")
+async def read_workouts_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
+    features = utils.get_user_features(current_user, db)
+    return templates.TemplateResponse(request, "workouts.html", {"features": features})
 
 @app.get("/admin")
 async def read_admin_page(request: Request):
@@ -1378,6 +1379,68 @@ async def get_dashboard_stats(
         consumed_fat=consumed_fat,
         consumed_carbohydrates=consumed_carbohydrates,
     )
+
+# --- Workout Endpoints ---
+
+@app.get("/exercise-library", response_model=List[schemas.ExerciseLibrary])
+def read_exercise_library(db: Session = Depends(get_db)):
+    return crud.get_exercise_library(db)
+
+
+@app.post("/exercise-library", response_model=schemas.ExerciseLibrary, status_code=status.HTTP_201_CREATED)
+def create_exercise(
+    exercise: schemas.ExerciseLibraryCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_admin_user),
+):
+    return crud.create_exercise(db, exercise)
+
+
+@app.post("/workouts", response_model=schemas.WorkoutSession, status_code=status.HTTP_201_CREATED)
+def create_workout(
+    workout: schemas.WorkoutSessionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.create_workout(db, workout, user_id=current_user.id)
+
+
+@app.get("/api/workouts", response_model=List[schemas.WorkoutSession])
+def read_user_workouts(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.get_user_workouts(db, user_id=current_user.id)
+
+
+@app.get("/api/workouts/{workout_id}", response_model=schemas.WorkoutSessionDetail)
+def read_workout(
+    workout_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    workout = crud.get_workout(db, workout_id)
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+    if workout.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this workout")
+    return workout
+
+
+@app.delete("/api/workouts/{workout_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_workout(
+    workout_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    workout = crud.get_workout(db, workout_id)
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+    if workout.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this workout")
+    crud.delete_workout(db, workout_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 # --- Password Reset Endpoints ---
 @app.post("/forgot-password", status_code=status.HTTP_303_SEE_OTHER)

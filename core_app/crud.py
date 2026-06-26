@@ -277,3 +277,92 @@ def get_meals_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100
         models.Meal.user_id == user_id,
         models.Meal.timestamp >= seven_days_ago
     ).order_by(models.Meal.timestamp.desc()).offset(skip).limit(limit).all()
+
+
+# --- Exercise Library CRUD ---
+
+def get_exercise_library(db: Session) -> List[models.ExerciseLibrary]:
+    return db.query(models.ExerciseLibrary).order_by(models.ExerciseLibrary.muscle_group, models.ExerciseLibrary.name).all()
+
+
+def create_exercise(db: Session, exercise: schemas.ExerciseLibraryCreate) -> models.ExerciseLibrary:
+    db_exercise = models.ExerciseLibrary(**exercise.model_dump())
+    db.add(db_exercise)
+    db.commit()
+    db.refresh(db_exercise)
+    return db_exercise
+
+
+# --- Workout CRUD ---
+
+def create_workout(
+    db: Session,
+    workout: schemas.WorkoutSessionCreate,
+    user_id: int,
+) -> models.WorkoutSession:
+    db_session = models.WorkoutSession(
+        user_id=user_id,
+        date=workout.date,
+        name=workout.name,
+        duration_min=workout.duration_min,
+        feeling=workout.feeling,
+        notes=workout.notes,
+    )
+    db.add(db_session)
+    db.flush()
+
+    for ex_data in workout.exercises:
+        db_exercise = models.WorkoutExercise(
+            session_id=db_session.id,
+            exercise_id=ex_data.exercise_id,
+            sort_order=ex_data.sort_order,
+        )
+        db.add(db_exercise)
+        db.flush()
+
+        for set_data in ex_data.sets:
+            db_set = models.WorkoutSet(
+                exercise_entry_id=db_exercise.id,
+                set_number=set_data.set_number,
+                weight_kg=set_data.weight_kg,
+                reps=set_data.reps,
+                rpe=set_data.rpe,
+                is_warmup=set_data.is_warmup,
+            )
+            db.add(db_set)
+
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
+
+def get_user_workouts(db: Session, user_id: int, limit: int = 50) -> List[models.WorkoutSession]:
+    return (
+        db.query(models.WorkoutSession)
+        .filter(models.WorkoutSession.user_id == user_id)
+        .order_by(desc(models.WorkoutSession.date), desc(models.WorkoutSession.id))
+        .limit(limit)
+        .all()
+    )
+
+
+def get_workout(db: Session, workout_id: int) -> Optional[models.WorkoutSession]:
+    return (
+        db.query(models.WorkoutSession)
+        .options(
+            joinedload(models.WorkoutSession.exercises)
+            .joinedload(models.WorkoutExercise.exercise),
+            joinedload(models.WorkoutSession.exercises)
+            .joinedload(models.WorkoutExercise.sets),
+        )
+        .filter(models.WorkoutSession.id == workout_id)
+        .first()
+    )
+
+
+def delete_workout(db: Session, workout_id: int) -> Optional[models.WorkoutSession]:
+    db_session = db.query(models.WorkoutSession).filter(models.WorkoutSession.id == workout_id).first()
+    if db_session:
+        db.delete(db_session)
+        db.commit()
+    return db_session

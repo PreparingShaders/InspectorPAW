@@ -355,3 +355,74 @@ class PasswordResetTokenResponse(BaseModel):
 # --- Email Verification Schemas ---
 class EmailVerificationResponse(BaseModel):
     message: str
+
+
+# --- Workout Schemas ---
+class ExerciseLibraryCreate(BaseModel):
+    name: str
+    muscle_group: Optional[str] = None
+    equipment: Optional[str] = None
+
+
+class ExerciseLibrary(ExerciseLibraryCreate):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class WorkoutSetCreate(BaseModel):
+    set_number: int = Field(..., ge=1)
+    weight_kg: Optional[float] = None
+    reps: Optional[int] = Field(None, ge=0)
+    rpe: Optional[float] = Field(None, ge=1, le=10)
+    is_warmup: bool = False
+
+
+class WorkoutSet(WorkoutSetCreate):
+    id: int
+    exercise_entry_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class WorkoutExerciseCreate(BaseModel):
+    exercise_id: int
+    sort_order: int = 0
+    sets: List[WorkoutSetCreate] = []
+
+
+class WorkoutExercise(WorkoutExerciseCreate):
+    id: int
+    session_id: int
+    exercise: ExerciseLibrary
+
+    class Config:
+        from_attributes = True
+
+
+class WorkoutSessionCreate(BaseModel):
+    date: date
+    name: Optional[str] = None
+    duration_min: Optional[int] = Field(None, ge=0)
+    feeling: Optional[int] = Field(None, ge=1, le=10)
+    notes: Optional[str] = None
+    exercises: List[WorkoutExerciseCreate] = []
+
+
+class WorkoutSession(BaseModel):
+    id: int
+    user_id: int
+    date: date
+    name: Optional[str] = None
+    duration_min: Optional[int] = None
+    feeling: Optional[int] = None
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class WorkoutSessionDetail(WorkoutSession):
+    exercises: List[WorkoutExercise] = []

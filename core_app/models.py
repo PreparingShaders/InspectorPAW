@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey, Enum as SAEnum, JSON, Index
+from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey, Enum as SAEnum, JSON, Index, Text
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -147,7 +147,61 @@ class DailyNutritionSummary(Base):
     user = relationship("User")
 
 
-class TelegramPasswordResetToken(Base):
+class ExerciseLibrary(Base):
+    __tablename__ = "exercise_library"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    muscle_group = Column(String, nullable=True)
+    equipment = Column(String, nullable=True)
+
+    entries = relationship("WorkoutExercise", back_populates="exercise")
+
+
+class WorkoutSession(Base):
+    __tablename__ = "workout_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    name = Column(String, nullable=True)
+    duration_min = Column(Integer, nullable=True)
+    feeling = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    user = relationship("User")
+    exercises = relationship("WorkoutExercise", back_populates="session",
+                             cascade="all, delete-orphan",
+                             order_by="WorkoutExercise.sort_order")
+
+
+class WorkoutExercise(Base):
+    __tablename__ = "workout_exercises"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("workout_sessions.id"), nullable=False)
+    exercise_id = Column(Integer, ForeignKey("exercise_library.id"), nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
+
+    session = relationship("WorkoutSession", back_populates="exercises")
+    exercise = relationship("ExerciseLibrary", back_populates="entries")
+    sets = relationship("WorkoutSet", back_populates="exercise_entry",
+                        cascade="all, delete-orphan",
+                        order_by="WorkoutSet.set_number")
+
+
+class WorkoutSet(Base):
+    __tablename__ = "workout_sets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    exercise_entry_id = Column(Integer, ForeignKey("workout_exercises.id"), nullable=False)
+    set_number = Column(Integer, nullable=False)
+    weight_kg = Column(Float, nullable=True)
+    reps = Column(Integer, nullable=True)
+    rpe = Column(Float, nullable=True)
+    is_warmup = Column(Boolean, default=False)
+
+    exercise_entry = relationship("WorkoutExercise", back_populates="sets")
     __tablename__ = 'telegram_password_reset_tokens'
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
