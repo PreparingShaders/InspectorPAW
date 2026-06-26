@@ -466,7 +466,7 @@ async def get_nutrition_analysis_and_advice(
     -   **`ai_score`**: Оцени качество еды от 0 до 100 (100 - идеально, 0 - ужасно).
     -   **`oil_absorption_score`**, **`ultra_processing_score`**, **`hidden_ingredients_risk`**: целые 0–10 для всего блюда.
     -   **`toxic_coach_comment`**: Хлёсткий, саркастичный, но мотивирующий комментарий о качестве **именно этой еды**.
-    -   **`coach_advice`**: Общий совет на **остаток дня** с учетом этого приема пищи.
+    -   **`coach_advice`**: Общий совет на **остаток дня** с учетом этого приема пищи. 3-5 предложений, сарказм, английский юмор, мотивация.
     -   **`recommendations`**: Краткие (1-2 предложения) советы по каждому нутриенту на остаток дня.
 
     ### ФОРМАТ ОТВЕТА (STRICT JSON):
@@ -1074,7 +1074,11 @@ def get_daily_quality(
             "hidden_ingredients_risk": avg_or_none([m.hidden_ingredients_risk for m in meals]),
         }
 
-    return schemas.DailyQualityResponse(meals=meals, total=total)
+    latest_metric = crud.get_latest_user_metric(db, user_id=current_user.id)
+    latest_weight = latest_metric.weight_kg if latest_metric else None
+    latest_bf = latest_metric.body_fat_percentage if latest_metric else None
+
+    return schemas.DailyQualityResponse(meals=meals, total=total, targets=utils.calculate_user_targets(current_user, latest_weight, latest_bf))
 
 
 @app.delete("/meals/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)

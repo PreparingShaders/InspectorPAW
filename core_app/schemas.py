@@ -336,6 +336,7 @@ class PasswordResetRequest(BaseModel):
 class DailyQualityResponse(BaseModel):
     meals: List[Meal]
     total: Optional[Dict[str, Any]] = None
+    targets: Optional[Dict[str, float]] = None
 
 # --- Password Reset Schemas ---
 class PasswordResetRequestPayload(BaseModel):

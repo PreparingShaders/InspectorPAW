@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Слайдер приёмов пищи ---
     let dailyMeals = [];
     let dailyTotal = null;
+    let dailyTargets = null;
     let currentMealIndex = -1;
     let isTotalView = false;
 
@@ -86,6 +87,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Навигация по приёмам пищи в step-1 ---
     document.getElementById('prev-step-btn')?.addEventListener('click', () => navigateMeal(-1));
     document.getElementById('next-step-btn')?.addEventListener('click', () => navigateMeal(1));
+
+    // --- Тумблер Потрачено / Осталось на Total ---
+    const dailyRingToggle = document.getElementById('daily-ring-toggle');
+    if (dailyRingToggle) {
+        dailyRingToggle.addEventListener('click', () => {
+            ringDisplayMode = ringDisplayMode === 'progress' ? 'remaining' : 'progress';
+            dailyRingToggle.classList.toggle('mode-remaining', ringDisplayMode === 'remaining');
+            renderMealView();
+        });
+    }
 
     // --- Переключение качество / совет AI в step-1 ---
     let step1ShowCoach = false;
@@ -872,7 +883,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const mealDate = meal.timestamp ? new Date(meal.timestamp) : new Date();
             const dateStr = mealDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
             if (isTotalView) {
-                label.textContent = `${dateStr} · Итоги дня`;
+                const modeLabel = ringDisplayMode === 'remaining' ? 'Остаток' : 'Потрачено';
+                label.textContent = `${dateStr} · Итоги дня · ${modeLabel}`;
                 label.className = 'text-center daily-quality-label-total';
             } else {
                 const mealTypeNames = {
@@ -903,7 +915,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        renderDailyQualityRing({
+        const toggleBtn = document.getElementById('daily-ring-toggle');
+        if (toggleBtn) {
+            if (isTotalView && dailyTargets) {
+                toggleBtn.classList.remove('hidden');
+                toggleBtn.classList.toggle('mode-remaining', ringDisplayMode === 'remaining');
+            } else {
+                toggleBtn.classList.add('hidden');
+            }
+        }
+
+        let ringValues = {
             protein: meal.total_protein || 0,
             fat: meal.total_fat || 0,
             carbohydrates: meal.total_carbohydrates || 0,
@@ -924,7 +946,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? { text: 'Есть', color: '#4ADE80' }
                     : null
             }
-        }, isTotalView ? (meal.meal_count || 1) : 1);
+        };
+
+        if (isTotalView && ringDisplayMode === 'remaining' && dailyTargets) {
+            ringValues.protein = Math.max(0, (dailyTargets.target_protein || 0) - ringValues.protein);
+            ringValues.fat = Math.max(0, (dailyTargets.target_fat || 0) - ringValues.fat);
+            ringValues.carbohydrates = Math.max(0, (dailyTargets.target_carbohydrates || 0) - ringValues.carbohydrates);
+            ringValues.fiber = Math.max(0, 25 - ringValues.fiber);
+            ringValues._calories = Math.max(0, (dailyTargets.target_calories || 0) - ringValues._calories);
+        }
+
+        renderDailyQualityRing(ringValues, isTotalView ? (meal.meal_count || 1) : 1);
 
         const coachAdvice = document.getElementById('step-1-ai-coach-advice');
         if (coachAdvice) {
@@ -1244,6 +1276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await res.json();
                 dailyMeals = data.meals || [];
                 dailyTotal = data.total || null;
+                dailyTargets = data.targets || null;
                 if (dailyMeals.length > 0) {
                     currentMealIndex = dailyMeals.length - 1;
                     isTotalView = false;
