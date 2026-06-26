@@ -87,6 +87,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('prev-step-btn')?.addEventListener('click', () => navigateMeal(-1));
     document.getElementById('next-step-btn')?.addEventListener('click', () => navigateMeal(1));
 
+    // --- Переключение качество / совет AI в step-1 ---
+    let step1ShowCoach = false;
+
+    function updateStep1View() {
+        const qc = document.getElementById('quality-cards');
+        const coach = document.getElementById('step-1-ai-coach');
+        const qBtn = document.getElementById('step-1-toggle-quality');
+        const cBtn = document.getElementById('step-1-toggle-coach');
+        if (!qc || !coach || !qBtn || !cBtn) return;
+        if (step1ShowCoach) {
+            qc.classList.add('hidden');
+            coach.classList.remove('hidden');
+            qBtn.classList.remove('text-white');
+            qBtn.classList.add('text-gray-400');
+            cBtn.classList.remove('text-gray-400');
+            cBtn.classList.add('text-white');
+        } else {
+            qc.classList.remove('hidden');
+            coach.classList.add('hidden');
+            cBtn.classList.remove('text-white');
+            cBtn.classList.add('text-gray-400');
+            qBtn.classList.remove('text-gray-400');
+            qBtn.classList.add('text-white');
+        }
+    }
+
+    document.getElementById('step-1-toggle-coach')?.addEventListener('click', () => {
+        step1ShowCoach = true;
+        updateStep1View();
+    });
+    document.getElementById('step-1-toggle-quality')?.addEventListener('click', () => {
+        step1ShowCoach = false;
+        updateStep1View();
+    });
+
     const steps = {
         1: document.getElementById('step-1'),
         2: document.getElementById('step-2'),
@@ -890,6 +925,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : null
             }
         }, isTotalView ? (meal.meal_count || 1) : 1);
+
+        const coachAdvice = document.getElementById('step-1-ai-coach-advice');
+        if (coachAdvice) {
+            coachAdvice.textContent = isTotalView ? (dailyTotal?.ai_comment || '') : (meal.ai_comment || '');
+        }
 
         renderQualityCards(meal);
     }
