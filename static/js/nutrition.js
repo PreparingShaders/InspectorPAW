@@ -1714,13 +1714,6 @@ container.innerHTML = '';
         }
     }
 
-    const nutrientLabels = {
-        calories: 'Ккал',
-        protein: 'Б',
-        fat: 'Ж',
-        carbs: 'У'
-    };
-
     async function fetchAndDisplayMealHistory(targets) {
         try {
             let effectiveTargets = targets;
@@ -1765,47 +1758,36 @@ container.innerHTML = '';
                 const card = document.createElement('div');
                 card.className = 'glassmorphism rounded-xl p-4 mb-4';
                 card.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <h4 class="font-bold text-lg">${trans[m.meal_type]}</h4>
-                        <span class="text-sm text-gray-400">${m.formatted_time}</span>
+                    <div class="flex items-start gap-2 mb-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-lg">${trans[m.meal_type]}</span>
+                                <span class="text-sm text-gray-400">${m.formatted_time}</span>
+                            </div>
+                            <p class="text-sm text-gray-300 mt-1">${m.food_name.replace(/\n/g, '<br>')}</p>
+                        </div>
                     </div>
-                    <p class="text-sm text-gray-300 mb-3 text-left">${m.food_name.replace(/\n/g, '<br>')}</p>
-                    <div class="border-t border-white/10 my-3"></div>
-                    <div class="flex justify-around">
-                        ${createMiniRing(m.id, 'calories', m.total_calories, effectiveTargets.target_calories, 'amber')}
-                        ${createMiniRing(m.id, 'protein', m.total_protein, effectiveTargets.target_protein, 'protein-white')}
-                        ${createMiniRing(m.id, 'fat', m.total_fat, effectiveTargets.target_fat, 'golden-orange')}
-                        ${createMiniRing(m.id, 'carbs', m.total_carbohydrates, effectiveTargets.target_carbohydrates, 'muted-teal')}
+                    <div id="log-ring-${m.id}" class="daily-quality-ring-container"></div>
+                    <div id="log-quality-${m.id}" class="w-full mt-2"></div>
+                    <div id="log-coach-${m.id}" class="w-full rounded-2xl p-4 relative overflow-hidden ${m.ai_comment ? '' : 'hidden'}" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(168,85,247,0.35); box-shadow: 0 0 12px rgba(168,85,247,0.15), inset 0 0 12px rgba(168,85,247,0.05); font-size: 0.85em;">
+                        <h4 class="text-sm font-bold mb-2 text-center" style="color: #c084fc; text-shadow: 0 0 8px rgba(192,132,252,0.4);">Совет от AI</h4>
+                        <p class="text-white/90 text-left text-sm leading-relaxed">${m.ai_comment || ''}</p>
                     </div>
                 `;
                 mealLogsContainer.appendChild(card);
 
-                ['calories', 'protein', 'fat', 'carbs'].forEach(type => {
-                    const nutrientKey = type === 'carbs' ? 'carbohydrates' : type;
-                    const ringSvgElement = card.querySelector(`#log-${m.id}-${type}-ring`);
-                    if (ringSvgElement) {
-                        updateRingWithStatus(ringSvgElement, m[`total_${nutrientKey}`], effectiveTargets[`target_${nutrientKey}`], nutrientKey);
-                    }
-                });
+                const ringValues = {
+                    protein: m.total_protein || 0,
+                    fat: m.total_fat || 0,
+                    carbohydrates: m.total_carbohydrates || 0,
+                    fiber: m.total_fiber || 0,
+                    _score: m.ai_score || 0,
+                    _calories: m.total_calories || 0,
+                };
+                renderDailyQualityRing(ringValues, 1, `log-ring-${m.id}`);
+                renderQualityCards(m, `log-quality-${m.id}`);
             });
         } catch (e) { console.error("Ошибка истории:", e); }
-    }
-
-    function createMiniRing(id, type, val, target, color) {
-        const label = nutrientLabels[type];
-        const nutrientKey = type === 'carbs' ? 'carbohydrates' : type;
-        return `<div class="text-center flex flex-col items-center">
-                    <div class="ring-container w-10 h-10 relative">
-                        <svg id="log-${id}-${type}-ring" class="progress-ring-svg" viewBox="0 0 120 120">
-                            <circle class="progress-ring-bg" cx="60" cy="60" r="54"/>
-                            <circle data-nutrient="${nutrientKey}" class="progress-ring-bar" cx="60" cy="60" r="54" style="stroke: var(--color-${color});"/>
-                        </svg>
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <span id="log-${id}-${type}-value" class="text-xs font-bold">${Math.round(val)}</span>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1">${label}</p>
-                </div>`;
     }
 
     function showTooltip(element, dayData) {
