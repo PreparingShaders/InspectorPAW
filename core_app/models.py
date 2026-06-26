@@ -168,6 +168,10 @@ class WorkoutSession(Base):
     duration_min = Column(Integer, nullable=True)
     feeling = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
+    is_template = Column(Boolean, default=False)
+    template_id = Column(Integer, ForeignKey("workout_sessions.id"), nullable=True)
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User")
     exercises = relationship("WorkoutExercise", back_populates="session",
@@ -200,6 +204,7 @@ class WorkoutSet(Base):
     reps = Column(Integer, nullable=True)
     rpe = Column(Float, nullable=True)
     is_warmup = Column(Boolean, default=False)
+    is_done = Column(Boolean, default=False)
 
     exercise_entry = relationship("WorkoutExercise", back_populates="sets")
 

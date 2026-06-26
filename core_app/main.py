@@ -1442,6 +1442,69 @@ def delete_workout(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@app.get("/api/workout-templates", response_model=List[schemas.WorkoutSessionDetail])
+def read_workout_templates(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.get_workout_templates(db, user_id=current_user.id)
+
+
+@app.post("/api/workout-templates", response_model=schemas.WorkoutSession, status_code=status.HTTP_201_CREATED)
+def create_workout_template(
+    template: schemas.WorkoutTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.create_workout_template(db, template, user_id=current_user.id)
+
+
+@app.post("/api/workouts/from-template/{template_id}", response_model=schemas.WorkoutSession, status_code=status.HTTP_201_CREATED)
+def start_workout_from_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    session = crud.start_workout_from_template(db, template_id, user_id=current_user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Template not found or access denied")
+    return session
+
+
+@app.patch("/api/workout-sets/{set_id}", response_model=schemas.WorkoutSet)
+def update_workout_set(
+    set_id: int,
+    set_data: schemas.WorkoutSetUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    result = crud.update_workout_set(db, set_id, set_data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Set not found")
+    return result
+
+
+@app.post("/api/workouts/{workout_id}/complete", response_model=schemas.WorkoutSession)
+def complete_workout(
+    workout_id: int,
+    data: schemas.WorkoutComplete,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    result = crud.complete_workout(db, workout_id, current_user.id, data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Workout not found or access denied")
+    return result
+
+
+@app.get("/api/workout-stats", response_model=schemas.WorkoutStatsSummary)
+def read_workout_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.get_workout_stats(db, user_id=current_user.id)
+
+
 # --- Password Reset Endpoints ---
 @app.post("/forgot-password", status_code=status.HTTP_303_SEE_OTHER)
 async def forgot_password(request: Request, email: EmailStr = Form(...), db: Session = Depends(get_db)):

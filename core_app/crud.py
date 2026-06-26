@@ -302,11 +302,13 @@ def create_workout(
 ) -> models.WorkoutSession:
     db_session = models.WorkoutSession(
         user_id=user_id,
-        date=workout.date,
+        date=date.today(),
         name=workout.name,
         duration_min=workout.duration_min,
         feeling=workout.feeling,
         notes=workout.notes,
+        is_template=workout.is_template,
+        template_id=workout.template_id,
     )
     db.add(db_session)
     db.flush()
@@ -339,9 +341,87 @@ def create_workout(
 def get_user_workouts(db: Session, user_id: int, limit: int = 50) -> List[models.WorkoutSession]:
     return (
         db.query(models.WorkoutSession)
-        .filter(models.WorkoutSession.user_id == user_id)
+        .filter(models.WorkoutSession.user_id == user_id, models.WorkoutSession.is_template == False)
         .order_by(desc(models.WorkoutSession.date), desc(models.WorkoutSession.id))
         .limit(limit)
+        .all()
+    )
+
+
+def create_workout_template(
+    db: Session,
+    template: schemas.WorkoutTemplateCreate,
+    user_id: int,
+) -> models.WorkoutSession:
+    return create_workout(
+        db,
+        schemas.WorkoutSessionCreate(
+            name=template.name,
+            notes=template.notes,
+            is_template=True,
+            exercises=template.exercises,
+        ),
+        user_id,
+    )
+
+
+def start_workout_from_template(
+    db: Session,
+    template_id: int,
+    user_id: int,
+) -> models.WorkoutSession:
+    template = get_workout(db, template_id)
+    if not template or template.user_id != user_id or not template.is_template:
+        return None
+
+    db_session = models.WorkoutSession(
+        user_id=user_id,
+        date=date.today(),
+        name=template.name,
+        notes=template.notes,
+        template_id=template_id,
+    )
+    db.add(db_session)
+    db.flush()
+
+    for ex in template.exercises:
+        db_exercise = models.WorkoutExercise(
+            session_id=db_session.id,
+            exercise_id=ex.exercise_id,
+            sort_order=ex.sort_order,
+        )
+        db.add(db_exercise)
+        db.flush()
+
+        for s in ex.sets:
+            db_set = models.WorkoutSet(
+                exercise_entry_id=db_exercise.id,
+                set_number=s.set_number,
+                weight_kg=s.weight_kg,
+                reps=s.reps,
+                rpe=s.rpe,
+                is_warmup=s.is_warmup,
+                is_done=False,
+            )
+            db.add(db_set)
+
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
+
+def get_workout_templates(db: Session, user_id: int) -> List[models.WorkoutSession]:
+    from sqlalchemy.orm import joinedload
+    return (
+        db.query(models.WorkoutSession)
+        .options(
+            joinedload(models.WorkoutSession.exercises)
+            .joinedload(models.WorkoutExercise.exercise),
+            joinedload(models.WorkoutSession.exercises)
+            .joinedload(models.WorkoutExercise.sets),
+        )
+        .filter(models.WorkoutSession.user_id == user_id, models.WorkoutSession.is_template == True)
+        .order_by(models.WorkoutSession.name)
         .all()
     )
 
@@ -366,3 +446,221 @@ def delete_workout(db: Session, workout_id: int) -> Optional[models.WorkoutSessi
         db.delete(db_session)
         db.commit()
     return db_session
+
+
+def update_workout_set(db: Session, set_id: int, data: schemas.WorkoutSetUpdate) -> Optional[models.WorkoutSet]:
+    db_set = db.query(models.WorkoutSet).filter(models.WorkoutSet.id == set_id).first()
+    if not db_set:
+        return None
+    if data.set_number is not None:
+        db_set.set_number = data.set_number
+    if data.weight_kg is not None or 'weight_kg' in data.model_fields_set:
+        db_set.weight_kg = data.weight_kg
+    if data.reps is not None or 'reps' in data.model_fields_set:
+        db_set.reps = data.reps
+    if data.rpe is not None or 'rpe' in data.model_fields_set:
+        db_set.rpe = data.rpe
+    if data.is_warmup is not None:
+        db_set.is_warmup = data.is_warmup
+    if data.is_done is not None:
+        db_set.is_done = data.is_done
+    db.commit()
+    db.refresh(db_set)
+    return db_set
+
+
+def complete_workout(db: Session, workout_id: int, user_id: int, data: schemas.WorkoutComplete) -> Optional[models.WorkoutSession]:
+    session = db.query(models.WorkoutSession).filter(
+        models.WorkoutSession.id == workout_id,
+        models.WorkoutSession.user_id == user_id,
+    ).first()
+    if not session:
+        return None
+    session.is_completed = True
+    session.completed_at = datetime.now(settings.MSK_TZ)
+    if data.duration_min is not None:
+        session.duration_min = data.duration_min
+    if data.feeling is not None:
+        session.feeling = data.feeling
+    if data.notes is not None:
+        session.notes = data.notes
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def get_workout_stats(db: Session, user_id: int) -> schemas.WorkoutStatsSummary:
+    """Агрегированная статистика тренировок пользователя для дашборда."""
+    sessions = (
+        db.query(models.WorkoutSession)
+        .filter(models.WorkoutSession.user_id == user_id)
+        .all()
+    )
+    completed = [s for s in sessions if s.is_completed]
+    total_workouts = len(completed)
+
+    set_rows = (
+        db.query(
+            models.WorkoutSet.id,
+            models.WorkoutSet.weight_kg,
+            models.WorkoutSet.reps,
+            models.WorkoutSet.is_warmup,
+            models.WorkoutSet.exercise_entry_id,
+            models.WorkoutExercise.session_id,
+            models.WorkoutExercise.exercise_id,
+            models.WorkoutSession.date,
+            models.WorkoutSession.user_id,
+        )
+        .join(models.WorkoutExercise, models.WorkoutSet.exercise_entry_id == models.WorkoutExercise.id)
+        .join(models.WorkoutSession, models.WorkoutExercise.session_id == models.WorkoutSession.id)
+        .filter(models.WorkoutSession.user_id == user_id)
+        .all()
+    )
+
+    exercise_ids = list({r.exercise_id for r in set_rows})
+    exercise_map = {}
+    if exercise_ids:
+        for ex in db.query(models.ExerciseLibrary).filter(models.ExerciseLibrary.id.in_(exercise_ids)).all():
+            exercise_map[ex.id] = ex
+
+    total_volume = 0.0
+    total_sets = 0
+    for r in set_rows:
+        if r.is_warmup:
+            continue
+        total_sets += 1
+        if r.weight_kg and r.reps:
+            total_volume += float(r.weight_kg) * int(r.reps)
+
+    pr_map: dict = {}
+    for r in set_rows:
+        if r.is_warmup or not r.weight_kg or not r.reps:
+            continue
+        ex = exercise_map.get(r.exercise_id)
+        if not ex:
+            continue
+        cur = pr_map.setdefault(r.exercise_id, {
+            'exercise_id': r.exercise_id,
+            'exercise_name': ex.name,
+            'max_weight_kg': 0.0,
+            'max_reps': 0,
+            'best_volume': 0.0,
+            'achieved_at': None,
+        })
+        w = float(r.weight_kg)
+        reps = int(r.reps)
+        vol = w * reps
+        achieved_at = r.date
+        if w > cur['max_weight_kg']:
+            cur['max_weight_kg'] = w
+            cur['achieved_at'] = achieved_at
+        if reps > cur['max_reps']:
+            cur['max_reps'] = reps
+        if vol > cur['best_volume']:
+            cur['best_volume'] = vol
+
+    personal_records = sorted(
+        (schemas.PersonalRecord(**v) for v in pr_map.values()),
+        key=lambda p: p.best_volume,
+        reverse=True,
+    )[:5]
+
+    mg_map: dict = {}
+    for r in set_rows:
+        if r.is_warmup:
+            continue
+        ex = exercise_map.get(r.exercise_id)
+        mg = ex.muscle_group if ex and ex.muscle_group else 'Другие'
+        cur = mg_map.setdefault(mg, {'muscle_group': mg, 'session_count': 0, 'total_sets': 0, 'total_volume': 0.0})
+        cur['total_sets'] += 1
+        if r.weight_kg and r.reps:
+            cur['total_volume'] += float(r.weight_kg) * int(r.reps)
+
+    session_to_mg: dict = {}
+    for s in completed:
+        session_to_mg.setdefault(s.id, set())
+    exercise_to_session: dict = {}
+    for r in set_rows:
+        if r.is_warmup:
+            continue
+        exercise_to_session.setdefault(r.session_id, set()).add(r.exercise_id)
+    for sid, ex_ids in exercise_to_session.items():
+        for eid in ex_ids:
+            ex = exercise_map.get(eid)
+            if not ex:
+                continue
+            mg = ex.muscle_group or 'Другие'
+            if mg in mg_map:
+                session_to_mg.setdefault(sid, set()).add(mg)
+    for s in completed:
+        if s.id in session_to_mg:
+            for mg in session_to_mg[s.id]:
+                mg_map[mg]['session_count'] += 1
+
+    muscle_groups = sorted(
+        (schemas.MuscleGroupStat(**v) for v in mg_map.values()),
+        key=lambda m: m.total_volume,
+        reverse=True,
+    )
+
+    today = date.today()
+    this_week_start = today - timedelta(days=today.weekday())
+    this_week_workouts = 0
+    this_week_volume = 0.0
+    durations = []
+    for s in completed:
+        if s.date >= this_week_start:
+            this_week_workouts += 1
+            if s.duration_min:
+                durations.append(s.duration_min)
+        for r in set_rows:
+            if r.session_id == s.id and not r.is_warmup and r.weight_kg and r.reps:
+                if s.date >= this_week_start:
+                    this_week_volume += float(r.weight_kg) * int(r.reps)
+    avg_duration = round(sum(durations) / len(durations), 1) if durations else None
+
+    weekly_map: dict = {}
+    for s in completed:
+        ws = s.date - timedelta(days=s.date.weekday())
+        weekly_map.setdefault(ws, 0.0)
+    for r in set_rows:
+        if r.is_warmup or not r.weight_kg or not r.reps:
+            continue
+        for s in completed:
+            if s.id == r.session_id:
+                ws = s.date - timedelta(days=s.date.weekday())
+                weekly_map[ws] = weekly_map.get(ws, 0.0) + float(r.weight_kg) * int(r.reps)
+                break
+    sorted_weeks = sorted(weekly_map.items())
+    weekly_volume = [schemas.WeeklyVolumePoint(week_start=ws, volume=round(v, 1)) for ws, v in sorted_weeks[-8:]]
+
+    streak = 0
+    if completed:
+        unique_dates = sorted({s.date for s in completed}, reverse=True)
+        cursor = today
+        if unique_dates and unique_dates[0] == today:
+            streak = 1
+            cursor = today - timedelta(days=1)
+        elif unique_dates and unique_dates[0] == today - timedelta(days=1):
+            cursor = today - timedelta(days=2)
+        unique_set = set(unique_dates)
+        while cursor in unique_set:
+            streak += 1
+            cursor -= timedelta(days=1)
+
+    last_workout_date = max((s.date for s in completed), default=None)
+
+    return schemas.WorkoutStatsSummary(
+        total_workouts=total_workouts,
+        completed_workouts=total_workouts,
+        total_volume_kg=round(total_volume, 1),
+        total_sets=total_sets,
+        streak_days=streak,
+        last_workout_date=last_workout_date,
+        this_week_workouts=this_week_workouts,
+        this_week_volume=round(this_week_volume, 1),
+        avg_duration_min=avg_duration,
+        personal_records=personal_records,
+        muscle_groups=muscle_groups,
+        weekly_volume=weekly_volume,
+    )

@@ -806,7 +806,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         if (cards.length === 0) {
-            container.innerHTML = '<p class="text-xs text-center opacity-40 mt-2">Нет данных о качестве. Добавьте приём пищи.</p>';
+            container.innerHTML = `
+                <div class="rounded-2xl p-4 mt-2 text-center" style="background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.25); box-shadow: 0 0 12px rgba(168, 85, 247, 0.1);">
+                    <div style="font-size: 2rem; line-height: 1; margin-bottom: 0.5rem;">📸</div>
+                    <div class="text-sm font-semibold text-white" style="text-shadow: 0 0 8px rgba(192,132,252,0.4);">Добавьте первый приём пищи</div>
+                    <div class="text-xs text-gray-400 mt-1">Нажмите «Добавить фото», чтобы ИИ оценил ваше блюдо по белкам, жирам, углеводам и обработке</div>
+                </div>
+            `;
         }
     }
 
@@ -863,13 +869,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderMealView() {
+        try {
         const skeleton = document.getElementById('nutrition-skeleton');
         if (skeleton) skeleton.remove();
         renderMealSliderDots();
         const meal = isTotalView ? dailyTotal : dailyMeals[currentMealIndex];
         if (!meal) {
             renderDailyQualityRing(null, 0);
-            renderQualityCards({});
+            const qc = document.getElementById('quality-cards');
+            if (qc) {
+                qc.innerHTML = `
+                    <div class="rounded-2xl p-4 mt-2 text-center" style="background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.25); box-shadow: 0 0 12px rgba(168, 85, 247, 0.1);">
+                        <div style="font-size: 2rem; line-height: 1; margin-bottom: 0.5rem;">📸</div>
+                        <div class="text-sm font-semibold text-white" style="text-shadow: 0 0 8px rgba(192,132,252,0.4);">Добавьте первый приём пищи</div>
+                        <div class="text-xs text-gray-400 mt-1">Нажмите «Добавить фото», чтобы ИИ оценил ваше блюдо по белкам, жирам, углеводам и обработке</div>
+                    </div>
+                `;
+            }
+            const toggleWrapper = document.getElementById('step-1-toggle-wrapper');
+            if (toggleWrapper) toggleWrapper.classList.add('hidden');
+            const emptyLabel = document.getElementById('daily-quality-label');
+            if (emptyLabel) {
+                emptyLabel.textContent = 'Добавьте первый приём пищи';
+                emptyLabel.className = 'text-center daily-quality-label-meal';
+            }
+            const aiCoach = document.getElementById('step-1-ai-coach');
+            if (aiCoach) aiCoach.classList.add('hidden');
+            showInitialView();
             return;
         }
 
@@ -953,19 +979,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         renderDailyQualityRing(ringValues, isTotalView ? (meal.meal_count || 1) : 1);
 
+        const toggleWrapper = document.getElementById('step-1-toggle-wrapper');
+        if (toggleWrapper) toggleWrapper.classList.remove('hidden');
+
         const coachAdvice = document.getElementById('step-1-ai-coach-advice');
         if (coachAdvice) {
             coachAdvice.textContent = isTotalView ? (dailyTotal?.ai_comment || '') : (meal.ai_comment || '');
         }
 
         renderQualityCards(meal);
+        } catch (e) {
+            console.error('renderMealView error:', e);
+        }
     }
 
     function renderDailyQualityRing(nutrientValues, mealCount, containerId) {
          const targetContainerId = containerId || 'daily-quality-ring';
          const container = document.getElementById(targetContainerId);
-         if (!container) return;
-container.innerHTML = '';
+         if (!container) { console.warn('renderDailyQualityRing: container not found', targetContainerId); return; }
+         container.innerHTML = '';
         container.style.opacity = '0';
         container.style.transition = 'opacity 0.15s ease';
 
@@ -1012,7 +1044,7 @@ container.innerHTML = '';
         const { protein = 0, fat = 0, carbohydrates = 0, fiber = 0 } = nutrientValues || {};
         const excessNutrients = { fat: true, carbohydrates: true };
         const totalGrams = ['protein', 'fat', 'carbohydrates', 'fiber'].reduce((sum, key) => {
-            const v = nutrientValues[key];
+            const v = nutrientValues ? nutrientValues[key] : 0;
             if (v > 0) return sum + v;
             if (v < 0) return sum + Math.abs(v);
             return sum;
@@ -1141,39 +1173,83 @@ container.innerHTML = '';
         const scoreLabel = getScoreLabel(score);
         const calories = nutrientValues?._calories || 0;
 
-        const scoreText = document.createElementNS(svgNS, "text");
-        scoreText.setAttribute("x", center);
-        scoreText.setAttribute("y", center - 28);
-        scoreText.setAttribute("text-anchor", "middle");
-        scoreText.setAttribute("dominant-baseline", "central");
-        scoreText.setAttribute("fill", scoreColor);
-        scoreText.style.fontSize = '44px';
-        scoreText.style.fontWeight = '900';
-        scoreText.textContent = mealCount === 0 ? '—' : Math.round(score);
-        svg.appendChild(scoreText);
+        if (mealCount === 0) {
+            const glowCircle = document.createElementNS(svgNS, "circle");
+            glowCircle.setAttribute("cx", center);
+            glowCircle.setAttribute("cy", center);
+            glowCircle.setAttribute("r", 64);
+            glowCircle.setAttribute("fill", "rgba(168, 85, 247, 0.08)");
+            glowCircle.setAttribute("stroke", "rgba(192, 132, 252, 0.55)");
+            glowCircle.setAttribute("stroke-width", 1.5);
+            glowCircle.setAttribute("filter", "url(#dq-glow-protein)");
+            svg.appendChild(glowCircle);
 
-        const scoreLabelEl = document.createElementNS(svgNS, "text");
-        scoreLabelEl.setAttribute("x", center);
-        scoreLabelEl.setAttribute("y", center + 10);
-        scoreLabelEl.setAttribute("text-anchor", "middle");
-        scoreLabelEl.setAttribute("dominant-baseline", "central");
-        scoreLabelEl.setAttribute("fill", scoreColor);
-        scoreLabelEl.style.fontSize = '13px';
-        scoreLabelEl.style.fontWeight = '700';
-        scoreLabelEl.textContent = mealCount === 0 ? 'Нет данных' : scoreLabel;
-        svg.appendChild(scoreLabelEl);
+            const emptyIcon = document.createElementNS(svgNS, "text");
+            emptyIcon.setAttribute("x", center);
+            emptyIcon.setAttribute("y", center - 20);
+            emptyIcon.setAttribute("text-anchor", "middle");
+            emptyIcon.setAttribute("dominant-baseline", "central");
+            emptyIcon.setAttribute("fill", "#c084fc");
+            emptyIcon.style.fontSize = '32px';
+            emptyIcon.textContent = '🍽';
+            svg.appendChild(emptyIcon);
 
-        const calText = document.createElementNS(svgNS, "text");
-        calText.setAttribute("x", center);
-        calText.setAttribute("y", center + 28);
-        calText.setAttribute("text-anchor", "middle");
-        calText.setAttribute("dominant-baseline", "central");
-        const calColor = mealCount > 0 && calories < 0 ? '#EF4444' : 'rgba(252, 211, 77, 0.7)';
-        calText.setAttribute("fill", calColor);
-        calText.style.fontSize = '12px';
-        calText.style.fontWeight = '600';
-        calText.textContent = mealCount === 0 ? '' : `${Math.round(calories)} ккал`;
-        svg.appendChild(calText);
+            const emptyTitle = document.createElementNS(svgNS, "text");
+            emptyTitle.setAttribute("x", center);
+            emptyTitle.setAttribute("y", center + 14);
+            emptyTitle.setAttribute("text-anchor", "middle");
+            emptyTitle.setAttribute("dominant-baseline", "central");
+            emptyTitle.setAttribute("fill", "#FFFFFF");
+            emptyTitle.style.fontSize = '12px';
+            emptyTitle.style.fontWeight = '700';
+            emptyTitle.textContent = 'Приёмов пищи';
+            svg.appendChild(emptyTitle);
+
+            const emptySub = document.createElementNS(svgNS, "text");
+            emptySub.setAttribute("x", center);
+            emptySub.setAttribute("y", center + 30);
+            emptySub.setAttribute("text-anchor", "middle");
+            emptySub.setAttribute("dominant-baseline", "central");
+            emptySub.setAttribute("fill", "rgba(192, 132, 252, 0.85)");
+            emptySub.style.fontSize = '11px';
+            emptySub.style.fontWeight = '500';
+            emptySub.textContent = 'не было';
+            svg.appendChild(emptySub);
+        } else {
+            const scoreText = document.createElementNS(svgNS, "text");
+            scoreText.setAttribute("x", center);
+            scoreText.setAttribute("y", center - 28);
+            scoreText.setAttribute("text-anchor", "middle");
+            scoreText.setAttribute("dominant-baseline", "central");
+            scoreText.setAttribute("fill", scoreColor);
+            scoreText.style.fontSize = '44px';
+            scoreText.style.fontWeight = '900';
+            scoreText.textContent = Math.round(score);
+            svg.appendChild(scoreText);
+
+            const scoreLabelEl = document.createElementNS(svgNS, "text");
+            scoreLabelEl.setAttribute("x", center);
+            scoreLabelEl.setAttribute("y", center + 10);
+            scoreLabelEl.setAttribute("text-anchor", "middle");
+            scoreLabelEl.setAttribute("dominant-baseline", "central");
+            scoreLabelEl.setAttribute("fill", scoreColor);
+            scoreLabelEl.style.fontSize = '13px';
+            scoreLabelEl.style.fontWeight = '700';
+            scoreLabelEl.textContent = scoreLabel;
+            svg.appendChild(scoreLabelEl);
+
+            const calText = document.createElementNS(svgNS, "text");
+            calText.setAttribute("x", center);
+            calText.setAttribute("y", center + 28);
+            calText.setAttribute("text-anchor", "middle");
+            calText.setAttribute("dominant-baseline", "central");
+            const calColor = calories < 0 ? '#EF4444' : 'rgba(252, 211, 77, 0.7)';
+            calText.setAttribute("fill", calColor);
+            calText.style.fontSize = '12px';
+            calText.style.fontWeight = '600';
+            calText.textContent = `${Math.round(calories)} ккал`;
+            svg.appendChild(calText);
+        }
 
         container.appendChild(svg);
         requestAnimationFrame(() => { container.style.opacity = '1'; });
@@ -1549,8 +1625,9 @@ container.innerHTML = '';
                 console.error("Ошибка загрузки качества:", e);
                 dailyMeals = [];
                 dailyTotal = null;
-                renderDailyQualityRing(null, 0);
-                renderQualityCards({});
+                currentMealIndex = -1;
+                isTotalView = true;
+                renderMealView();
             }
         };
         loadQuality();
@@ -1970,6 +2047,9 @@ container.innerHTML = '';
             tabNutrition.classList.add('active');
             tabNutrition.classList.remove('text-gray-400');
             viewNutrition.classList.remove('hidden');
+            currentMealIndex = -1;
+            isTotalView = true;
+            try { renderMealView(); } catch(e) { console.error('renderMealView empty:', e); }
             loadDailyQuality();
         } else if (tab === 'history') {
             tabHistory.classList.add('active');
@@ -1982,6 +2062,11 @@ container.innerHTML = '';
 
     if (tabNutrition) tabNutrition.onclick = () => switchTab('nutrition');
     if (tabHistory) tabHistory.onclick = () => switchTab('history');
+
+    // --- Первоначальная отрисовка пустого состояния до fetch ---
+    currentMealIndex = -1;
+    isTotalView = true;
+    try { renderMealView(); } catch(e) { console.error('init renderMealView:', e); }
 
     // --- Первоначальная загрузка данных ---
     switchTab('nutrition');

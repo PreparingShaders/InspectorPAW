@@ -377,6 +377,7 @@ class WorkoutSetCreate(BaseModel):
     reps: Optional[int] = Field(None, ge=0)
     rpe: Optional[float] = Field(None, ge=1, le=10)
     is_warmup: bool = False
+    is_done: bool = False
 
 
 class WorkoutSet(WorkoutSetCreate):
@@ -397,18 +398,41 @@ class WorkoutExercise(WorkoutExerciseCreate):
     id: int
     session_id: int
     exercise: ExerciseLibrary
+    sets: List[WorkoutSet] = []
 
     class Config:
         from_attributes = True
 
 
 class WorkoutSessionCreate(BaseModel):
-    date: date
     name: Optional[str] = None
     duration_min: Optional[int] = Field(None, ge=0)
     feeling: Optional[int] = Field(None, ge=1, le=10)
     notes: Optional[str] = None
+    is_template: bool = False
+    template_id: Optional[int] = None
     exercises: List[WorkoutExerciseCreate] = []
+
+
+class WorkoutTemplateCreate(BaseModel):
+    name: Optional[str] = None
+    notes: Optional[str] = None
+    exercises: List[WorkoutExerciseCreate] = []
+
+
+class WorkoutComplete(BaseModel):
+    duration_min: Optional[int] = None
+    feeling: Optional[int] = Field(None, ge=1, le=10)
+    notes: Optional[str] = None
+
+
+class WorkoutSetUpdate(BaseModel):
+    set_number: Optional[int] = Field(None, ge=1)
+    weight_kg: Optional[float] = None
+    reps: Optional[int] = Field(None, ge=0)
+    rpe: Optional[float] = Field(None, ge=1, le=10)
+    is_warmup: Optional[bool] = None
+    is_done: Optional[bool] = None
 
 
 class WorkoutSession(BaseModel):
@@ -419,6 +443,10 @@ class WorkoutSession(BaseModel):
     duration_min: Optional[int] = None
     feeling: Optional[int] = None
     notes: Optional[str] = None
+    is_template: bool = False
+    template_id: Optional[int] = None
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -426,3 +454,39 @@ class WorkoutSession(BaseModel):
 
 class WorkoutSessionDetail(WorkoutSession):
     exercises: List[WorkoutExercise] = []
+
+
+class PersonalRecord(BaseModel):
+    exercise_id: int
+    exercise_name: str
+    max_weight_kg: float = 0.0
+    max_reps: int = 0
+    best_volume: float = 0.0
+    achieved_at: Optional[date] = None
+
+
+class MuscleGroupStat(BaseModel):
+    muscle_group: str
+    session_count: int = 0
+    total_sets: int = 0
+    total_volume: float = 0.0
+
+
+class WeeklyVolumePoint(BaseModel):
+    week_start: date
+    volume: float
+
+
+class WorkoutStatsSummary(BaseModel):
+    total_workouts: int = 0
+    completed_workouts: int = 0
+    total_volume_kg: float = 0.0
+    total_sets: int = 0
+    streak_days: int = 0
+    last_workout_date: Optional[date] = None
+    this_week_workouts: int = 0
+    this_week_volume: float = 0.0
+    avg_duration_min: Optional[float] = None
+    personal_records: List[PersonalRecord] = []
+    muscle_groups: List[MuscleGroupStat] = []
+    weekly_volume: List[WeeklyVolumePoint] = []
