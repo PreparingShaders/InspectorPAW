@@ -949,11 +949,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         if (isTotalView && ringDisplayMode === 'remaining' && dailyTargets) {
-            ringValues.protein = Math.max(0, (dailyTargets.target_protein || 0) - ringValues.protein);
-            ringValues.fat = Math.max(0, (dailyTargets.target_fat || 0) - ringValues.fat);
-            ringValues.carbohydrates = Math.max(0, (dailyTargets.target_carbohydrates || 0) - ringValues.carbohydrates);
-            ringValues.fiber = Math.max(0, 25 - ringValues.fiber);
-            ringValues._calories = Math.max(0, (dailyTargets.target_calories || 0) - ringValues._calories);
+            ringValues.protein = (dailyTargets.target_protein || 0) - ringValues.protein;
+            ringValues.fat = (dailyTargets.target_fat || 0) - ringValues.fat;
+            ringValues.carbohydrates = (dailyTargets.target_carbohydrates || 0) - ringValues.carbohydrates;
+            ringValues.fiber = 25 - ringValues.fiber;
+            ringValues._calories = (dailyTargets.target_calories || 0) - ringValues._calories;
         }
 
         renderDailyQualityRing(ringValues, isTotalView ? (meal.meal_count || 1) : 1);
@@ -1013,7 +1013,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         const { protein = 0, fat = 0, carbohydrates = 0, fiber = 0 } = nutrientValues || {};
-        const totalGrams = protein + fat + carbohydrates + fiber;
+        const excessNutrients = { fat: true, carbohydrates: true };
+        const totalGrams = ['protein', 'fat', 'carbohydrates', 'fiber'].reduce((sum, key) => {
+            const v = nutrientValues[key];
+            if (v > 0) return sum + v;
+            if (v < 0) return sum + Math.abs(v);
+            return sum;
+        }, 0);
 
         if (totalGrams > 0 && mealCount > 0) {
             let currentAngle = 0;
@@ -1023,9 +1029,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             drawOrder.forEach(key => {
                 const value = nutrientValues[key];
                 if (value > 0) {
-                    const percentage = value / totalGrams;
+                    const percentage = Math.abs(value) / totalGrams;
                     const angle = percentage * 360;
                     segmentsData.push({ key, angle, ...nutrientConfig[key] });
+                }
+            });
+
+// --- Excess segments (negative values in remaining mode) ---
+            const excessStyles = {
+                protein: { label: 'Белки', color: '#FFFFFF', gradient: 'url(#dq-grad-protein)', filter: 'url(#dq-glow-protein)' },
+                fat: { label: 'Жиры', color: '#EF4444', gradient: '#EF4444', filter: '' },
+                carbohydrates: { label: 'Углеводы', color: '#EF4444', gradient: '#EF4444', filter: '' },
+                fiber: { label: 'Клетчатка', color: '#8B4513', gradient: 'url(#dq-grad-fiber)', filter: 'url(#dq-glow-fiber)' }
+            };
+
+            drawOrder.forEach(key => {
+                const value = nutrientValues[key];
+                if (value < 0) {
+                    const percentage = Math.abs(value) / totalGrams;
+                    const angle = percentage * 360;
+                    segmentsData.push({ key, angle, ...excessStyles[key], isExcess: true });
                 }
             });
 
@@ -1037,28 +1060,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const arcLength = (circumference / 360) * angle;
                 const rotation = `${currentAngle - 90 + gapDegrees / 2}deg`;
 
-                const shadow = document.createElementNS(svgNS, "circle");
-                shadow.setAttribute("cx", center);
-                shadow.setAttribute("cy", center);
-                shadow.setAttribute("r", radius);
-                shadow.setAttribute("stroke", "rgba(0,0,0,0.35)");
-                shadow.setAttribute("stroke-width", strokeWidth + 2);
-                shadow.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
-                shadow.setAttribute("stroke-linecap", "round");
-                shadow.setAttribute("fill", "none");
-                shadow.style.transformOrigin = 'center';
-                shadow.style.transform = `rotate(${rotation}) translateY(2px)`;
+                let shadow = null;
+                if (!item.isExcess) {
+                    shadow = document.createElementNS(svgNS, "circle");
+                    shadow.setAttribute("cx", center);
+                    shadow.setAttribute("cy", center);
+                    shadow.setAttribute("r", radius);
+                    shadow.setAttribute("stroke", "rgba(0,0,0,0.35)");
+                    shadow.setAttribute("stroke-width", strokeWidth + 2);
+                    shadow.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
+                    shadow.setAttribute("stroke-linecap", "round");
+                    shadow.setAttribute("fill", "none");
+                    shadow.style.transformOrigin = 'center';
+                    shadow.style.transform = `rotate(${rotation}) translateY(2px)`;
+                }
 
                 const segment = document.createElementNS(svgNS, "circle");
                 segment.setAttribute("cx", center);
                 segment.setAttribute("cy", center);
                 segment.setAttribute("r", radius);
-                segment.setAttribute("stroke", item.gradient);
+                const isBadExcess = item.isExcess && (item.key === 'fat' || item.key === 'carbohydrates');
+                segment.setAttribute("stroke", isBadExcess ? '#EF4444' : item.gradient);
                 segment.setAttribute("stroke-width", strokeWidth);
                 segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
                 segment.setAttribute("stroke-linecap", "round");
                 segment.setAttribute("fill", "none");
-                segment.setAttribute("filter", item.filter);
+                if (!isBadExcess) {
+                    segment.setAttribute("filter", item.filter);
+                } else {
+                    segment.style.opacity = '0.7';
+                }
                 segment.style.transformOrigin = 'center';
                 segment.style.transform = `rotate(${rotation})`;
 
@@ -1094,15 +1125,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 valueLabel.setAttribute("y", y + 14);
                 valueLabel.setAttribute("text-anchor", "middle");
                 valueLabel.setAttribute("dominant-baseline", "central");
-                valueLabel.setAttribute("fill", "rgba(255,255,255,0.5)");
+                valueLabel.setAttribute("fill", item.isExcess ? (item.key === 'protein' || item.key === 'fiber' ? '#22C55E' : '#EF4444') : 'rgba(255,255,255,0.5)');
                 valueLabel.style.fontSize = '12px';
                 valueLabel.style.fontWeight = '500';
-                valueLabel.textContent = `${Math.round(nutrientValues[item.key])}г`;
+                valueLabel.textContent = item.isExcess ? `+${Math.abs(Math.round(nutrientValues[item.key]))}г` : `${Math.round(nutrientValues[item.key])}г`;
                 labelsGroup.appendChild(valueLabel);
             });
 
             segmentElements.forEach(({ shadow, segment }) => {
-                svg.appendChild(shadow);
+                if (shadow) svg.appendChild(shadow);
                 svg.appendChild(segment);
             });
             svg.appendChild(labelsGroup);
@@ -1140,7 +1171,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         calText.setAttribute("y", center + 28);
         calText.setAttribute("text-anchor", "middle");
         calText.setAttribute("dominant-baseline", "central");
-        calText.setAttribute("fill", "rgba(252, 211, 77, 0.7)");
+        const calColor = mealCount > 0 && calories < 0 ? '#EF4444' : 'rgba(252, 211, 77, 0.7)';
+        calText.setAttribute("fill", calColor);
         calText.style.fontSize = '12px';
         calText.style.fontWeight = '600';
         calText.textContent = mealCount === 0 ? '' : `${Math.round(calories)} ккал`;
