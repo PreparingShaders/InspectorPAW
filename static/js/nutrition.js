@@ -14,7 +14,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const confirmForm = document.getElementById('confirm-form');
     const cancelAnalysisBtn = document.getElementById('cancel-analysis-btn');
     const interactiveRingsContainer = document.getElementById('interactive-rings-container');
-    const mealTypeSelect = document.getElementById('meal-type');
+    const mealTypeButtons = document.querySelectorAll('.meal-type-btn');
+    const mealTypeGroup = document.getElementById('meal-type-group');
+    const mealTypeError = document.getElementById('meal-type-error');
+    let selectedMealType = '';
 
     // --- Элементы модального окна ---
     const modalOverlay = document.getElementById('edit-modal-overlay');
@@ -132,7 +135,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     function resetWizard() {
         mealImageInput.value = '';
         mealDescriptionInput.value = '';
-        mealTypeSelect.value = '';
+        mealTypeButtons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('text-gray-400');
+        });
+        selectedMealType = '';
+        mealTypeGroup.classList.remove('error');
+        mealTypeError.classList.add('hidden');
         confirmForm.reset();
         compressedFile = null;
         currentFoodQuality = null;
@@ -180,13 +189,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('Сначала выберите фото.');
             return;
         }
-        const mealType = mealTypeSelect.value;
+        const mealType = selectedMealType;
         if (!mealType) {
-            mealTypeSelect.classList.add('border-red-500', 'ring-2', 'ring-red-500', 'shake');
-            setTimeout(() => mealTypeSelect.classList.remove('shake'), 820);
+            mealTypeGroup.classList.add('error');
+            mealTypeError.classList.remove('hidden');
+            mealTypeGroup.classList.add('shake');
+            setTimeout(() => mealTypeGroup.classList.remove('shake'), 820);
             return;
         }
 
+        initialView.classList.add('hidden');
+        imageAddedView.classList.add('hidden');
         goToStep(2);
         currentFoodQuality = null;
         currentMealAnalysis = null;
@@ -1011,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Сохранение результата ---
     confirmForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const mealType = mealTypeSelect.value;
+        const mealType = selectedMealType;
         if (!mealType) {
             alert("Пожалуйста, выберите тип приема пищи.");
             return;
@@ -1062,10 +1075,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    mealTypeSelect.addEventListener('change', () => {
-        if (mealTypeSelect.value) {
-            mealTypeSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
-        }
+    // --- Логика кнопок выбора типа приема пищи ---
+    mealTypeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            mealTypeButtons.forEach(b => {
+                b.classList.remove('active');
+                b.classList.add('text-gray-400');
+            });
+            btn.classList.add('active');
+            btn.classList.remove('text-gray-400');
+            selectedMealType = btn.dataset.value;
+            mealTypeGroup.classList.remove('error');
+            mealTypeError.classList.add('hidden');
+        });
     });
 
     // --- Логика Tooltip'ов ---

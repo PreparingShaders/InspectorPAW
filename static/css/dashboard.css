@@ -345,3 +345,56 @@ input[type=range].styled-slider::-moz-range-thumb {
         box-shadow: 0 0 10px 2px var(--color-over-limit-green), 0 0 15px 2px rgba(80,200,120,0.4) !important;
     }
 }
+
+/* --- Стили для кнопок выбора типа приема пищи --- */
+.meal-type-btn {
+    transition: all 0.2s ease;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+}
+.meal-type-btn.active {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.15);
+}
+.meal-type-btn:hover:not(.active) {
+    color: rgba(255, 255, 255, 0.7);
+}
+#meal-type-group.error {
+    border-color: rgb(239 68 68) !important;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+/* --- Shake-анимация --- */
+.shake {
+    animation: shake 0.4s ease-in-out;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+}
+
+/* --- Стили для контейнера кнопки отправки на анализ --- */
+#send-ai-container {
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.25s ease;
+}
+#send-ai-container:hover {
+    border-color: rgba(192, 132, 252, 0.8);
+    box-shadow: 0 0 24px rgba(168, 85, 247, 0.55), 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+#send-ai-container:has(button:active) {
+    transform: scale(0.97);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+}
+#send-ai-container button {
+    background: transparent;
+}
+#send-ai-container button:hover {
+    color: rgba(255, 255, 255, 0.85);
+}
