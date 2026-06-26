@@ -10,6 +10,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel, Field, EmailStr, validator
 
@@ -19,6 +20,11 @@ from core_app.config import settings, Settings
 from core_app.admin import router as admin_router
 
 models.Base.metadata.create_all(bind=engine)
+
+# Создаём недостающие индексы (для SQLite, Alembic не используется)
+with engine.connect() as conn:
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_meals_user_timestamp ON meals (user_id, timestamp)"))
+    conn.commit()
 
 app = FastAPI(title="InspectorPAW API")
 
