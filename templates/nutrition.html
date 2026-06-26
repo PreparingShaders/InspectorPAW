@@ -473,9 +473,21 @@
                      <form id="confirm-form" class="space-y-2">
                          <div id="step-3-daily-quality-label" class="text-center daily-quality-label-meal mb-2">Блюдо: —</div>
                          <div id="interactive-rings-container" style="width: 260px !important; height: 260px; margin: 0.5rem auto; position: relative; flex-shrink: 0; max-width: 260px; padding: 0; box-sizing: border-box; display: block; min-width: 0; flex-basis: 260px;"></div>
-                          <div id="ai-coach-section" class="w-full rounded-2xl p-4 relative overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(168,85,247,0.35); box-shadow: 0 0 12px rgba(168,85,247,0.15), inset 0 0 12px rgba(168,85,247,0.05); font-size: 0.85em;">
-                              <h4 id="ai-coach-title" class="text-sm font-bold mb-2 text-center" style="color: #c084fc; text-shadow: 0 0 8px rgba(192,132,252,0.4);">Совет от AI</h4>
-                              <p id="ai-coach-advice" class="text-white/90 text-left text-sm leading-relaxed"></p>
+                          <div id="step-3-toggle-wrapper" class="w-full">
+                              <div id="step-3-quality-cards" class="w-full mt-2 space-y-1"></div>
+                              <div id="ai-coach-section" class="w-full rounded-2xl p-4 relative overflow-hidden hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(168,85,247,0.35); box-shadow: 0 0 12px rgba(168,85,247,0.15), inset 0 0 12px rgba(168,85,247,0.05); font-size: 0.85em;">
+                                  <h4 id="ai-coach-title" class="text-sm font-bold mb-2 text-center" style="color: #c084fc; text-shadow: 0 0 8px rgba(192,132,252,0.4);">Совет от AI</h4>
+                                  <p id="ai-coach-advice" class="text-white/90 text-left text-sm leading-relaxed"></p>
+                              </div>
+                              <div class="relative flex w-full max-w-sm rounded-full glassmorphism" style="padding: 4px; margin: 0.75rem auto 0;">
+                                  <button type="button" id="toggle-cards-prev" class="flex items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-white transition-all">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                  </button>
+                                  <span id="toggle-cards-label" class="flex-1 flex items-center justify-center text-sm font-semibold text-white">Качество</span>
+                                  <button type="button" id="toggle-cards-next" class="flex items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-white transition-all">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                  </button>
+                              </div>
                           </div>
                            <div id="ai-response-text" class="hidden"></div>
                           <div class="w-full flex justify-center mt-3" style="transform: scale(0.85); transform-origin: top center;">

@@ -131,6 +131,19 @@ class Meal(Base):
     user = relationship("User", back_populates="meals")
 
 
+class DailyNutritionSummary(Base):
+    __tablename__ = "daily_nutrition_summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    ai_advice = Column(String, nullable=True)
+    ai_advice_model = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
+
+
 class TelegramPasswordResetToken(Base):
     __tablename__ = 'telegram_password_reset_tokens'
     id = Column(Integer, primary_key=True, index=True)

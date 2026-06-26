@@ -48,6 +48,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentMealIndex = -1;
     let isTotalView = false;
 
+    // --- Переключение quality-cards / ai-coach в step-3 ---
+    let step3ViewIndex = 0; // 0 = quality-cards, 1 = ai-coach
+    const step3Views = ['quality-cards', 'ai-coach'];
+
+    function updateStep3View() {
+        const qc = document.getElementById('step-3-quality-cards');
+        const coach = document.getElementById('ai-coach-section');
+        const label = document.getElementById('toggle-cards-label');
+        if (!qc || !coach || !label) return;
+        if (step3ViewIndex === 0) {
+            qc.classList.remove('hidden');
+            coach.classList.add('hidden');
+            label.textContent = 'Качество';
+        } else {
+            qc.classList.add('hidden');
+            coach.classList.remove('hidden');
+            label.textContent = 'Совет AI';
+        }
+    }
+
+    const togglePrev = document.getElementById('toggle-cards-prev');
+    const toggleNext = document.getElementById('toggle-cards-next');
+    if (togglePrev) {
+        togglePrev.addEventListener('click', () => {
+            step3ViewIndex = (step3ViewIndex - 1 + step3Views.length) % step3Views.length;
+            updateStep3View();
+        });
+    }
+    if (toggleNext) {
+        toggleNext.addEventListener('click', () => {
+            step3ViewIndex = (step3ViewIndex + 1) % step3Views.length;
+            updateStep3View();
+        });
+    }
+
+    // --- Навигация по приёмам пищи в step-1 ---
+    document.getElementById('prev-step-btn')?.addEventListener('click', () => navigateMeal(-1));
+    document.getElementById('next-step-btn')?.addEventListener('click', () => navigateMeal(1));
+
     const steps = {
         1: document.getElementById('step-1'),
         2: document.getElementById('step-2'),
@@ -256,7 +295,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Meal analysis:', currentMealAnalysis);
             
             renderInteractiveRings();
+            renderQualityCards(currentFoodQuality, 'step-3-quality-cards');
             console.log('Rings rendered, going to step 3');
+            step3ViewIndex = 0;
+            updateStep3View();
             goToStep(3);
             console.log('Now at step 3');
 
@@ -592,8 +634,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return 'Отлично';
     }
 
-    function renderQualityCards(meal) {
-        const container = document.getElementById('quality-cards');
+    function renderQualityCards(meal, containerId) {
+        const container = document.getElementById(containerId || 'quality-cards');
         if (!container) return;
         container.innerHTML = '';
 
@@ -759,6 +801,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             container.appendChild(dot);
         }
+    }
+
+    function navigateMeal(direction) {
+        const n = dailyMeals.length;
+        if (n === 0) return;
+        const itemsCount = dailyTotal ? n + 1 : n;
+        let pos;
+        if (isTotalView) {
+            pos = 0;
+        } else {
+            pos = dailyTotal ? n - currentMealIndex : n - 1 - currentMealIndex;
+        }
+        pos = (pos + direction + itemsCount) % itemsCount;
+        if (dailyTotal && pos === 0) {
+            isTotalView = true;
+        } else {
+            isTotalView = false;
+            currentMealIndex = dailyTotal ? n - pos : n - 1 - pos;
+        }
+        renderMealView();
     }
 
     function renderMealView() {
