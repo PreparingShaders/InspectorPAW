@@ -1501,6 +1501,24 @@ def update_workout_set(
     return result
 
 
+@app.patch("/api/workout-exercises/{ex_id}/rpe")
+def update_exercise_rpe(
+    ex_id: int,
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    ex = db.query(models.WorkoutExercise).filter(models.WorkoutExercise.id == ex_id).first()
+    if not ex:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+    session = db.query(models.WorkoutSession).filter(models.WorkoutSession.id == ex.session_id).first()
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    ex.rpe = data.get("rpe")
+    db.commit()
+    return {"ok": True}
+
+
 @app.post("/api/workouts/{workout_id}/complete", response_model=schemas.WorkoutSession)
 def complete_workout(
     workout_id: int,

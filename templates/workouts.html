@@ -38,7 +38,7 @@
             padding: 0.75rem;
             transition: all 0.3s ease;
         }
-        .exercise-card.completed { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); }
+        .exercise-card.completed { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); opacity: 0.6; transition: opacity 0.3s; }
         .set-row {
             display: grid;
             grid-template-columns: 2rem 2rem 1fr 1fr 1fr 2rem;
@@ -149,6 +149,28 @@
             background: rgba(168,85,247,0.2);
             border-color: #a855f7;
             color: #fff;
+        }
+        .set-row-rpe {
+            display: flex;
+            align-items: center;
+            padding: 0.3rem 0;
+            border-top: 1px dashed rgba(255,255,255,0.08);
+            margin-top: 0.3rem;
+            grid-column: 1 / -1;
+        }
+        .rpe-adjust {
+            width: 1.5rem;
+            height: 1.5rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .rpe-value {
+            min-width: 1.5rem;
+            text-align: center;
+            font-weight: 700;
+            color: #c084fc;
         }
 
         .warmup-toggle {
@@ -432,7 +454,7 @@ const MUSCLE_ICONS = {
 const MUSCLE_COLORS = {
     'Грудь':'#ef4444','Спина':'#f59e0b','Ноги':'#3b82f6','Плечи':'#a855f7',
     'Бицепс':'#22c55e','Трицепс':'#ec4899','Пресс':'#f97316','Трапеция':'#14b8a6',
-    'Предплечье':'#8b5cf6','Икры':'#06b6d4',
+    'Предплечье':'#8b5cf6','Икры':'#06b6d4','Кардио':'#f43f5e',
 };
 const FEELING_EMOJI = ['','😴','😕','😐','🙂','😊','🔥'];
 
@@ -875,46 +897,123 @@ function renderActive() {
     $('active-date').textContent = formatDate(activeSession.date);
     renderActiveExercises();
     startTimer();
+    // Load previous data in background
+    loadPreviousExerciseData().then(() => renderActiveExercises());
 }
 
 function renderActiveExercises() {
-    let html = '';
     let completedCount = 0, totalSets = 0;
+    // Build array with completion status
+    const exercises = [];
     for (const ex of activeSession.exercises || []) {
         let setsHtml = '';
         let exDone = 0;
+        // Get previous data for this exercise
+        const prevData = getPreviousExerciseData(ex.exercise_id);
         for (const s of ex.sets || []) {
             totalSets++;
             const done = !!s.is_done;
             if (done) { exDone++; completedCount++; }
-            setsHtml += renderActiveSetRow(s, ex, done);
+            setsHtml += renderActiveSetRow(s, ex, done, prevData, s.set_number);
         }
-        html += `<div class="exercise-card ${exDone===ex.sets.length && ex.sets.length?'completed':''}" data-ex-id="${ex.id}">
-            <div class="text-sm font-bold text-white mb-1">${escapeHtml(ex.exercise?.name || 'Упражнение')}</div>
-            ${setsHtml}
+        // RPE row
+        const exRpe = ex.rpe || 6;
+        setsHtml += `<div class="set-row set-row-rpe" data-ex-id="${ex.id}">
+            <span class="text-xs text-gray-500 col-span-full flex items-center gap-2">
+                <span>Сложность:</span>
+                <button class="spin-btn rpe-adjust" onclick="adjustExRpe(${ex.id}, -1)">−</button>
+                <span class="rpe-value" id="ex-rpe-${ex.id}">${exRpe}</span>
+                <button class="spin-btn rpe-adjust" onclick="adjustExRpe(${ex.id}, 1)">+</button>
+            </span>
+        </div>`;
+        const isCompleted = exDone === ex.sets.length && ex.sets.length > 0;
+        exercises.push({ ex, setsHtml, isCompleted });
+    }
+    // Sort: incomplete first, completed at the end
+    exercises.sort((a, b) => (a.isCompleted === b.isCompleted) ? 0 : a.isCompleted ? 1 : -1);
+    // Build HTML
+    let html = '';
+    for (const item of exercises) {
+        const prevData = getPreviousExerciseData(item.ex.exercise_id);
+        const prevLabel = prevData ? `<span class="text-xs text-gray-500 ml-2">(${prevData.weight_kg}кг × ${prevData.reps})</span>` : '';
+        html += `<div class="exercise-card ${item.isCompleted ? 'completed' : ''}" data-ex-id="${item.ex.id}">
+            <div class="flex items-center mb-1">
+                <div class="text-sm font-bold text-white">${escapeHtml(item.ex.exercise?.name || 'Упражнение')}</div>
+                ${prevLabel}
+            </div>
+            <div class="set-row text-[0.6rem] text-gray-500 mb-1">
+                <div class="w-6 text-center">№</div>
+                <div class="flex-1 text-center">кг</div>
+                <div class="flex-1 text-center">повторы</div>
+                <div class="w-6"></div>
+            </div>
+            ${item.setsHtml}
         </div>`;
     }
     $('active-exercises').innerHTML = html;
     updateProgress(completedCount, totalSets);
 }
 
-function renderActiveSetRow(s, ex, done) {
+// Store previous exercise data
+let previousExerciseData = {};
+
+function getPreviousExerciseData(exerciseId) {
+    return previousExerciseData[exerciseId] || null;
+}
+
+async function loadPreviousExerciseData() {
+    previousExerciseData = {};
+    try {
+        // Get completed workouts
+        let res = await fetchWithAuth('/api/workouts');
+        if (!res.ok) return;
+        const workouts = await res.json();
+        const completed = workouts.filter(w => w.is_completed).sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+        // Get details for last few workouts to find previous values
+        for (const w of completed.slice(0, 5)) {
+            let detailRes = await fetchWithAuth(`/api/workouts/${w.id}`);
+            if (!detailRes.ok) continue;
+            const detail = await detailRes.json();
+            for (const ex of detail.exercises || []) {
+                if (!previousExerciseData[ex.exercise_id] && ex.sets && ex.sets.length > 0) {
+                    // Get best set (highest weight)
+                    const bestSet = ex.sets.filter(s => s.weight_kg && s.reps).sort((a, b) => b.weight_kg - a.weight_kg)[0];
+                    if (bestSet) {
+                        previousExerciseData[ex.exercise_id] = { weight_kg: bestSet.weight_kg, reps: bestSet.reps };
+                    }
+                }
+            }
+        }
+    } catch(e) { console.error('Failed to load previous data:', e); }
+}
+
+function adjustExRpe(exId, delta) {
+    for (const ex of activeSession.exercises || []) {
+        if (ex.id === exId) {
+            let val = ex.rpe || 6;
+            val = Math.min(10, Math.max(1, val + delta));
+            ex.rpe = val;
+            const el = $('ex-rpe-' + exId);
+            if (el) el.textContent = val;
+            break;
+        }
+    }
+}
+
+function renderActiveSetRow(s, ex, done, prevData, setNumber) {
     return `<div class="set-row set-row-active ${done?'done':''}" data-set-id="${s.id}" data-ex-id="${ex.id}">
-        <div class="check-circle ${done?'done':''}" onclick="toggleSetDone(${s.id})" title="Отметить выполненным">${done?'✓':''}</div>
         <span class="text-xs text-gray-500 w-6 text-center flex-shrink-0">${s.is_warmup?'<span class="text-amber-400" title="Разминка">🔥</span>':s.set_number}</span>
         <div class="flex items-center gap-1 flex-1">
             <button class="spin-btn" onclick="bumpSet(${s.id},'weight_kg',-${weightStep})">−</button>
-            <input class="set-value" id="aw-${s.id}" type="number" step="0.5" inputmode="decimal" value="${s.weight_kg??''}" placeholder="—" style="width:3rem;" onfocus="this.select()" onchange="updateSet(${s.id},'weight_kg')">
+            <input class="set-value" id="aw-${s.id}" type="number" step="0.5" inputmode="decimal" value="${s.weight_kg??''}" placeholder="—" onfocus="this.select()" onchange="updateSet(${s.id},'weight_kg')">
             <button class="spin-btn" onclick="bumpSet(${s.id},'weight_kg',${weightStep})">+</button>
         </div>
         <div class="flex items-center gap-1 flex-1">
             <button class="spin-btn" onclick="bumpSet(${s.id},'reps',-1)">−</button>
-            <input class="set-value" id="ar-${s.id}" type="number" inputmode="numeric" value="${s.reps??''}" placeholder="—" style="width:2.5rem;" onfocus="this.select()" onchange="updateSet(${s.id},'reps')">
+            <input class="set-value" id="ar-${s.id}" type="number" inputmode="numeric" value="${s.reps??''}" placeholder="—" onfocus="this.select()" onchange="updateSet(${s.id},'reps')">
             <button class="spin-btn" onclick="bumpSet(${s.id},'reps',1)">+</button>
         </div>
-        <div class="flex items-center gap-1 flex-1">
-            <input class="set-value" id="arpe-${s.id}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${s.rpe??''}" placeholder="RPE" style="width:2.5rem;" onfocus="this.select()" onchange="updateSet(${s.id},'rpe')">
-        </div>
+        <div class="check-circle ${done?'done':''}" onclick="toggleSetDone(${s.id})" title="Отметить выполненным">${done?'✓':''}</div>
     </div>`;
 }
 
@@ -969,6 +1068,7 @@ async function toggleSetDone(sid) {
     if (!ok) return;
     updateSetRow(s);
     recomputeProgress();
+    renderActiveExercises();
 }
 
 function updateSetRow(s) {
@@ -981,10 +1081,8 @@ function updateSetRow(s) {
     circle.textContent = done ? '✓' : '';
     const wInput = row.querySelector(`#aw-${s.id}`);
     const rInput = row.querySelector(`#ar-${s.id}`);
-    const rpeInput = row.querySelector(`#arpe-${s.id}`);
     if (document.activeElement !== wInput) wInput.value = s.weight_kg ?? '';
     if (document.activeElement !== rInput) rInput.value = s.reps ?? '';
-    if (rpeInput && document.activeElement !== rpeInput) rpeInput.value = s.rpe ?? '';
     const exCard = row.closest('[data-ex-id]');
     const allRows = exCard ? exCard.querySelectorAll('.set-row') : [];
     const allDone = Array.from(allRows).length > 0 && Array.from(allRows).every(r => r.classList.contains('done'));
@@ -1033,14 +1131,6 @@ async function updateSet(sid, field) {
         else {
             const r = parseInt(raw, 10);
             partial.reps = isNaN(r) ? null : Math.max(0, Math.min(999, r));
-        }
-    } else if (field === 'rpe') {
-        const rpeInput = document.getElementById(`arpe-${sid}`);
-        const raw = rpeInput.value.trim();
-        if (raw === '') partial.rpe = null;
-        else {
-            const rpe = parseFloat(raw);
-            partial.rpe = isNaN(rpe) ? null : Math.min(10, Math.max(1, rpe));
         }
     }
     if (Object.keys(partial).length === 0) return;
@@ -1108,6 +1198,15 @@ $('finish-confirm').onclick = async () => {
         durationMin = Math.floor((Date.now() - startTime) / 60000);
     }
     try {
+        // Save exercise RPEs first
+        for (const ex of activeSession.exercises || []) {
+            if (ex.rpe) {
+                await fetchWithAuth(`/api/workout-exercises/${ex.id}/rpe`, {
+                    method: 'PATCH', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ rpe: ex.rpe })
+                });
+            }
+        }
         let res = await fetchWithAuth(`/api/workouts/${activeSession.id}/complete`, {
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ duration_min: durationMin, feeling: selectedRpe, notes })

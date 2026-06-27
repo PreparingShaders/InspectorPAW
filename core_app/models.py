@@ -186,6 +186,7 @@ class WorkoutExercise(Base):
     session_id = Column(Integer, ForeignKey("workout_sessions.id"), nullable=False)
     exercise_id = Column(Integer, ForeignKey("exercise_library.id"), nullable=False)
     sort_order = Column(Integer, nullable=False, default=0)
+    rpe = Column(Float, nullable=True)
 
     session = relationship("WorkoutSession", back_populates="exercises")
     exercise = relationship("ExerciseLibrary", back_populates="entries")
