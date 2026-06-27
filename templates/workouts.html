@@ -41,20 +41,20 @@
         .exercise-card.completed { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); opacity: 0.6; transition: opacity 0.3s; }
         .set-row {
             display: grid;
-            grid-template-columns: 2rem 2rem 1fr 1fr 1fr 2rem;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .set-row:last-child { border-bottom: none; }
-        .set-row.done { opacity: 0.55; }
-        .set-row.done .set-value { text-decoration: line-through; }
-        .set-row-active {
-            display: flex;
+            grid-template-columns: 1.5rem 1fr 1fr 1fr 1.5rem;
             align-items: center;
             gap: 0.4rem;
+            padding: 0.4rem 0;
         }
+        .set-row-active {
+            display: grid;
+            grid-template-columns: 1.5rem 1fr 1fr 1fr 1.5rem;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0;
+        }
+        .set-row.done, .set-row-active.done { opacity: 0.55; }
+        .set-row.done .set-value, .set-row-active.done .set-value { text-decoration: line-through; }
         .check-circle {
             width: 1.6rem; height: 1.6rem; border-radius: 50%;
             border: 2px solid rgba(255,255,255,0.15);
@@ -917,9 +917,9 @@ function renderActiveExercises() {
             setsHtml += renderActiveSetRow(s, ex, done, prevData, s.set_number);
         }
         // RPE row
-        const exRpe = ex.rpe || 6;
+        const exRpe = ex.rpe || 7;
         setsHtml += `<div class="set-row set-row-rpe" data-ex-id="${ex.id}">
-            <span class="text-xs text-gray-500 col-span-full flex items-center gap-2">
+            <span class="text-xs text-gray-500 flex items-center gap-2 ml-auto">
                 <span>Сложность:</span>
                 <button class="spin-btn rpe-adjust" onclick="adjustExRpe(${ex.id}, -1)">−</button>
                 <span class="rpe-value" id="ex-rpe-${ex.id}">${exRpe}</span>
@@ -937,21 +937,29 @@ function renderActiveExercises() {
         const prevData = getPreviousExerciseData(item.ex.exercise_id);
         const prevLabel = prevData ? `<span class="text-xs text-gray-500 ml-2">(${prevData.weight_kg}кг × ${prevData.reps})</span>` : '';
         html += `<div class="exercise-card ${item.isCompleted ? 'completed' : ''}" data-ex-id="${item.ex.id}">
-            <div class="flex items-center mb-1">
-                <div class="text-sm font-bold text-white">${escapeHtml(item.ex.exercise?.name || 'Упражнение')}</div>
-                ${prevLabel}
-            </div>
+            <div class="text-sm font-bold text-white mb-1">${escapeHtml(item.ex.exercise?.name || 'Упражнение')}</div>
             <div class="set-row text-[0.6rem] text-gray-500 mb-1">
-                <div class="w-6 text-center">№</div>
-                <div class="flex-1 text-center">кг</div>
-                <div class="flex-1 text-center">повторы</div>
-                <div class="w-6"></div>
+                <span class="w-6 text-center">№</span>
+                <span class="flex-1 text-center">Пред.</span>
+                <span class="flex-1 text-center">кг</span>
+                <span class="flex-1 text-center">повторы</span>
+                <span class="w-6"></span>
             </div>
             ${item.setsHtml}
         </div>`;
     }
     $('active-exercises').innerHTML = html;
     updateProgress(completedCount, totalSets);
+    // Auto-show finish modal when all sets completed
+    if (totalSets > 0 && completedCount === totalSets) {
+        setTimeout(() => showFinishModal(), 500);
+    }
+}
+
+function showFinishModal() {
+    $('finish-overlay').classList.remove('hidden');
+    selectedRpe = null;
+    document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
 }
 
 // Store previous exercise data
@@ -970,17 +978,16 @@ async function loadPreviousExerciseData() {
         const workouts = await res.json();
         const completed = workouts.filter(w => w.is_completed).sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
         // Get details for last few workouts to find previous values
-        for (const w of completed.slice(0, 5)) {
+        for (const w of completed.slice(0, 3)) {
             let detailRes = await fetchWithAuth(`/api/workouts/${w.id}`);
             if (!detailRes.ok) continue;
             const detail = await detailRes.json();
             for (const ex of detail.exercises || []) {
                 if (!previousExerciseData[ex.exercise_id] && ex.sets && ex.sets.length > 0) {
-                    // Get best set (highest weight)
-                    const bestSet = ex.sets.filter(s => s.weight_kg && s.reps).sort((a, b) => b.weight_kg - a.weight_kg)[0];
-                    if (bestSet) {
-                        previousExerciseData[ex.exercise_id] = { weight_kg: bestSet.weight_kg, reps: bestSet.reps };
-                    }
+                    // Store all sets with their numbers
+                    previousExerciseData[ex.exercise_id] = ex.sets
+                        .filter(s => s.weight_kg && s.reps)
+                        .map(s => ({ set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps }));
                 }
             }
         }
@@ -990,7 +997,7 @@ async function loadPreviousExerciseData() {
 function adjustExRpe(exId, delta) {
     for (const ex of activeSession.exercises || []) {
         if (ex.id === exId) {
-            let val = ex.rpe || 6;
+            let val = ex.rpe || 7;
             val = Math.min(10, Math.max(1, val + delta));
             ex.rpe = val;
             const el = $('ex-rpe-' + exId);
@@ -1001,18 +1008,13 @@ function adjustExRpe(exId, delta) {
 }
 
 function renderActiveSetRow(s, ex, done, prevData, setNumber) {
+    const prevSet = prevData ? prevData.find(p => p.set_number === setNumber) : null;
+    const prevLabel = prevSet ? `${prevSet.weight_kg ?? '—'}×${prevSet.reps ?? '—'}` : '—';
     return `<div class="set-row set-row-active ${done?'done':''}" data-set-id="${s.id}" data-ex-id="${ex.id}">
         <span class="text-xs text-gray-500 w-6 text-center flex-shrink-0">${s.is_warmup?'<span class="text-amber-400" title="Разминка">🔥</span>':s.set_number}</span>
-        <div class="flex items-center gap-1 flex-1">
-            <button class="spin-btn" onclick="bumpSet(${s.id},'weight_kg',-${weightStep})">−</button>
-            <input class="set-value" id="aw-${s.id}" type="number" step="0.5" inputmode="decimal" value="${s.weight_kg??''}" placeholder="—" onfocus="this.select()" onchange="updateSet(${s.id},'weight_kg')">
-            <button class="spin-btn" onclick="bumpSet(${s.id},'weight_kg',${weightStep})">+</button>
-        </div>
-        <div class="flex items-center gap-1 flex-1">
-            <button class="spin-btn" onclick="bumpSet(${s.id},'reps',-1)">−</button>
-            <input class="set-value" id="ar-${s.id}" type="number" inputmode="numeric" value="${s.reps??''}" placeholder="—" onfocus="this.select()" onchange="updateSet(${s.id},'reps')">
-            <button class="spin-btn" onclick="bumpSet(${s.id},'reps',1)">+</button>
-        </div>
+        <span class="text-xs text-purple-400/60 flex-1 text-center">${prevLabel}</span>
+        <input class="set-value flex-1" id="aw-${s.id}" type="number" step="0.5" inputmode="decimal" value="${s.weight_kg??''}" placeholder="кг" onfocus="this.select()" onchange="updateSet(${s.id},'weight_kg')">
+        <input class="set-value flex-1" id="ar-${s.id}" type="number" inputmode="numeric" value="${s.reps??''}" placeholder="раз" onfocus="this.select()" onchange="updateSet(${s.id},'reps')">
         <div class="check-circle ${done?'done':''}" onclick="toggleSetDone(${s.id})" title="Отметить выполненным">${done?'✓':''}</div>
     </div>`;
 }
@@ -1141,9 +1143,7 @@ async function updateSet(sid, field) {
 // ===== Finish workout =====
 $('finish-workout-btn').onclick = () => {
     if (!activeSession) return;
-    $('finish-overlay').classList.remove('hidden');
-    selectedRpe = null;
-    document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
+    showFinishModal();
 };
 $('finish-cancel').onclick = () => $('finish-overlay').classList.add('hidden');
 document.querySelectorAll('.rpe-btn').forEach(b => {
