@@ -224,6 +224,17 @@
         .weekly-bar.empty { background: rgba(255,255,255,0.08); }
         .weekly-labels { display: flex; gap: 0.25rem; margin-top: 0.25rem; }
         .weekly-label { flex: 1; text-align: center; font-size: 0.55rem; color: rgba(255,255,255,0.4); }
+        .period-btn.active { background: rgba(168,85,247,0.2); color: #c084fc; }
+        .volume-chart { display: flex; align-items: flex-end; gap: 0.25rem; height: 5rem; padding: 0.25rem 0; }
+        .volume-bar { flex: 1; background: linear-gradient(180deg, #a855f7, #7c3aed); border-radius: 0.25rem 0.25rem 0 0; min-height: 0.2rem; transition: height 0.4s ease; }
+        .volume-bar.empty { background: rgba(255,255,255,0.08); }
+        .volume-labels { display: flex; gap: 0.25rem; margin-top: 0.25rem; }
+        .volume-label { flex: 1; text-align: center; font-size: 0.55rem; color: rgba(255,255,255,0.4); }
+        .muscle-balance-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
+        .muscle-balance-name { width: 4rem; font-size: 0.65rem; color: rgba(255,255,255,0.7); }
+        .muscle-balance-track { flex: 1; height: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 0.25rem; overflow: hidden; }
+        .muscle-balance-fill { height: 100%; border-radius: 0.25rem; transition: width 0.4s ease; }
+        .muscle-balance-val { width: 2.5rem; font-size: 0.6rem; color: rgba(255,255,255,0.5); text-align: right; }
         #athlete-svg [data-mg] { cursor: pointer; transition: all 0.3s ease; }
         #athlete-svg [data-mg]:hover { filter: brightness(1.3); }
         .mg-active { filter: brightness(1.4) drop-shadow(0 0 8px currentColor); }
@@ -255,6 +266,22 @@
 
         <!-- ===== VIEW: Statistics (Dashboard) ===== -->
         <div id="view-stats" class="view w-full flex-col items-center mt-2 gap-4">
+
+            <!-- Empty state -->
+            <div id="summary-empty" class="w-full text-center py-8 hidden">
+                <div class="text-5xl mb-3">📊</div>
+                <p class="text-lg font-semibold text-gray-500 mb-1">Пока нет данных</p>
+                <p class="text-sm text-gray-600">Завершите первую тренировку!</p>
+            </div>
+
+            <!-- Time period selector -->
+            <div class="w-full flex justify-center">
+                <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
+                    <button id="period-week" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold transition-all text-gray-400">Неделя</button>
+                    <button id="period-month" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold text-gray-400 transition-all">Месяц</button>
+                    <button id="period-3month" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold text-gray-400 transition-all">3 мес.</button>
+                </div>
+            </div>
 
             <!-- Muscle groups grid -->
             <div class="w-full">
@@ -302,11 +329,29 @@
                 </div>
             </div>
 
-            <!-- Weekly chart -->
-            <div id="stats-weekly-wrap" class="w-full">
-                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Объём по неделям</div>
-                <div class="weekly-chart" id="stats-weekly-chart"></div>
-                <div class="weekly-labels" id="stats-weekly-labels"></div>
+            <!-- Volume chart -->
+            <div id="stats-volume-wrap" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Объём</div>
+                <div class="volume-chart" id="stats-volume-chart"></div>
+                <div class="volume-labels" id="stats-volume-labels"></div>
+            </div>
+
+            <!-- Muscle balance -->
+            <div id="stats-muscle-balance" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Мышечный баланс</div>
+                <div id="muscle-balance-chart" class="w-full"></div>
+            </div>
+
+            <!-- Progress chart -->
+            <div id="stats-progress-wrap" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Прогрессия</div>
+                <div id="progress-chart" class="w-full"></div>
+            </div>
+
+            <!-- Personal records -->
+            <div id="stats-pr-wrap" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Личные рекорды</div>
+                <div id="stats-personal-records"></div>
             </div>
         </div>
 
@@ -464,6 +509,7 @@ let activeSession = null, timerInterval = null;
 let selectedRpe = null, weightStep = 2.5;
 let currentDetailId = null;
 let currentTemplateId = null;
+let currentPeriod = 'week'; // week, month, 3month
 
 const $ = id => document.getElementById(id);
 const skel = $('workout-skeleton');
@@ -507,6 +553,21 @@ function switchView(name) {
 tabActive.onclick = () => { switchView('stats'); loadDashboard(); };
 tabTempl.onclick = () => { switchView('templates'); loadTemplates(); };
 tabHist.onclick = () => { switchView('history'); loadHistory(); };
+
+// Period selector
+function setPeriod(period) {
+    currentPeriod = period;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    const btnMap = { 'week': 'period-week', 'month': 'period-month', '3month': 'period-3month' };
+    $(btnMap[period]).classList.add('active');
+    loadDashboard();
+}
+$('period-week').onclick = () => setPeriod('week');
+$('period-month').onclick = () => setPeriod('month');
+$('period-3month').onclick = () => setPeriod('3month');
+
+// Set default period on load
+setPeriod('week');
 
 // ===== Templates =====
 async function loadTemplates() {
@@ -1333,22 +1394,45 @@ function escapeAttr(s) { return String(s||'').replace(/'/g, '&#39;'); }
 
 // ===== Dashboard =====
 async function loadDashboard() {
-    const empty = $('summary-empty');
     try {
         let res = await fetchWithAuth('/api/workout-stats');
-        if (!res.ok) { empty.classList.remove('hidden'); return; }
+        if (!res.ok) { showEmptyState(); return; }
         const s = await res.json();
-        if (!s || s.total_workouts === 0 && s.this_week_workouts === 0 && s.streak_days === 0) {
-            empty.classList.remove('hidden');
+        console.log('Dashboard data:', s);
+        // Show data if we have any workouts or volume
+        if (!s || (s.total_workouts === 0 && (s.total_volume_kg || 0) === 0)) {
+            showEmptyState();
             return;
         }
-        empty.classList.add('hidden');
+        hideEmptyState();
         renderDashboard(s);
     } catch(e) {
-        empty.classList.remove('hidden');
+        console.error('Dashboard error:', e);
+        showEmptyState();
     }
-    // Load muscle readiness data
+    // Load additional data
     loadMuscleReadiness();
+    loadVolumeChart();
+    loadMuscleBalance();
+    loadProgress();
+}
+
+function showEmptyState() {
+    $('summary-empty').classList.remove('hidden');
+    $('stats-volume-wrap').classList.add('hidden');
+    $('stats-muscle-balance').classList.add('hidden');
+    $('stats-progress-wrap').classList.add('hidden');
+    $('stats-pr-wrap').classList.add('hidden');
+    $('stat-week-volume').textContent = '0';
+    $('stat-avg-duration').textContent = '—';
+}
+
+function hideEmptyState() {
+    $('summary-empty').classList.add('hidden');
+    $('stats-volume-wrap').classList.remove('hidden');
+    $('stats-muscle-balance').classList.remove('hidden');
+    $('stats-progress-wrap').classList.remove('hidden');
+    $('stats-pr-wrap').classList.remove('hidden');
 }
 
 // ===== Muscle Readiness =====
@@ -1359,6 +1443,135 @@ async function loadMuscleReadiness() {
         const data = await res.json();
         updateAthleteSVG(data);
     } catch(e) { console.error(e); }
+}
+
+// ===== Volume Chart =====
+async function loadVolumeChart() {
+    try {
+        let res = await fetchWithAuth('/api/workout-stats/volume?period=' + currentPeriod);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderVolumeChart(data);
+    } catch(e) { console.error(e); }
+}
+
+function renderVolumeChart(data) {
+    const chart = $('stats-volume-chart');
+    const labels = $('stats-volume-labels');
+    if (!chart || !labels) return;
+    
+    if (!data || data.length === 0) {
+        chart.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Нет данных</div>';
+        labels.innerHTML = '';
+        return;
+    }
+    
+    const maxVol = Math.max(...data.map(d => d.volume), 1);
+    let chartHtml = '';
+    let labelsHtml = '';
+    
+    for (const d of data) {
+        const height = Math.max(4, (d.volume / maxVol) * 100);
+        const isEmpty = d.volume === 0;
+        chartHtml += `<div class="volume-bar ${isEmpty ? 'empty' : ''}" style="height:${height}%" title="${formatVolume(d.volume)}"></div>`;
+        labelsHtml += `<div class="volume-label">${d.label}</div>`;
+    }
+    
+    chart.innerHTML = chartHtml;
+    labels.innerHTML = labelsHtml;
+}
+
+// ===== Muscle Balance =====
+async function loadMuscleBalance() {
+    try {
+        let res = await fetchWithAuth('/api/workout-stats/muscle-balance?period=' + currentPeriod);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderMuscleBalance(data);
+    } catch(e) { console.error(e); }
+}
+
+function renderMuscleBalance(data) {
+    const container = $('muscle-balance-chart');
+    if (!container) return;
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Нет данных</div>';
+        return;
+    }
+    
+    const maxVol = Math.max(...data.map(d => d.volume), 1);
+    let html = '';
+    
+    for (const d of data) {
+        const pct = (d.volume / maxVol) * 100;
+        const color = MUSCLE_COLORS[d.muscle_group] || '#888';
+        html += `<div class="muscle-balance-bar">
+            <span class="muscle-balance-name">${d.muscle_group}</span>
+            <div class="muscle-balance-track">
+                <div class="muscle-balance-fill" style="width:${pct}%; background:${color};"></div>
+            </div>
+            <span class="muscle-balance-val">${formatVolume(d.volume)}</span>
+        </div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+// ===== Progress Chart =====
+async function loadProgress() {
+    try {
+        let res = await fetchWithAuth('/api/workout-stats/progress?period=' + currentPeriod);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderProgress(data);
+    } catch(e) { console.error(e); }
+}
+
+function renderProgress(data) {
+    const container = $('progress-chart');
+    if (!container) return;
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Недостаточно данных</div>';
+        return;
+    }
+    
+    let html = '<div class="space-y-3">';
+    const colors = ['#a855f7', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
+    
+    for (let i = 0; i < Math.min(3, data.length); i++) {
+        const ex = data[i];
+        const color = colors[i];
+        const firstWeight = ex.data[0]?.weight || 0;
+        const lastWeight = ex.data[ex.data.length - 1]?.weight || 0;
+        const diff = lastWeight - firstWeight;
+        const diffText = diff > 0 ? `+${diff}` : `${diff}`;
+        const diffColor = diff > 0 ? 'text-green-400' : diff < 0 ? 'text-red-400' : 'text-gray-400';
+        
+        // Mini sparkline
+        const maxW = Math.max(...ex.data.map(d => d.weight));
+        const minW = Math.min(...ex.data.map(d => d.weight));
+        const range = maxW - minW || 1;
+        const points = ex.data.map((d, idx) => {
+            const x = (idx / (ex.data.length - 1)) * 100;
+            const y = 100 - ((d.weight - minW) / range) * 80 - 10;
+            return `${x},${y}`;
+        }).join(' ');
+        
+        html += `<div class="rounded-lg p-3" style="background:rgba(255,255,255,0.03);">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-white">${ex.name}</span>
+                <span class="text-xs ${diffColor}">${firstWeight} → ${lastWeight} кг (${diffText})</span>
+            </div>
+            <svg viewBox="0 0 100 50" class="w-full h-8" preserveAspectRatio="none">
+                <polyline fill="none" stroke="${color}" stroke-width="2" points="${points}" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>`;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 function readinessColor(score) {
@@ -1427,70 +1640,8 @@ function formatVolume(v) {
 }
 
 function renderDashboard(s) {
-    $('stat-streak').textContent = s.streak_days || 0;
-    $('stat-week-count').textContent = s.this_week_workouts || 0;
-    $('stat-week-volume').textContent = formatVolume(s.this_week_volume);
-    $('stat-total').textContent = s.total_workouts || 0;
-    $('stat-total-sets').textContent = s.total_sets || 0;
+    $('stat-week-volume').textContent = formatVolume(s.this_week_volume || 0);
     $('stat-avg-duration').textContent = s.avg_duration_min != null ? Math.round(s.avg_duration_min) : '—';
-
-    const chart = $('stats-weekly-chart');
-    const labels = $('stats-weekly-labels');
-    chart.innerHTML = ''; labels.innerHTML = '';
-    const weeks = s.weekly_volume || [];
-    if (weeks.length === 0) {
-        $('stats-weekly-wrap').classList.add('hidden');
-    } else {
-        $('stats-weekly-wrap').classList.remove('hidden');
-        const max = Math.max(...weeks.map(w => w.volume), 1);
-        weeks.forEach(w => {
-            const h = Math.max(8, (w.volume / max) * 100);
-            const bar = document.createElement('div');
-            bar.className = 'weekly-bar';
-            bar.style.height = h + '%';
-            bar.title = `${w.week_start}: ${Math.round(w.volume)} кг`;
-            chart.appendChild(bar);
-            const lbl = document.createElement('div');
-            lbl.className = 'weekly-label';
-            const d = new Date(w.week_start);
-            lbl.textContent = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
-            labels.appendChild(lbl);
-        });
-    }
-
-    const mgWrap = $('stats-muscle-groups');
-    mgWrap.innerHTML = '';
-    const mgs = s.muscle_groups || [];
-    if (mgs.length === 0) {
-        $('stats-mg-wrap').classList.add('hidden');
-    } else {
-        $('stats-mg-wrap').classList.remove('hidden');
-        const max = Math.max(...mgs.map(m => m.total_volume), 1);
-        const chipsHtml = mgs.slice(0, 6).map(m => {
-            const color = MUSCLE_COLORS[m.muscle_group] || '#888';
-            return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style="background: ${color}20; border: 1px solid ${color}40; color: ${color};">
-                ${escapeHtml(m.muscle_group)} <span class="opacity-60">${formatVolume(m.total_volume)}</span>
-            </span>`;
-        }).join('');
-        mgWrap.innerHTML = `<div class="flex flex-wrap gap-2">${chipsHtml}</div>`;
-    }
-
-    const prWrap = $('stats-personal-records');
-    prWrap.innerHTML = '';
-    const prs = s.personal_records || [];
-    if (prs.length === 0) {
-        $('stats-pr-wrap').classList.add('hidden');
-    } else {
-        $('stats-pr-wrap').classList.remove('hidden');
-        const cardsHtml = prs.slice(0, 3).map(pr => `
-            <div class="rounded-xl p-3 text-center" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
-                <div class="text-xs text-gray-400 truncate mb-1">${escapeHtml(pr.exercise_name)}</div>
-                <div class="text-lg font-bold" style="color: #c084fc;">${pr.max_weight_kg || 0} кг</div>
-                <div class="text-xs text-gray-500">× ${pr.max_reps || 0}</div>
-            </div>
-        `).join('');
-        prWrap.innerHTML = `<div class="grid grid-cols-3 gap-2">${cardsHtml}</div>`;
-    }
 }
 
 // ===== Init =====

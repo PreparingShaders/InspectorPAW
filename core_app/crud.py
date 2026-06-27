@@ -788,3 +788,188 @@ def get_muscle_readiness(db: Session, user_id: int) -> List[schemas.MuscleReadin
     # Сортируем по readiness (самые загруженные первыми)
     result.sort(key=lambda x: x.readiness_score, reverse=True)
     return result
+
+
+def get_volume_stats(db: Session, user_id: int, period: str = "week"):
+    """Получить данные об объёме для графика по периоду."""
+    from datetime import timedelta
+    
+    today = date.today()
+    if period == "week":
+        days = 7
+        group_by = "day"
+    elif period == "month":
+        days = 30
+        group_by = "week"
+    else:  # 3month
+        days = 90
+        group_by = "week"
+    
+    start_date = today - timedelta(days=days)
+    
+    # Получаем все тренировки за период
+    workouts = (
+        db.query(models.WorkoutSession)
+        .filter(
+            models.WorkoutSession.user_id == user_id,
+            models.WorkoutSession.is_completed == True,
+            models.WorkoutSession.date >= start_date,
+        )
+        .all()
+    )
+    
+    # Группируем по дням/неделям
+    data = {}
+    for w in workouts:
+        if group_by == "day":
+            key = w.date.strftime("%d.%m")
+        else:
+            # Неделя от начала периода
+            week_num = (w.date - start_date).days // 7
+            key = f"Н{week_num + 1}"
+        
+        if key not in data:
+            data[key] = 0
+        
+        # Считаем объём
+        for ex in w.exercises:
+            for s in ex.sets:
+                if s.weight_kg and s.reps and not s.is_warmup:
+                    data[key] += float(s.weight_kg) * int(s.reps)
+    
+    # Формируем результат
+    result = []
+    if group_by == "day":
+        for i in range(days):
+            d = today - timedelta(days=days - 1 - i)
+            key = d.strftime("%d.%m")
+            result.append({"label": key, "volume": data.get(key, 0)})
+    else:
+        num_weeks = days // 7
+        for i in range(num_weeks):
+            key = f"Н{i + 1}"
+            result.append({"label": key, "volume": data.get(key, 0)})
+    
+    return result
+
+
+def get_muscle_balance(db: Session, user_id: int, period: str = "week"):
+    """Получить распределение объёма по мышечным группам."""
+    from datetime import timedelta
+    
+    today = date.today()
+    if period == "week":
+        days = 7
+    elif period == "month":
+        days = 30
+    else:  # 3month
+        days = 90
+    
+    start_date = today - timedelta(days=days)
+    
+    # Получаем все подходы за период
+    rows = (
+        db.query(
+            models.ExerciseLibrary.muscle_group,
+            models.WorkoutSet.weight_kg,
+            models.WorkoutSet.reps,
+            models.WorkoutSet.is_warmup,
+        )
+        .join(models.WorkoutExercise, models.WorkoutSet.exercise_entry_id == models.WorkoutExercise.id)
+        .join(models.WorkoutSession, models.WorkoutExercise.session_id == models.WorkoutSession.id)
+        .join(models.ExerciseLibrary, models.WorkoutExercise.exercise_id == models.ExerciseLibrary.id)
+        .filter(
+            models.WorkoutSession.user_id == user_id,
+            models.WorkoutSession.is_completed == True,
+            models.WorkoutSession.date >= start_date,
+        )
+        .all()
+    )
+    
+    # Группируем по мышечным группам
+    mg_data = {}
+    for r in rows:
+        if r.is_warmup:
+            continue
+        mg = r.muscle_group or 'Другие'
+        if mg not in mg_data:
+            mg_data[mg] = 0
+        if r.weight_kg and r.reps:
+            mg_data[mg] += float(r.weight_kg) * int(r.reps)
+    
+    # Формируем результат
+    result = []
+    for mg, volume in mg_data.items():
+        result.append({"muscle_group": mg, "volume": round(volume, 1)})
+    
+    # Сортируем по объёму
+    result.sort(key=lambda x: x["volume"], reverse=True)
+    return result
+
+
+def get_progress(db: Session, user_id: int, period: str = "month"):
+    """Получить прогрессию по упражнениям (макс. вес по неделям)."""
+    from datetime import timedelta
+    
+    today = date.today()
+    if period == "week":
+        days = 7
+    elif period == "month":
+        days = 30
+    else:  # 3month
+        days = 90
+    
+    start_date = today - timedelta(days=days)
+    
+    # Получаем все подходы за период
+    rows = (
+        db.query(
+            models.ExerciseLibrary.name,
+            models.ExerciseLibrary.id,
+            models.WorkoutSet.weight_kg,
+            models.WorkoutSet.reps,
+            models.WorkoutSession.date,
+        )
+        .join(models.WorkoutExercise, models.WorkoutSet.exercise_entry_id == models.WorkoutExercise.id)
+        .join(models.WorkoutSession, models.WorkoutExercise.session_id == models.WorkoutSession.id)
+        .join(models.ExerciseLibrary, models.WorkoutExercise.exercise_id == models.ExerciseLibrary.id)
+        .filter(
+            models.WorkoutSession.user_id == user_id,
+            models.WorkoutSession.is_completed == True,
+            models.WorkoutSession.date >= start_date,
+            models.WorkoutSet.weight_kg != None,
+            models.WorkoutSet.is_warmup == False,
+        )
+        .all()
+    )
+    
+    # Группируем по упражнениям и неделям
+    ex_data = {}
+    for r in rows:
+        ex_id = r.id
+        ex_name = r.name
+        week = (r.date - start_date).days // 7
+        
+        if ex_id not in ex_data:
+            ex_data[ex_id] = {"name": ex_name, "weeks": {}}
+        
+        if week not in ex_data[ex_id]["weeks"]:
+            ex_data[ex_id]["weeks"][week] = 0
+        
+        # Максимальный вес в эту неделю
+        ex_data[ex_id]["weeks"][week] = max(ex_data[ex_id]["weeks"][week], float(r.weight_kg))
+    
+    # Формируем результат для топ-5 упражнений
+    result = []
+    for ex_id, data in ex_data.items():
+        weeks = sorted(data["weeks"].items())
+        if len(weeks) >= 2:  # Только если есть минимум 2 точки
+            result.append({
+                "exercise_id": ex_id,
+                "name": data["name"],
+                "data": [{"week": w, "weight": v} for w, v in weeks],
+            })
+    
+    # Сортируем по количеству точек данных и берём топ-5
+    result.sort(key=lambda x: len(x["data"]), reverse=True)
+    return result[:5]

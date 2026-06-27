@@ -1548,6 +1548,33 @@ def read_muscle_readiness(
     return crud.get_muscle_readiness(db, user_id=current_user.id)
 
 
+@app.get("/api/workout-stats/volume")
+def read_volume_stats(
+    period: str = "week",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.get_volume_stats(db, user_id=current_user.id, period=period)
+
+
+@app.get("/api/workout-stats/muscle-balance")
+def read_muscle_balance(
+    period: str = "week",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.get_muscle_balance(db, user_id=current_user.id, period=period)
+
+
+@app.get("/api/workout-stats/progress")
+def read_progress(
+    period: str = "month",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.get_progress(db, user_id=current_user.id, period=period)
+
+
 # --- Password Reset Endpoints ---
 @app.post("/forgot-password", status_code=status.HTTP_303_SEE_OTHER)
 async def forgot_password(request: Request, email: EmailStr = Form(...), db: Session = Depends(get_db)):
