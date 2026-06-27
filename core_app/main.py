@@ -1427,6 +1427,23 @@ def read_workout(
     return workout
 
 
+@app.patch("/api/workouts/{workout_id}", response_model=schemas.WorkoutSession)
+def update_workout(
+    workout_id: int,
+    data: schemas.WorkoutSessionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    workout = crud.get_workout(db, workout_id)
+    if not workout:
+        raise HTTPException(status_code=404, detail="Workout not found")
+    if workout.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this workout")
+    if not workout.is_template:
+        raise HTTPException(status_code=400, detail="Can only update templates")
+    return crud.update_workout_template(db, workout_id, data)
+
+
 @app.delete("/api/workouts/{workout_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_workout(
     workout_id: int,

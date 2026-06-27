@@ -102,10 +102,17 @@
         .search-input:focus { border-color: rgba(192,132,252,0.5); }
         .search-input::placeholder { color: rgba(255,255,255,0.3); }
         .template-card {
-            background: rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 0.75rem; padding: 0.75rem;
             transition: all 0.3s ease;
+        }
+        .template-card-active {
+            background: rgba(34,197,94,0.08);
+            border: 1px solid rgba(34,197,94,0.5);
+            border-radius: 0.75rem; padding: 0.75rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 12px rgba(34,197,94,0.2);
         }
         .history-card {
             background: rgba(255,255,255,0.06);
@@ -130,14 +137,19 @@
         @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         .slide-down { animation: slideDown 0.2s ease-out; }
 
-        .feeling-btn {
-            width: 2.5rem; height: 2.5rem; border-radius: 50%;
-            border: 2px solid transparent; font-size: 1.3rem;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.2s;
+        .rpe-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        .feeling-btn.selected { border-color: #c084fc; background: rgba(192,132,252,0.2); transform: scale(1.15); }
-        .feeling-btn:active { transform: scale(0.9); }
+        .rpe-btn:hover { background: rgba(255,255,255,0.1); }
+        .rpe-btn.selected {
+            background: rgba(168,85,247,0.2);
+            border-color: #a855f7;
+            color: #fff;
+        }
 
         .warmup-toggle {
             width: 1.6rem; height: 1.6rem; border-radius: 50%;
@@ -361,26 +373,42 @@
             <div id="detail-content" class="w-full space-y-3"></div>
         </div>
 
+        <!-- ===== VIEW: Template preview ===== -->
+        <div id="view-template" class="view w-full flex-col items-center mt-1 gap-3">
+            <div class="w-full flex items-center justify-between">
+                <button id="template-back" class="text-gray-400 text-sm">&larr; Назад</button>
+                <div class="flex gap-2">
+                    <button id="template-edit" class="text-sm" style="color: #a855f7;">Редактировать</button>
+                    <button id="template-delete" class="text-gray-500 text-xs">Удалить</button>
+                </div>
+            </div>
+            <div id="template-content" class="w-full space-y-3"></div>
+        </div>
+
         <!-- ===== MODAL: Finish workout ===== -->
         <div id="finish-overlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden" style="padding:1rem;">
             <div class="glassmorphism rounded-2xl p-5 border border-white/10 w-full max-w-xs space-y-4">
                 <h3 class="text-lg font-bold text-center text-white">Завершить тренировку</h3>
                 <div>
-                    <label class="text-xs text-gray-500 block mb-1">Длительность (мин)</label>
-                    <input type="number" id="finish-duration" class="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white text-sm text-center" placeholder="45" min="1">
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1 text-center">Самочувствие</label>
-                    <div class="flex justify-center gap-2" id="finish-feelings">
-                        <div class="feeling-btn" data-v="1">😴</div>
-                        <div class="feeling-btn" data-v="2">😕</div>
-                        <div class="feeling-btn" data-v="3">😐</div>
-                        <div class="feeling-btn" data-v="4">🙂</div>
-                        <div class="feeling-btn" data-v="5">😊</div>
-                        <div class="feeling-btn" data-v="6">🔥</div>
+                    <label class="text-xs text-gray-500 block mb-2 text-center">Насколько была сложной тренировка?</label>
+                    <div class="flex justify-between gap-1" id="finish-rpe">
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="1">1</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="2">2</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="3">3</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="4">4</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="5">5</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="6">6</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="7">7</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="8">8</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="9">9</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="10">10</button>
+                    </div>
+                    <div class="flex justify-between text-[0.6rem] text-gray-500 mt-1 px-1">
+                        <span>Легко</span>
+                        <span>Сложно</span>
                     </div>
                 </div>
-                <textarea id="finish-notes" class="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white text-sm placeholder-gray-600 resize-none h-16" placeholder="Заметки..."></textarea>
+                <textarea id="finish-notes" class="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white text-sm placeholder-gray-600 resize-none h-16" placeholder="Заметки (необязательно)..."></textarea>
                 <div class="flex gap-2">
                     <button id="finish-cancel" class="flex-1 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all glassmorphism">Отмена</button>
                     <button id="finish-confirm" class="flex-1 rounded-full py-2 text-sm font-bold text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#22c55e,#16a34a);">Готово</button>
@@ -410,15 +438,16 @@ const FEELING_EMOJI = ['','😴','😕','😐','🙂','😊','🔥'];
 
 let exerciseLibrary = [], templateList = [], workoutsHistory = [];
 let selectedMG = null, selectedExercises = new Set(), exercisesWithSets = [];
-let activeSession = null, timerInterval = null, seconds = 0;
-let selectedFeeling = null, weightStep = 2.5;
+let activeSession = null, timerInterval = null;
+let selectedRpe = null, weightStep = 2.5;
 let currentDetailId = null;
+let currentTemplateId = null;
 
 const $ = id => document.getElementById(id);
 const skel = $('workout-skeleton');
 const tabActive = $('tab-active'), tabTempl = $('tab-templates'), tabHist = $('tab-history');
 const vActive = $('view-active'), vStats = $('view-stats'), vTemplates = $('view-templates'), vBuilder = $('view-builder'),
-      vHistory = $('view-history'), vDetail = $('view-detail');
+      vHistory = $('view-history'), vDetail = $('view-detail'), vTemplate = $('view-template');
 const errMsg = $('error-message');
 
 function setActiveTab(name) {
@@ -434,12 +463,15 @@ function setActiveTab(name) {
 }
 
 function switchView(name) {
-    [vActive, vStats, vTemplates, vBuilder, vHistory, vDetail].forEach(v => v.classList.remove('active'));
+    [vActive, vStats, vTemplates, vBuilder, vHistory, vDetail, vTemplate].forEach(v => v.classList.remove('active'));
     [tabActive, tabTempl, tabHist].forEach(t => t.classList.remove('active'));
     if (name === 'builder') vBuilder.classList.add('active');
     else if (name === 'detail') {
         vDetail.classList.add('active');
         tabHist.classList.add('active');
+    } else if (name === 'template') {
+        vTemplate.classList.add('active');
+        tabTempl.classList.add('active');
     } else if (name === 'active') {
         vActive.classList.add('active');
         loadActiveView();
@@ -476,7 +508,12 @@ function renderTemplates() {
     for (const t of templateList) {
         const exCount = t.exercises ? t.exercises.length : 0;
         const totalSets = t.exercises ? t.exercises.reduce((s,e)=>s + (e.sets?e.sets.length:0), 0) : 0;
-        html += `<div class="template-card">
+        const isActive = activeSession && activeSession.template_id === t.id;
+        const cardClass = isActive ? 'template-card-active' : 'template-card';
+        const btnText = isActive ? '▶ Продолжить' : '▶ Запустить';
+        const btnAction = isActive ? `continueWorkout()` : `startFromTemplate(${t.id})`;
+        const btnStyle = isActive ? 'color: #22c55e; border: 1px solid #22c55e;' : 'color: #fff; background: linear-gradient(135deg, #16a34a, #15803d); border: none;';
+        html += `<div class="${cardClass}">
             <div class="flex items-start justify-between mb-2">
                 <div class="flex-1">
                     <div class="text-base font-bold text-white">${escapeHtml(t.name || 'Без названия')}</div>
@@ -484,8 +521,9 @@ function renderTemplates() {
                 </div>
             </div>
             <div class="flex gap-2 mt-2">
-                <button onclick="startFromTemplate(${t.id})" class="flex-1 rounded-full py-2 text-sm font-bold text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#22c55e,#16a34a);">▶ Запустить</button>
-                <button onclick="deleteTemplate(${t.id})" class="rounded-full py-2 px-4 text-sm font-semibold text-red-400 transition-all active:scale-95 glassmorphism">✕</button>
+                <button onclick="${btnAction}" class="flex-1 rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="${btnStyle}">${btnText}</button>
+                <button onclick="viewTemplate(${t.id})" class="rounded-full py-2 px-3 text-sm font-semibold text-gray-400 transition-all active:scale-95" style="border: 1px solid rgba(255,255,255,0.1);">Редактировать</button>
+                <button onclick="deleteTemplate(${t.id})" class="rounded-full py-2 px-3 text-sm font-semibold text-gray-500 transition-all active:scale-95" style="border: 1px solid rgba(255,255,255,0.1);">✕</button>
             </div>
         </div>`;
     }
@@ -498,6 +536,79 @@ async function deleteTemplate(id) {
         await fetchWithAuth(`/api/workouts/${id}`, { method: 'DELETE' });
         loadTemplates();
     } catch(e) { showError('Ошибка'); }
+}
+
+// ===== Template Preview =====
+async function viewTemplate(id) {
+    currentTemplateId = id;
+    switchView('template');
+    $('template-content').innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full slow-spin mx-auto"></div></div>';
+    try {
+        let res = await fetchWithAuth(`/api/workouts/${id}`);
+        if (!res.ok) throw new Error();
+        const t = await res.json();
+        renderTemplatePreview(t);
+    } catch(e) { $('template-content').innerHTML = '<div class="empty-state">Ошибка</div>'; }
+}
+
+function renderTemplatePreview(t) {
+    console.log('Template data:', t);
+    let exHtml = '';
+    if (!t.exercises || t.exercises.length === 0) {
+        exHtml = '<div class="text-gray-500 text-sm">Нет упражнений</div>';
+    } else {
+        for (const ex of t.exercises) {
+            let setsHtml = '';
+            for (const s of ex.sets || []) {
+                setsHtml += `<div class="flex items-center gap-3 py-1 text-sm">
+                    <span class="w-6 text-center text-gray-500">${s.is_warmup ? '🔥' : s.set_number}</span>
+                    <span class="flex-1 text-white">${s.weight_kg != null ? s.weight_kg + ' кг' : '—'}</span>
+                    <span class="w-16 text-center text-white">${s.reps != null ? s.reps + ' раз' : '—'}</span>
+                </div>`;
+            }
+            exHtml += `<div class="pb-3 ${exHtml ? 'border-t border-white/5 pt-3' : ''}">
+                <div class="text-sm font-medium text-white mb-2">${escapeHtml(ex.exercise?.name || '')}</div>
+                ${setsHtml}
+            </div>`;
+        }
+    }
+    $('template-content').innerHTML = `
+        <div class="text-lg font-bold text-white">${escapeHtml(t.name || 'Без названия')}</div>
+        <div class="text-xs text-gray-500 mb-3">${(t.exercises||[]).length} упражнений</div>
+        ${exHtml}
+    `;
+}
+
+$('template-back').onclick = () => switchView('templates');
+$('template-edit').onclick = () => { if (currentTemplateId) editTemplate(currentTemplateId); };
+$('template-delete').onclick = async () => {
+    if (!currentTemplateId) return;
+    if (!confirm('Удалить тренировку?')) return;
+    try { await fetchWithAuth(`/api/workouts/${currentTemplateId}`, { method: 'DELETE' }); } catch(e) {}
+    switchView('templates'); loadTemplates();
+};
+
+async function editTemplate(id) {
+    try {
+        let res = await fetchWithAuth(`/api/workouts/${id}`);
+        if (!res.ok) throw new Error();
+        const t = await res.json();
+        currentTemplateId = id;
+        switchView('builder');
+        $('workout-name').value = t.name || '';
+        selectedExercises = new Set();
+        exercisesWithSets = [];
+        for (const ex of t.exercises || []) {
+            if (ex.exercise_id) selectedExercises.add(ex.exercise_id);
+            exercisesWithSets.push({
+                exercise: { id: ex.exercise_id, name: ex.exercise?.name || '' },
+                sets: (ex.sets || []).map(s => ({ set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps, is_warmup: s.is_warmup }))
+            });
+        }
+        showBStep(1);
+        await loadExerciseLibrary();
+        renderExercises('');
+    } catch(e) { showError('Ошибка загрузки'); }
 }
 
 // ===== Builder =====
@@ -692,10 +803,20 @@ async function saveTemplate() {
                 sets: e.sets.map(s => ({ set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps, is_warmup: s.is_warmup }))
             }))
         };
-        let res = await fetchWithAuth('/api/workout-templates', {
-            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
-        });
+        let res;
+        if (currentTemplateId) {
+            // Update existing template
+            res = await fetchWithAuth(`/api/workouts/${currentTemplateId}`, {
+                method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+        } else {
+            // Create new template
+            res = await fetchWithAuth('/api/workout-templates', {
+                method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+        }
         if (!res.ok) { let e = await res.json().catch(()=>({})); throw new Error(e.detail||'Ошибка'); }
+        currentTemplateId = null;
         showBStep(3);
         loadTemplates();
     } catch(e) { showError(e.message); }
@@ -707,14 +828,21 @@ $('b3-list').onclick = () => switchView('templates');
 
 // ===== Start workout from template =====
 async function startFromTemplate(tid) {
+    if (activeSession) { showError('У вас уже есть активная тренировка'); return; }
     try {
         let res = await fetchWithAuth(`/api/workouts/from-template/${tid}`, { method: 'POST' });
         if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail||'Ошибка');
         let s = await res.json();
         activeSession = s;
+        renderTemplates();
         switchView('active');
         loadActiveView();
     } catch(e) { showError(e.message); }
+}
+
+function continueWorkout() {
+    switchView('active');
+    loadActiveView();
 }
 
 // ===== Active workout =====
@@ -924,41 +1052,70 @@ async function updateSet(sid, field) {
 $('finish-workout-btn').onclick = () => {
     if (!activeSession) return;
     $('finish-overlay').classList.remove('hidden');
-    $('finish-duration').value = Math.round(seconds/60) || '';
-    selectedFeeling = null;
-    document.querySelectorAll('.feeling-btn').forEach(b => b.classList.remove('selected'));
+    selectedRpe = null;
+    document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
 };
 $('finish-cancel').onclick = () => $('finish-overlay').classList.add('hidden');
-document.querySelectorAll('.feeling-btn').forEach(b => {
+document.querySelectorAll('.rpe-btn').forEach(b => {
     b.onclick = () => {
-        document.querySelectorAll('.feeling-btn').forEach(x => x.classList.remove('selected'));
-        b.classList.add('selected'); selectedFeeling = parseInt(b.dataset.v);
+        document.querySelectorAll('.rpe-btn').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected'); selectedRpe = parseInt(b.dataset.v);
     };
 });
 
 // ===== Timer =====
+function getTimerKey() {
+    return activeSession ? `workout_timer_${activeSession.id}` : null;
+}
+
 function startTimer() {
     stopTimer();
-    seconds = 0;
-    timerInterval = setInterval(() => {
-        seconds++;
-        const m = Math.floor(seconds/60), s = seconds%60;
+    const key = getTimerKey();
+    if (!key) return;
+    // Save start time if not exists
+    if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, Date.now().toString());
+    }
+    const startTime = parseInt(localStorage.getItem(key), 10);
+    const updateTimer = () => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const m = Math.floor(elapsed / 60);
+        const s = elapsed % 60;
         const el = $('active-timer');
         if (el) el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    }, 1000);
+    };
+    updateTimer();
+    timerInterval = setInterval(updateTimer, 1000);
 }
-function stopTimer() { if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
+
+function stopTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+}
+
+function clearTimer() {
+    const key = getTimerKey();
+    if (key) localStorage.removeItem(key);
+}
 $('finish-confirm').onclick = async () => {
     if (!activeSession) return;
-    const dur = parseInt($('finish-duration').value) || null;
     const notes = $('finish-notes').value?.trim() || null;
+    // Calculate duration from timer
+    let durationMin = null;
+    const timerKey = `workout_timer_${activeSession.id}`;
+    if (localStorage.getItem(timerKey)) {
+        const startTime = parseInt(localStorage.getItem(timerKey), 10);
+        durationMin = Math.floor((Date.now() - startTime) / 60000);
+    }
     try {
         let res = await fetchWithAuth(`/api/workouts/${activeSession.id}/complete`, {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ duration_min: dur, feeling: selectedFeeling, notes })
+            body: JSON.stringify({ duration_min: durationMin, feeling: selectedRpe, notes })
         });
         if (!res.ok) throw new Error('Ошибка');
         activeSession = null;
+        clearTimer();
+        stopTimer();
         $('finish-overlay').classList.add('hidden');
         switchView('history');
         loadHistory();
@@ -989,7 +1146,7 @@ function renderHistory() {
             <div class="flex items-start justify-between">
                 <div class="flex-1">
                     <div class="text-base font-bold text-white">${escapeHtml(w.name || 'Тренировка')}</div>
-                    <div class="text-xs text-gray-500 mt-0.5">${formatDate(w.date)}${w.duration_min?` · ${w.duration_min} мин`:''}${w.feeling?` · ${FEELING_EMOJI[w.feeling]||''}`:''}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">${formatDate(w.date)}${w.duration_min?` · ${w.duration_min} мин`:''}${w.feeling?` · RPE ${w.feeling}`:''}</div>
                 </div>
                 <div class="text-right">${status}</div>
             </div>
@@ -1033,7 +1190,7 @@ function renderDetail(w) {
             ${setsHtml}
         </div>`);
     }
-    const feeling = w.feeling ? FEELING_EMOJI[w.feeling] : '';
+    const rpe = w.feeling ? w.feeling : null;
     const status = w.is_completed ? '✅ Завершена' : '⏳ В процессе';
     $('detail-content').innerHTML = `
         <div class="glassmorphism rounded-2xl p-4 border border-white/10">
@@ -1041,7 +1198,7 @@ function renderDetail(w) {
             <p class="text-sm text-gray-500">${formatDate(w.date)} · ${status}</p>
             ${w.duration_min || w.feeling || w.notes ? `<div class="flex flex-wrap gap-2 mt-3 text-xs">
                 ${w.duration_min?`<span class="px-2 py-1 rounded-full bg-white/5 border border-white/10">⏱ ${w.duration_min} мин</span>`:''}
-                ${feeling?`<span class="px-2 py-1 rounded-full bg-white/5 border border-white/10">${feeling}</span>`:''}
+                ${rpe?`<span class="px-2 py-1 rounded-full bg-white/5 border border-white/10">RPE ${rpe}</span>`:''}
             </div>` : ''}
             ${w.notes?`<p class="text-sm text-gray-400 mt-3 italic">"${escapeHtml(w.notes)}"</p>`:''}
         </div>
@@ -1242,10 +1399,31 @@ function renderDashboard(s) {
     skel.classList.remove('hidden');
     await loadExerciseLibrary();
     skel.classList.add('hidden');
-    switchView('templates');
     loadTemplates();
     loadDashboard();
+    // Check for active workout on page load
+    const hasActive = await checkActiveWorkout();
+    if (hasActive) {
+        switchView('active');
+    } else {
+        switchView('templates');
+    }
 })();
+
+async function checkActiveWorkout() {
+    try {
+        let res = await fetchWithAuth('/api/workouts');
+        if (!res.ok) return false;
+        const list = await res.json();
+        const ongoing = list.find(w => !w.is_completed);
+        if (!ongoing) return false;
+        let detailRes = await fetchWithAuth(`/api/workouts/${ongoing.id}`);
+        if (!detailRes.ok) return false;
+        activeSession = await detailRes.json();
+        renderActive();
+        return true;
+    } catch(e) { return false; }
+}
 </script>
 </body>
 </html>

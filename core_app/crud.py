@@ -448,6 +448,40 @@ def delete_workout(db: Session, workout_id: int) -> Optional[models.WorkoutSessi
     return db_session
 
 
+def update_workout_template(db: Session, workout_id: int, data: schemas.WorkoutSessionCreate) -> Optional[models.WorkoutSession]:
+    db_session = db.query(models.WorkoutSession).filter(models.WorkoutSession.id == workout_id).first()
+    if not db_session:
+        return None
+    db_session.name = data.name
+    db_session.notes = data.notes
+    # Delete old exercises and sets
+    old_exercises = db.query(models.WorkoutExercise).filter(models.WorkoutExercise.session_id == workout_id).all()
+    for ex in old_exercises:
+        db.query(models.WorkoutSet).filter(models.WorkoutSet.exercise_entry_id == ex.id).delete()
+        db.delete(ex)
+    # Create new exercises and sets
+    for idx, ex_data in enumerate(data.exercises):
+        db_exercise = models.WorkoutExercise(
+            session_id=workout_id,
+            exercise_id=ex_data.exercise_id,
+            sort_order=idx,
+        )
+        db.add(db_exercise)
+        db.flush()
+        for s_data in ex_data.sets:
+            db_set = models.WorkoutSet(
+                exercise_entry_id=db_exercise.id,
+                set_number=s_data.set_number,
+                weight_kg=s_data.weight_kg,
+                reps=s_data.reps,
+                is_warmup=s_data.is_warmup,
+            )
+            db.add(db_set)
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
+
 def update_workout_set(db: Session, set_id: int, data: schemas.WorkoutSetUpdate) -> Optional[models.WorkoutSet]:
     db_set = db.query(models.WorkoutSet).filter(models.WorkoutSet.id == set_id).first()
     if not db_set:
