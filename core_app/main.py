@@ -1505,6 +1505,14 @@ def read_workout_stats(
     return crud.get_workout_stats(db, user_id=current_user.id)
 
 
+@app.get("/api/muscle-readiness", response_model=List[schemas.MuscleReadiness])
+def read_muscle_readiness(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    return crud.get_muscle_readiness(db, user_id=current_user.id)
+
+
 # --- Password Reset Endpoints ---
 @app.post("/forgot-password", status_code=status.HTTP_303_SEE_OTHER)
 async def forgot_password(request: Request, email: EmailStr = Form(...), db: Session = Depends(get_db)):

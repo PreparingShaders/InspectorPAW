@@ -477,6 +477,15 @@ class WeeklyVolumePoint(BaseModel):
     volume: float
 
 
+class MuscleReadiness(BaseModel):
+    muscle_group: str
+    avg_rpe: float = 0.0
+    last_trained_days_ago: Optional[int] = None
+    total_volume_7d: float = 0.0
+    total_sets_7d: int = 0
+    readiness_score: float = 0.0  # 0 = восстановлена, 1 = макс. нагрузка
+
+
 class WorkoutStatsSummary(BaseModel):
     total_workouts: int = 0
     completed_workouts: int = 0

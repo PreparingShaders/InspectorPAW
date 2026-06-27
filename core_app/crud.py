@@ -664,3 +664,93 @@ def get_workout_stats(db: Session, user_id: int) -> schemas.WorkoutStatsSummary:
         muscle_groups=muscle_groups,
         weekly_volume=weekly_volume,
     )
+
+
+def get_muscle_readiness(db: Session, user_id: int) -> List[schemas.MuscleReadiness]:
+    """Анализ загруженности и восстановления мышечных групп."""
+    from datetime import timedelta
+    from sqlalchemy import func
+
+    today = date.today()
+    seven_days_ago = today - timedelta(days=7)
+
+    # Получаем все подходы за последние 7 дней с данными об упражнениях
+    rows = (
+        db.query(
+            models.WorkoutSet.rpe,
+            models.WorkoutSet.weight_kg,
+            models.WorkoutSet.reps,
+            models.WorkoutSet.is_warmup,
+            models.WorkoutSession.date,
+            models.ExerciseLibrary.muscle_group,
+        )
+        .join(models.WorkoutExercise, models.WorkoutSet.exercise_entry_id == models.WorkoutExercise.id)
+        .join(models.WorkoutSession, models.WorkoutExercise.session_id == models.WorkoutSession.id)
+        .join(models.ExerciseLibrary, models.WorkoutExercise.exercise_id == models.ExerciseLibrary.id)
+        .filter(
+            models.WorkoutSession.user_id == user_id,
+            models.WorkoutSession.is_completed == True,
+            models.WorkoutSession.date >= seven_days_ago,
+        )
+        .all()
+    )
+
+    # Группируем по мышечным группам
+    mg_data: dict = {}
+    for r in rows:
+        if r.is_warmup:
+            continue
+        mg = r.muscle_group or 'Другие'
+        if mg not in mg_data:
+            mg_data[mg] = {
+                'rpe_sum': 0.0,
+                'rpe_count': 0,
+                'volume': 0.0,
+                'sets': 0,
+                'last_date': None,
+            }
+        d = mg_data[mg]
+        if r.rpe is not None:
+            d['rpe_sum'] += r.rpe
+            d['rpe_count'] += 1
+        if r.weight_kg and r.reps:
+            d['volume'] += float(r.weight_kg) * int(r.reps)
+        d['sets'] += 1
+        if d['last_date'] is None or r.date > d['last_date']:
+            d['last_date'] = r.date
+
+    # Вычисляем readiness_score для каждой группы
+    result = []
+    for mg, d in mg_data.items():
+        avg_rpe = d['rpe_sum'] / d['rpe_count'] if d['rpe_count'] > 0 else 6.0
+        days_ago = (today - d['last_date']).days if d['last_date'] else None
+
+        # readiness_score: комбинация RPE, объёма и времени
+        # Нормализуем RPE (1-10) -> 0-1
+        rpe_factor = (avg_rpe - 1) / 9.0
+
+        # Объём: нормализуем относительно типичного макс (~5000 кг за неделю на группу)
+        volume_factor = min(d['volume'] / 5000.0, 1.0)
+
+        # Восстановление: чем дольше не тренировали, тем ниже score
+        # 0 дней = 1.0 (только что тренировали), 7+ дней = 0.0
+        if days_ago is None:
+            recovery_factor = 0.0
+        else:
+            recovery_factor = max(0.0, 1.0 - (days_ago / 7.0))
+
+        # Итоговый score: взвешенная комбинация
+        readiness = (rpe_factor * 0.4 + volume_factor * 0.3 + recovery_factor * 0.3)
+
+        result.append(schemas.MuscleReadiness(
+            muscle_group=mg,
+            avg_rpe=round(avg_rpe, 1),
+            last_trained_days_ago=days_ago,
+            total_volume_7d=round(d['volume'], 1),
+            total_sets_7d=d['sets'],
+            readiness_score=round(min(max(readiness, 0.0), 1.0), 2),
+        ))
+
+    # Сортируем по readiness (самые загруженные первыми)
+    result.sort(key=lambda x: x.readiness_score, reverse=True)
+    return result

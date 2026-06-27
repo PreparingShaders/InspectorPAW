@@ -19,24 +19,18 @@
         .step { display: none; }
         .step.active { display: block; }
         .mg-tile {
-            background: rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 0.75rem;
-            padding: 0.6rem 0.5rem;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
             cursor: pointer;
             transition: all 0.2s ease;
             text-align: center;
             min-width: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.2rem;
         }
-        .mg-tile:active { transform: scale(0.95); background: rgba(255,255,255,0.1); }
-        .mg-tile.selected { border-color: #c084fc; background: rgba(192,132,252,0.15); }
-        .mg-tile .icon { font-size: 1.5rem; line-height: 1; }
-        .mg-tile .name { font-size: 0.65rem; font-weight: 600; color: rgba(255,255,255,0.8); line-height: 1.1; }
-        .mg-tile .count { font-size: 0.55rem; color: rgba(255,255,255,0.35); }
+        .mg-tile:active { transform: scale(0.95); }
+        .mg-tile .name { font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.9); line-height: 1.2; }
+        .mg-tile .count { font-size: 0.6rem; color: rgba(255,255,255,0.4); margin-top: 0.1rem; }
         .exercise-card {
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.1);
@@ -47,10 +41,10 @@
         .exercise-card.completed { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); }
         .set-row {
             display: grid;
-            grid-template-columns: 1.8rem 1.6rem 1fr 1fr 1.6rem;
+            grid-template-columns: 2rem 2rem 1fr 1fr 1fr 2rem;
             align-items: center;
-            gap: 0.4rem;
-            padding: 0.4rem 0;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .set-row:last-child { border-bottom: none; }
@@ -81,12 +75,12 @@
         .spin-btn:active { transform: scale(0.85); background: rgba(255,255,255,0.15); }
         .set-value {
             font-size: 1rem; font-weight: 700; text-align: center;
-            min-width: 2.2rem; color: white; cursor: pointer;
-            background: transparent; border: none; outline: none;
+            width: 100%; min-height: 2.2rem; color: white; cursor: pointer;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.4rem; outline: none;
             -moz-appearance: textfield;
         }
         .set-value::-webkit-inner-spin-button, .set-value::-webkit-outer-spin-button { -webkit-appearance: none; }
-        .set-value:focus { border-bottom: 1px solid #c084fc; }
+        .set-value:focus { border-color: #c084fc; background: rgba(255,255,255,0.08); }
         .set-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.35); text-align: center; }
         .add-set-btn {
             width: 100%; padding: 0.35rem; border-radius: 0.5rem;
@@ -195,6 +189,9 @@
         .weekly-bar.empty { background: rgba(255,255,255,0.08); }
         .weekly-labels { display: flex; gap: 0.25rem; margin-top: 0.25rem; }
         .weekly-label { flex: 1; text-align: center; font-size: 0.55rem; color: rgba(255,255,255,0.4); }
+        #athlete-svg [data-mg] { cursor: pointer; transition: all 0.3s ease; }
+        #athlete-svg [data-mg]:hover { filter: brightness(1.3); }
+        .mg-active { filter: brightness(1.4) drop-shadow(0 0 8px currentColor); }
     </style>
 </head>
 <body class="h-dvh flex flex-col">
@@ -209,8 +206,8 @@
         <!-- Tab nav -->
         <div class="w-full flex justify-center mt-1.5" style="transform:scale(0.85); transform-origin:top center;">
             <div class="relative flex w-full max-w-sm p-1 rounded-full glassmorphism">
-                <button id="tab-active" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold transition-all text-gray-400">Активная</button>
-                <button id="tab-templates" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold text-gray-400 transition-all">Главная</button>
+                <button id="tab-active" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold transition-all text-gray-400">Статистика</button>
+                <button id="tab-templates" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold text-gray-400 transition-all">Тренировки</button>
                 <button id="tab-history" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold text-gray-400 transition-all">История</button>
             </div>
         </div>
@@ -221,55 +218,60 @@
             <div class="w-full h-24 rounded-xl" style="background:rgba(255,255,255,0.04);"></div>
         </div>
 
-        <!-- ===== Dashboard: training stats ===== -->
-        <div id="stats-dashboard" class="w-full mt-3 space-y-3 hidden">
-            <div class="grid grid-cols-3 gap-2">
-                <div class="stats-card accent">
-                    <div class="v" id="stat-streak">0</div>
-                    <div class="l">дней подряд</div>
+        <!-- ===== VIEW: Statistics (Dashboard) ===== -->
+        <div id="view-stats" class="view w-full flex-col items-center mt-2 gap-4">
+
+            <!-- Muscle groups grid -->
+            <div class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 text-center">Состояние мышц</div>
+                <div id="muscle-grid" class="grid grid-cols-3 gap-2">
+                    <!-- Filled by JS -->
                 </div>
-                <div class="stats-card">
-                    <div class="v" id="stat-week-count">0</div>
-                    <div class="l">на этой неделе</div>
-                </div>
-                <div class="stats-card green">
-                    <div class="v" id="stat-week-volume">0</div>
-                    <div class="l">объём, кг</div>
-                </div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-                <div class="stats-card">
-                    <div class="v" id="stat-total">0</div>
-                    <div class="l">всего тренировок</div>
-                </div>
-                <div class="stats-card">
-                    <div class="v" id="stat-total-sets">0</div>
-                    <div class="l">подходов</div>
-                </div>
-                <div class="stats-card">
-                    <div class="v" id="stat-avg-duration">—</div>
-                    <div class="l">среднее, мин</div>
+                <!-- Legend -->
+                <div class="flex justify-center gap-4 mt-3 text-[0.6rem] text-gray-500">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>Восстановлена</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span>Средне</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>Устала</span>
                 </div>
             </div>
 
-            <div id="stats-weekly-wrap">
-                <div class="stats-section-title">Объём по неделям</div>
-                <div class="rounded-2xl p-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
-                    <div class="weekly-chart" id="stats-weekly-chart"></div>
-                    <div class="weekly-labels" id="stats-weekly-labels"></div>
+            <!-- Muscle detail panel (shown on click) -->
+            <div id="mg-detail-panel" class="w-full hidden">
+                <div id="mg-detail-name" class="text-base font-bold text-white text-center mb-2">—</div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="py-2">
+                        <div id="mg-detail-rpe" class="text-lg font-bold" style="color: #c084fc;">—</div>
+                        <div class="text-[0.6rem] text-gray-500">Ср. RPE</div>
+                    </div>
+                    <div class="py-2">
+                        <div id="mg-detail-days" class="text-lg font-bold text-white">—</div>
+                        <div class="text-[0.6rem] text-gray-500">Дней назад</div>
+                    </div>
+                    <div class="py-2">
+                        <div id="mg-detail-volume" class="text-lg font-bold text-white">—</div>
+                        <div class="text-[0.6rem] text-gray-500">Объём 7д</div>
+                    </div>
+                </div>
+                <div id="mg-detail-status" class="mt-2 text-center text-xs text-gray-500">—</div>
+            </div>
+
+            <!-- Quick stats -->
+            <div class="w-full grid grid-cols-2 gap-3">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-white" id="stat-week-volume">0</div>
+                    <div class="text-[0.6rem] text-gray-500 uppercase tracking-wide">Объём, кг</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-white" id="stat-avg-duration">—</div>
+                    <div class="text-[0.6rem] text-gray-500 uppercase tracking-wide">Среднее, мин</div>
                 </div>
             </div>
 
-            <div id="stats-mg-wrap">
-                <div class="stats-section-title">Группы мышц</div>
-                <div class="rounded-2xl p-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
-                    <div id="stats-muscle-groups"></div>
-                </div>
-            </div>
-
-            <div id="stats-pr-wrap">
-                <div class="stats-section-title">Личные рекорды</div>
-                <div id="stats-personal-records"></div>
+            <!-- Weekly chart -->
+            <div id="stats-weekly-wrap" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Объём по неделям</div>
+                <div class="weekly-chart" id="stats-weekly-chart"></div>
+                <div class="weekly-labels" id="stats-weekly-labels"></div>
             </div>
         </div>
 
@@ -307,42 +309,43 @@
 
         <!-- ===== VIEW: Templates list ===== -->
         <div id="view-templates" class="view w-full flex-col items-center mt-1 gap-3">
+            <button id="new-template-btn" class="w-full rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">+ Создать тренировку</button>
             <div id="template-list" class="w-full space-y-2"></div>
-            <button id="new-template-btn" class="w-full rounded-full py-2.5 text-sm font-bold text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#a855f7,#7c3aed); box-shadow:0 0 12px rgba(168,85,247,0.4);">+ Новый шаблон</button>
         </div>
 
         <!-- ===== VIEW: Builder (new template) ===== -->
         <div id="view-builder" class="view w-full flex-col items-center mt-1 gap-3">
 
-            <!-- Step 1: muscle group tiles -->
+            <!-- Step 1: select exercises -->
             <div id="bstep-1" class="step active w-full space-y-3">
+                <div id="mg-tiles" class="grid grid-cols-3 gap-2 w-full"></div>
                 <input type="text" id="exercise-search" class="search-input" placeholder="Поиск упражнений...">
-                <div id="mg-tiles" class="grid grid-cols-4 gap-2 w-full"></div>
-                <div id="mg-exercises" class="w-full space-y-1 hidden overflow-y-auto" style="max-height: 55vh; padding-bottom: 0.5rem;"></div>
-                <div class="flex gap-2 mt-3">
-                    <button id="b1-cancel" class="flex-1 rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all glassmorphism">Отмена</button>
-                    <button id="b1-next" class="flex-1 rounded-full py-2.5 text-sm font-bold text-white transition-all active:scale-95 glassmorphism" style="border:1px solid rgba(192,132,252,0.4); box-shadow:0 0 10px rgba(192,132,252,0.2);">Далее (<span id="selected-count">0</span>)</button>
+                <div id="mg-exercises" class="w-full space-y-1 overflow-y-auto" style="max-height: 45vh;"></div>
+                <div class="flex gap-2 pt-2">
+                    <button id="b1-cancel" class="flex-1 rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Отмена</button>
+                    <button id="b1-next" class="flex-1 rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Далее (<span id="selected-count">0</span>)</button>
                 </div>
             </div>
 
             <!-- Step 2: sets editor with weight/reps per set -->
             <div id="bstep-2" class="step w-full space-y-3">
-                <input type="text" id="workout-name" class="search-input" placeholder="Название шаблона (необязательно)">
-                <p class="text-xs text-gray-500 text-center">Заполните вес и повторы для каждого подхода.<br>Значения можно изменить во время тренировки.</p>
-                <div id="exercises-sets-container" class="w-full space-y-3 overflow-y-auto" style="max-height: 60vh; padding-bottom: 0.5rem;"></div>
-                <div class="flex gap-2 mt-3">
-                    <button id="b2-back" class="flex-1 rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all glassmorphism">Назад</button>
-                    <button id="save-template-btn" class="flex-1 rounded-full py-2.5 text-sm font-bold text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#22c55e,#16a34a); box-shadow:0 0 12px rgba(34,197,94,0.4);">Сохранить шаблон</button>
+                <input type="text" id="workout-name" class="search-input" placeholder="Название тренировки (необязательно)">
+                <div id="exercises-sets-container" class="w-full space-y-3 overflow-y-auto" style="max-height: 50vh;"></div>
+                <div class="flex gap-2 pt-2">
+                    <button id="b2-back" class="flex-1 rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Назад</button>
+                    <button id="save-template-btn" class="flex-1 rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #22c55e; border: 1px solid #22c55e;">Сохранить</button>
                 </div>
             </div>
 
             <!-- Step 3: success -->
             <div id="bstep-3" class="step w-full space-y-4 text-center" style="margin-top:3rem;">
                 <div class="text-5xl mb-3">✅</div>
-                <p class="text-lg font-bold text-white">Шаблон сохранён!</p>
-                <button id="b3-new" class="w-full rounded-full py-2.5 text-sm font-semibold text-white transition-all active:scale-95 glassmorphism" style="border:1px solid rgba(192,132,252,0.3);">Ещё шаблон</button>
-                <button id="b3-list" class="w-full rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all glassmorphism">К шаблонам</button>
+                <p class="text-lg font-bold text-white">Тренировка сохранена!</p>
+                <button id="b3-new" class="w-full rounded-full py-2.5 text-sm font-semibold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Ещё тренировку</button>
+                <button id="b3-list" class="w-full rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">К тренировкам</button>
             </div>
+        </div>
+
         </div>
 
         <!-- ===== VIEW: History ===== -->
@@ -395,8 +398,8 @@
 <script src="/static/js/api.js"></script>
 <script>
 const MUSCLE_ICONS = {
-    'Грудь':'🏋️','Спина':'🔙','Ноги':'🦵','Плечи':'💪',
-    'Бицепс':'💪','Трицепс':'💪','Пресс':'🧠','Трапеция':'🔝',
+    'Грудь':'🫁','Спина':'🔙','Ноги':'🦵','Плечи':'💪',
+    'Бицепс':'💪','Трицепс':'💪','Пресс':'🎯','Трапеция':'🔝',
     'Предплечье':'🤲',
 };
 const MUSCLE_COLORS = {
@@ -415,38 +418,41 @@ let currentDetailId = null;
 const $ = id => document.getElementById(id);
 const skel = $('workout-skeleton');
 const tabActive = $('tab-active'), tabTempl = $('tab-templates'), tabHist = $('tab-history');
-const vActive = $('view-active'), vTemplates = $('view-templates'), vBuilder = $('view-builder'),
+const vActive = $('view-active'), vStats = $('view-stats'), vTemplates = $('view-templates'), vBuilder = $('view-builder'),
       vHistory = $('view-history'), vDetail = $('view-detail');
 const errMsg = $('error-message');
 
 function setActiveTab(name) {
-    const map = { active: [tabActive, vActive], templates: [tabTempl, vTemplates], history: [tabHist, vHistory] };
+    const map = { stats: [tabActive, vStats], templates: [tabTempl, vTemplates], history: [tabHist, vHistory] };
     [tabActive, tabTempl, tabHist].forEach(t => t.classList.remove('active'));
-    [vActive, vTemplates, vBuilder, vHistory, vDetail].forEach(v => v.classList.remove('active'));
+    [vActive, vStats, vTemplates, vBuilder, vHistory, vDetail].forEach(v => v.classList.remove('active'));
     if (!map[name]) return;
     map[name][0].classList.add('active');
     map[name][1].classList.add('active');
+    if (name === 'stats') loadDashboard();
     if (name === 'templates') loadTemplates();
     if (name === 'history') loadHistory();
-    if (name === 'active') loadActiveView();
 }
 
 function switchView(name) {
-    [vActive, vTemplates, vBuilder, vHistory, vDetail].forEach(v => v.classList.remove('active'));
+    [vActive, vStats, vTemplates, vBuilder, vHistory, vDetail].forEach(v => v.classList.remove('active'));
     [tabActive, tabTempl, tabHist].forEach(t => t.classList.remove('active'));
     if (name === 'builder') vBuilder.classList.add('active');
     else if (name === 'detail') {
         vDetail.classList.add('active');
         tabHist.classList.add('active');
+    } else if (name === 'active') {
+        vActive.classList.add('active');
+        loadActiveView();
     } else {
-        const m = { active: [vActive, tabActive], templates: [vTemplates, tabTempl], history: [vHistory, tabHist] };
+        const m = { stats: [vStats, tabActive], templates: [vTemplates, tabTempl], history: [vHistory, tabHist] };
         m[name][0].classList.add('active');
         m[name][1].classList.add('active');
     }
 }
 
-tabActive.onclick = () => { switchView('active'); loadActiveView(); };
-tabTempl.onclick = () => { switchView('templates'); loadTemplates(); loadDashboard(); };
+tabActive.onclick = () => { switchView('stats'); loadDashboard(); };
+tabTempl.onclick = () => { switchView('templates'); loadTemplates(); };
 tabHist.onclick = () => { switchView('history'); loadHistory(); };
 
 // ===== Templates =====
@@ -462,8 +468,8 @@ async function loadTemplates() {
 function renderTemplates() {
     if (!templateList.length) {
         $('template-list').innerHTML = `<div class="empty-state">
-            <p class="text-lg font-semibold text-gray-500 mb-1">Нет шаблонов</p>
-            <p class="text-sm text-gray-600">Создайте первый шаблон</p>
+            <p class="text-lg font-semibold text-gray-500 mb-1">У вас нет тренировок</p>
+            <p class="text-sm text-gray-600">Создайте свою первую тренировку</p>
         </div>`;
         return;
     }
@@ -529,16 +535,14 @@ function renderMGTiles(filter) {
     }
     let tilesHtml = '', exercisesHtml = '';
     for (const [mg, exercises] of Object.entries(groups)) {
-        const icon = MUSCLE_ICONS[mg] || '🏋️';
         const color = MUSCLE_COLORS[mg] || '#888';
         const sel = selectedMG === mg ? 'selected' : '';
-        tilesHtml += `<div class="mg-tile ${sel}" onclick="selectMG('${escapeAttr(mg)}')" style="border-color:${selectedMG===mg?color:''}">
-            <div class="icon">${icon}</div>
+        tilesHtml += `<div class="mg-tile ${sel}" onclick="selectMG('${escapeAttr(mg)}')" style="border-color:${selectedMG===mg?color:'rgba(255,255,255,0.1)'}; background:${selectedMG===mg?color+'20':'rgba(255,255,255,0.03)'}">
             <div class="name">${escapeHtml(mg)}</div>
             <div class="count">${exercises.length}</div>
         </div>`;
     }
-    $('mg-tiles').innerHTML = tilesHtml || '<div class="text-gray-500 text-sm col-span-4 text-center py-4">Ничего не найдено</div>';
+    $('mg-tiles').innerHTML = tilesHtml || '<div class="text-gray-500 text-sm col-span-3 text-center py-4">Ничего не найдено</div>';
 
     if (selectedMG && groups[selectedMG]) {
         exercisesHtml = `<div class="flex items-center justify-between mt-2 mb-1">
@@ -571,12 +575,16 @@ function toggleEx(id) {
 }
 
 $('exercise-search').oninput = (e) => renderMGTiles(e.target.value);
-$('b1-cancel').onclick = () => switchView('templates');
 $('new-template-btn').onclick = openBuilder;
+
+// Builder step 1 buttons
+$('b1-cancel').onclick = () => switchView('templates');
 $('b1-next').onclick = () => {
     if (!selectedExercises.size) { showError('Выберите упражнения'); return; }
     buildSets(); showBStep(2); renderSets();
 };
+
+// Builder step 2 buttons
 $('b2-back').onclick = () => { showBStep(1); renderMGTiles($('exercise-search').value); };
 
 function buildSets() {
@@ -598,13 +606,14 @@ function renderSets() {
             setsHtml += `<div class="set-row" data-ei="${ei}" data-si="${si}">
                 <div class="${warmupClass}" title="Разминка" onclick="toggleBuilderWarmup(${ei},${si})">🔥</div>
                 <span class="text-xs text-gray-500 text-center">${s.is_warmup?'<span class="text-amber-400" title="Разминка">🔥</span>':s.set_number}</span>
-                <div class="flex items-center justify-end gap-1">
-                    <input class="set-value" type="number" step="0.5" inputmode="decimal" placeholder="—" value="${s.weight_kg??''}" onchange="setBuilderValue(${ei},${si},'weight_kg',this.value)">
-                    <span class="set-label">кг</span>
+                <div class="flex items-center gap-1">
+                    <input class="set-value w-full" type="number" step="0.5" inputmode="decimal" placeholder="кг" value="${s.weight_kg??''}" onchange="setBuilderValue(${ei},${si},'weight_kg',this.value)">
                 </div>
-                <div class="flex items-center justify-end gap-1">
-                    <input class="set-value" type="number" inputmode="numeric" placeholder="—" value="${s.reps??''}" onchange="setBuilderValue(${ei},${si},'reps',this.value)">
-                    <span class="set-label">раз</span>
+                <div class="flex items-center gap-1">
+                    <input class="set-value w-full" type="number" inputmode="numeric" placeholder="раз" value="${s.reps??''}" onchange="setBuilderValue(${ei},${si},'reps',this.value)">
+                </div>
+                <div class="flex items-center gap-1">
+                    <input class="set-value w-full" type="number" min="1" max="10" step="0.5" inputmode="decimal" placeholder="RPE" value="${s.rpe??''}" onchange="setBuilderValue(${ei},${si},'rpe',this.value)">
                 </div>
                 <button onclick="removeBuilderSet(${ei},${si})" class="text-red-400 text-sm px-1" title="Удалить подход">✕</button>
             </div>`;
@@ -617,8 +626,9 @@ function renderSets() {
             <div class="set-row text-[0.55rem] uppercase tracking-wide text-gray-500 pb-1 border-b border-white/10" style="font-weight:600;">
                 <div class="text-center" title="Разминка">🔥</div>
                 <div class="text-center">№</div>
-                <div class="text-right pr-1">вес</div>
-                <div class="text-right pr-1">повторы</div>
+                <div class="text-center">вес</div>
+                <div class="text-center">повторы</div>
+                <div class="text-center">RPE</div>
                 <div></div>
             </div>
             ${setsHtml}
@@ -634,7 +644,9 @@ function setBuilderValue(ei, si, field, val) {
     if (val === '' || val == null) { s[field] = null; return; }
     const num = parseFloat(val);
     if (isNaN(num)) { s[field] = null; return; }
-    s[field] = field === 'reps' ? Math.round(num) : num;
+    if (field === 'reps') s[field] = Math.round(num);
+    else if (field === 'rpe') s[field] = Math.min(10, Math.max(1, num));
+    else s[field] = num;
 }
 
 function addBuilderSet(ei) {
@@ -675,7 +687,7 @@ function removeEx(ei) {
     exercisesWithSets.length ? renderSets() : (showBStep(1), renderMGTiles($('exercise-search').value));
 }
 
-$('save-template-btn').onclick = async () => {
+async function saveTemplate() {
     const btn = $('save-template-btn');
     btn.disabled = true; btn.textContent = 'Сохранение...'; btn.style.opacity = '.5';
     try {
@@ -697,7 +709,7 @@ $('save-template-btn').onclick = async () => {
         loadTemplates();
     } catch(e) { showError(e.message); }
     finally { btn.disabled = false; btn.textContent = 'Сохранить шаблон'; btn.style.opacity = '1'; }
-};
+}
 $('b3-new').onclick = openBuilder;
 $('b3-list').onclick = () => switchView('templates');
 
@@ -709,7 +721,7 @@ async function startFromTemplate(tid) {
         let s = await res.json();
         activeSession = s;
         switchView('active');
-        await loadActiveView();
+        loadActiveView();
     } catch(e) { showError(e.message); }
 }
 
@@ -774,13 +786,14 @@ function renderActiveSetRow(s, ex, done) {
             <button class="spin-btn" onclick="bumpSet(${s.id},'weight_kg',-${weightStep})">−</button>
             <input class="set-value" id="aw-${s.id}" type="number" step="0.5" inputmode="decimal" value="${s.weight_kg??''}" placeholder="—" style="width:3rem;" onfocus="this.select()" onchange="updateSet(${s.id},'weight_kg')">
             <button class="spin-btn" onclick="bumpSet(${s.id},'weight_kg',${weightStep})">+</button>
-            <span class="set-label" style="font-size:0.5rem;">кг</span>
         </div>
         <div class="flex items-center gap-1 flex-1">
             <button class="spin-btn" onclick="bumpSet(${s.id},'reps',-1)">−</button>
             <input class="set-value" id="ar-${s.id}" type="number" inputmode="numeric" value="${s.reps??''}" placeholder="—" style="width:2.5rem;" onfocus="this.select()" onchange="updateSet(${s.id},'reps')">
             <button class="spin-btn" onclick="bumpSet(${s.id},'reps',1)">+</button>
-            <span class="set-label" style="font-size:0.5rem;">раз</span>
+        </div>
+        <div class="flex items-center gap-1 flex-1">
+            <input class="set-value" id="arpe-${s.id}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${s.rpe??''}" placeholder="RPE" style="width:2.5rem;" onfocus="this.select()" onchange="updateSet(${s.id},'rpe')">
         </div>
     </div>`;
 }
@@ -848,8 +861,10 @@ function updateSetRow(s) {
     circle.textContent = done ? '✓' : '';
     const wInput = row.querySelector(`#aw-${s.id}`);
     const rInput = row.querySelector(`#ar-${s.id}`);
+    const rpeInput = row.querySelector(`#arpe-${s.id}`);
     if (document.activeElement !== wInput) wInput.value = s.weight_kg ?? '';
     if (document.activeElement !== rInput) rInput.value = s.reps ?? '';
+    if (rpeInput && document.activeElement !== rpeInput) rpeInput.value = s.rpe ?? '';
     const exCard = row.closest('[data-ex-id]');
     const allRows = exCard ? exCard.querySelectorAll('.set-row') : [];
     const allDone = Array.from(allRows).length > 0 && Array.from(allRows).every(r => r.classList.contains('done'));
@@ -899,6 +914,14 @@ async function updateSet(sid, field) {
             const r = parseInt(raw, 10);
             partial.reps = isNaN(r) ? null : Math.max(0, Math.min(999, r));
         }
+    } else if (field === 'rpe') {
+        const rpeInput = document.getElementById(`arpe-${sid}`);
+        const raw = rpeInput.value.trim();
+        if (raw === '') partial.rpe = null;
+        else {
+            const rpe = parseFloat(raw);
+            partial.rpe = isNaN(rpe) ? null : Math.min(10, Math.max(1, rpe));
+        }
     }
     if (Object.keys(partial).length === 0) return;
     await patchSet(sid, partial);
@@ -920,23 +943,6 @@ document.querySelectorAll('.feeling-btn').forEach(b => {
         b.classList.add('selected'); selectedFeeling = parseInt(b.dataset.v);
     };
 });
-$('finish-confirm').onclick = async () => {
-    if (!activeSession) return;
-    const dur = parseInt($('finish-duration').value) || null;
-    const notes = $('finish-notes').value?.trim() || null;
-    try {
-        let res = await fetchWithAuth(`/api/workouts/${activeSession.id}/complete`, {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ duration_min: dur, feeling: selectedFeeling, notes })
-        });
-        if (!res.ok) throw new Error('Ошибка');
-        activeSession = null;
-        stopTimer();
-        $('finish-overlay').classList.add('hidden');
-        switchView('history');
-        loadHistory();
-    } catch(e) { showError('Ошибка завершения'); }
-};
 
 // ===== Timer =====
 function startTimer() {
@@ -950,6 +956,22 @@ function startTimer() {
     }, 1000);
 }
 function stopTimer() { if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
+$('finish-confirm').onclick = async () => {
+    if (!activeSession) return;
+    const dur = parseInt($('finish-duration').value) || null;
+    const notes = $('finish-notes').value?.trim() || null;
+    try {
+        let res = await fetchWithAuth(`/api/workouts/${activeSession.id}/complete`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ duration_min: dur, feeling: selectedFeeling, notes })
+        });
+        if (!res.ok) throw new Error('Ошибка');
+        activeSession = null;
+        $('finish-overlay').classList.add('hidden');
+        switchView('history');
+        loadHistory();
+    } catch(e) { showError('Ошибка завершения'); }
+};
 
 // ===== History =====
 async function loadHistory() {
@@ -1063,20 +1085,91 @@ function escapeAttr(s) { return String(s||'').replace(/'/g, '&#39;'); }
 
 // ===== Dashboard =====
 async function loadDashboard() {
-    const dash = $('stats-dashboard');
+    const empty = $('summary-empty');
     try {
         let res = await fetchWithAuth('/api/workout-stats');
-        if (!res.ok) { if (dash) dash.classList.add('hidden'); return; }
+        if (!res.ok) { empty.classList.remove('hidden'); return; }
         const s = await res.json();
         if (!s || s.total_workouts === 0 && s.this_week_workouts === 0 && s.streak_days === 0) {
-            if (dash) dash.classList.add('hidden');
+            empty.classList.remove('hidden');
             return;
         }
-        if (dash) dash.classList.remove('hidden');
+        empty.classList.add('hidden');
         renderDashboard(s);
     } catch(e) {
-        if (dash) dash.classList.add('hidden');
+        empty.classList.remove('hidden');
     }
+    // Load muscle readiness data
+    loadMuscleReadiness();
+}
+
+// ===== Muscle Readiness =====
+async function loadMuscleReadiness() {
+    try {
+        let res = await fetchWithAuth('/api/muscle-readiness');
+        if (!res.ok) return;
+        const data = await res.json();
+        updateAthleteSVG(data);
+    } catch(e) { console.error(e); }
+}
+
+function readinessColor(score) {
+    if (score < 0.3) return '#22c55e'; // green - recovered
+    if (score < 0.6) return '#eab308'; // yellow - moderate
+    return '#ef4444'; // red - fatigued
+}
+
+function readinessStatus(score) {
+    if (score < 0.3) return 'Восстановлена — готова к нагрузке';
+    if (score < 0.6) return 'Средняя нагрузка — можно тренировать';
+    return 'Высокая нагрузка — рекомендуется отдых';
+}
+
+function updateAthleteSVG(data) {
+    const grid = $('muscle-grid');
+    if (!grid) return;
+
+    // Sort by readiness (most fatigued first)
+    const sorted = [...data].sort((a, b) => b.readiness_score - a.readiness_score);
+
+    const icons = {
+        'Грудь': '🏋️',
+        'Спина': '🔙',
+        'Ноги': '🦵',
+        'Плечи': '💪',
+        'Бицепс': '💪',
+        'Трицепс': '💪',
+        'Пресс': '🧘',
+        'Предплечье': '🤲',
+        'Трапеция': '🔝',
+    };
+
+    grid.innerHTML = sorted.map(item => {
+        const color = readinessColor(item.readiness_score);
+        const icon = icons[item.muscle_group] || '💪';
+        const status = readinessStatus(item.readiness_score);
+        const opacity = 0.7 + item.readiness_score * 0.3;
+
+        return `<div class="py-3 cursor-pointer transition-all hover:opacity-80 text-center"
+                    onclick="showMgDetail('${item.muscle_group}', ${item.readiness_score}, ${item.avg_rpe}, ${item.last_trained_days_ago || 'null'}, ${item.total_volume_7d})">
+            <div class="text-2xl mb-1">${icon}</div>
+            <div class="text-xs font-semibold text-white truncate">${item.muscle_group}</div>
+            <div class="flex items-center justify-center gap-1 mt-1">
+                <span class="w-1.5 h-1.5 rounded-full" style="background: ${color};"></span>
+                <span class="text-[0.6rem]" style="color: ${color};">RPE ${item.avg_rpe.toFixed(1)}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showMgDetail(mg, score, rpe, days, volume) {
+    $('mg-detail-name').textContent = mg;
+    $('mg-detail-rpe').textContent = rpe.toFixed(1);
+    $('mg-detail-days').textContent = days !== null ? days : '—';
+    $('mg-detail-volume').textContent = Math.round(volume) + ' кг';
+    $('mg-detail-status').textContent = readinessStatus(score);
+    $('mg-detail-status').style.color = readinessColor(score);
+    $('mg-detail-panel').classList.remove('hidden');
 }
 
 function formatVolume(v) {
@@ -1125,17 +1218,13 @@ function renderDashboard(s) {
     } else {
         $('stats-mg-wrap').classList.remove('hidden');
         const max = Math.max(...mgs.map(m => m.total_volume), 1);
-        mgs.slice(0, 5).forEach(m => {
-            const pct = (m.total_volume / max) * 100;
-            const row = document.createElement('div');
-            row.className = 'mg-bar-row';
-            row.innerHTML = `
-                <span class="mg-name">${escapeHtml(m.muscle_group)}</span>
-                <div class="mg-bar"><div class="mg-fill" style="width:${pct.toFixed(0)}%"></div></div>
-                <span class="mg-val">${formatVolume(m.total_volume)} кг</span>
-            `;
-            mgWrap.appendChild(row);
-        });
+        const chipsHtml = mgs.slice(0, 6).map(m => {
+            const color = MUSCLE_COLORS[m.muscle_group] || '#888';
+            return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style="background: ${color}20; border: 1px solid ${color}40; color: ${color};">
+                ${escapeHtml(m.muscle_group)} <span class="opacity-60">${formatVolume(m.total_volume)}</span>
+            </span>`;
+        }).join('');
+        mgWrap.innerHTML = `<div class="flex flex-wrap gap-2">${chipsHtml}</div>`;
     }
 
     const prWrap = $('stats-personal-records');
@@ -1145,18 +1234,14 @@ function renderDashboard(s) {
         $('stats-pr-wrap').classList.add('hidden');
     } else {
         $('stats-pr-wrap').classList.remove('hidden');
-        prs.forEach(pr => {
-            const row = document.createElement('div');
-            row.className = 'pr-row';
-            row.innerHTML = `
-                <span class="pr-name">${escapeHtml(pr.exercise_name)}</span>
-                <span class="pr-vals">
-                    <span class="pr-val"><strong>${pr.max_weight_kg || 0}</strong> кг</span>
-                    <span class="pr-val">×<strong>${pr.max_reps || 0}</strong></span>
-                </span>
-            `;
-            prWrap.appendChild(row);
-        });
+        const cardsHtml = prs.slice(0, 3).map(pr => `
+            <div class="rounded-xl p-3 text-center" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+                <div class="text-xs text-gray-400 truncate mb-1">${escapeHtml(pr.exercise_name)}</div>
+                <div class="text-lg font-bold" style="color: #c084fc;">${pr.max_weight_kg || 0} кг</div>
+                <div class="text-xs text-gray-500">× ${pr.max_reps || 0}</div>
+            </div>
+        `).join('');
+        prWrap.innerHTML = `<div class="grid grid-cols-3 gap-2">${cardsHtml}</div>`;
     }
 }
 
