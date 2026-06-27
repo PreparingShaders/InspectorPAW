@@ -329,6 +329,16 @@
                 </div>
             </div>
 
+            <!-- AI Analysis button -->
+            <button id="ai-analysis-btn" class="w-full rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #fff; background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                🤖 Получить анализ прогресса
+            </button>
+
+            <!-- AI Analysis result -->
+            <div id="ai-analysis-result" class="w-full hidden rounded-xl p-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                <div id="ai-analysis-content" class="text-sm text-gray-300"></div>
+            </div>
+
             <!-- Volume chart -->
             <div id="stats-volume-wrap" class="w-full">
                 <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Объём</div>
@@ -1667,13 +1677,38 @@ async function checkActiveWorkout() {
         const list = await res.json();
         const ongoing = list.find(w => !w.is_completed);
         if (!ongoing) return false;
-        let detailRes = await fetchWithAuth(`/api/workouts/${ongoing.id}`);
-        if (!detailRes.ok) return false;
-        activeSession = await detailRes.json();
-        renderActive();
-        return true;
-    } catch(e) { return false; }
-}
+         let detailRes = await fetchWithAuth(`/api/workouts/${ongoing.id}`);
+         if (!detailRes.ok) return false;
+         activeSession = await detailRes.json();
+         renderActive();
+         return true;
+     } catch(e) { return false; }
+ }
+
+// ===== AI Analysis =====
+$('ai-analysis-btn').onclick = async () => {
+    const btn = $('ai-analysis-btn');
+    const resultDiv = $('ai-analysis-result');
+    const contentDiv = $('ai-analysis-content');
+    
+    btn.disabled = true;
+    btn.textContent = '⏳ Анализ...';
+    resultDiv.classList.add('hidden');
+    
+    try {
+        let res = await fetchWithAuth('/api/workout-stats/ai-analysis', { method: 'POST' });
+        if (!res.ok) throw new Error('Ошибка запроса');
+        const data = await res.json();
+        contentDiv.textContent = data.analysis || 'Не удалось получить анализ';
+        resultDiv.classList.remove('hidden');
+    } catch(e) {
+        contentDiv.textContent = 'Ошибка: ' + e.message;
+        resultDiv.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🤖 Получить анализ прогресса';
+    }
+};
 </script>
 </body>
 </html>

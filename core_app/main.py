@@ -1575,6 +1575,169 @@ def read_progress(
     return crud.get_progress(db, user_id=current_user.id, period=period)
 
 
+@app.post("/api/workout-stats/ai-analysis")
+async def get_ai_analysis(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    """Получить ИИ-анализ прогресса тренировок."""
+    # Собираем все данные
+    stats = crud.get_workout_stats(db, user_id=current_user.id)
+    muscle_readiness = crud.get_muscle_readiness(db, user_id=current_user.id)
+    muscle_balance = crud.get_muscle_balance(db, user_id=current_user.id, period="month")
+    progress = crud.get_progress(db, user_id=current_user.id, period="month")
+    
+    # Данные пользователя
+    user_info = {
+        "height": current_user.height_cm,
+        "gender": current_user.gender,
+        "date_of_birth": str(current_user.date_of_birth) if current_user.date_of_birth else None,
+        "activity_level": current_user.activity_level,
+        "goal": current_user.goal,
+    }
+    
+    # Последние метрики пользователя
+    latest_metrics = (
+        db.query(models.UserMetrics)
+        .filter(models.UserMetrics.user_id == current_user.id)
+        .order_by(models.UserMetrics.timestamp.desc())
+        .first()
+    )
+    if latest_metrics:
+        user_info["weight"] = latest_metrics.weight_kg
+        user_info["body_fat"] = latest_metrics.body_fat_percentage
+        user_info["sleep_hours"] = latest_metrics.sleep_hours
+    
+    # Вычисляем возраст
+    if current_user.date_of_birth:
+        from datetime import date
+        today = date.today()
+        age = today.year - current_user.date_of_birth.year - ((today.month, today.day) < (current_user.date_of_birth.month, current_user.date_of_birth.day))
+        user_info["age"] = age
+    
+    # Формируем читаемые данные для промпта
+    readiness_text = "\n".join([
+        f"- {m.muscle_group}: загруженность {m.readiness_score:.0%}, ср. RPE {m.avg_rpe}, объём 7д {m.total_volume_7d:.0f}кг"
+        for m in muscle_readiness
+    ]) if muscle_readiness else "Нет данных"
+    
+    balance_text = "\n".join([
+        f"- {b['muscle_group']}: {b['volume']:.0f}кг"
+        for b in muscle_balance
+    ]) if muscle_balance else "Нет данных"
+    
+    progress_text = ""
+    if progress:
+        for ex in progress[:5]:
+            data_points = ", ".join([f"нед{d['week']+1}: {d['weight']}кг" for d in ex.get('data', [])])
+            progress_text += f"- {ex['name']}: {data_points}\n"
+    else:
+        progress_text = "Нет данных"
+    
+    # Формируем промпт
+    prompt_text = f"""Проанализируй прогресс тренировок пользователя и дай рекомендации.
+
+## Данные пользователя:
+- Рост: {user_info.get('height', 'не указан')} см
+- Вес: {user_info.get('weight', 'не указан')} кг
+- Жир: {user_info.get('body_fat', 'не указан')}%
+- Возраст: {user_info.get('age', 'не указан')} лет
+- Пол: {user_info.get('gender', 'не указан')}
+- Активность: {user_info.get('activity_level', 'не указана')}
+- Цель: {user_info.get('goal', 'не указана')}
+
+## Общая статистика:
+- Всего тренировок: {stats.total_workouts}
+- Завершённых: {stats.completed_workouts}
+- Общий объём: {stats.total_volume_kg:.0f} кг
+- Всего подходов: {stats.total_sets}
+- Серия дней: {stats.streak_days}
+- Объём за неделю: {stats.this_week_volume:.0f} кг
+- Среднее время: {stats.avg_duration_min or '—'} мин
+
+## Состояние мышц:
+{readiness_text}
+
+## Мышечный баланс (объём по группам за месяц):
+{balance_text}
+
+## Прогрессия упражнений (макс. вес по неделям):
+{progress_text}
+
+Дай анализ в формате:
+1. Общий прогресс (хорошо/плохо/нейтрально)
+2. Сильные стороны
+3. Что улучшить
+4. Рекомендации по тренировкам
+5. Оценка восстановления
+
+Ответь на русском, кратко и по делу."""
+
+    # Отправляем в воркер используя логику как в ai_hub_chat
+    # Пробуем модели по порядку пока одна не сработает
+    if not settings.NUTRITION_MODELS:
+        raise HTTPException(status_code=400, detail="Нет доступных моделей ИИ")
+    
+    analysis = None
+    last_error = None
+    
+    for model_name in settings.NUTRITION_MODELS[:3]:  # Пробуем первые 3 модели
+        headers = {"Content-Type": "application/json"}
+        payload = {}
+        
+        if model_name in settings.NATIVE_GEMINI_MODELS:
+            # Gemini формат
+            url_path = f"/v1beta/models/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
+            payload = {
+                "contents": [{"role": "user", "parts": [{"text": prompt_text}]}]
+            }
+        else:
+            # OpenRouter формат
+            url_path = "/v1/chat/completions"
+            headers["Authorization"] = f"Bearer {settings.OPEN_ROUTER_API_KEY}"
+            payload = {
+                "model": model_name,
+                "messages": [{"role": "user", "content": prompt_text}]
+            }
+        
+        try:
+            response = await httpx_client.post(
+                url_path,
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+            response.raise_for_status()
+            res_data = response.json()
+            
+            if model_name in settings.NATIVE_GEMINI_MODELS:
+                # Gemini формат ответа
+                if res_data.get('candidates') and res_data['candidates'][0].get('content') and res_data['candidates'][0]['content'].get('parts'):
+                    analysis = res_data['candidates'][0]['content']['parts'][0]['text']
+                    break
+            else:
+                # OpenRouter формат ответа
+                if res_data.get('choices') and res_data['choices'][0].get('message') and res_data['choices'][0]['message'].get('content'):
+                    analysis = res_data['choices'][0]['message']['content']
+                    break
+                    
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                last_error = f"Rate limit для {model_name}, пробуем следующую..."
+                continue
+            else:
+                last_error = f"Ошибка {model_name}: {e.response.status_code}"
+                continue
+        except Exception as e:
+            last_error = f"Ошибка {model_name}: {str(e)}"
+            continue
+    
+    if not analysis:
+        analysis = f"Не удалось получить анализ. {last_error or ''}"
+    
+    return {"analysis": analysis}
+
+
 # --- Password Reset Endpoints ---
 @app.post("/forgot-password", status_code=status.HTTP_303_SEE_OTHER)
 async def forgot_password(request: Request, email: EmailStr = Form(...), db: Session = Depends(get_db)):
