@@ -964,12 +964,16 @@ def get_progress(db: Session, user_id: int, period: str = "month"):
     for ex_id, data in ex_data.items():
         weeks = sorted(data["weeks"].items())
         if len(weeks) >= 2:  # Только если есть минимум 2 точки
+            first_weight = weeks[0][1]
+            last_weight = weeks[-1][1]
+            improvement = last_weight - first_weight
             result.append({
                 "exercise_id": ex_id,
                 "name": data["name"],
-                "data": [{"week": w, "weight": v} for w, v in weeks],
+                "data": [{"week": w, "weight": round(v, 1)} for w, v in weeks],
+                "improvement": round(improvement, 1),
             })
     
-    # Сортируем по количеству точек данных и берём топ-5
-    result.sort(key=lambda x: len(x["data"]), reverse=True)
+    # Сортируем по прогрессу (улучшение веса) и берём топ-5
+    result.sort(key=lambda x: x["improvement"], reverse=True)
     return result[:5]

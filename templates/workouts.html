@@ -219,26 +219,40 @@
         .pr-row .pr-vals { display: flex; gap: 0.5rem; flex-shrink: 0; }
         .pr-row .pr-val { font-size: 0.7rem; color: rgba(255,255,255,0.6); }
         .pr-row .pr-val strong { color: #c084fc; font-weight: 700; }
-        .weekly-chart { display: flex; align-items: flex-end; gap: 0.25rem; height: 4rem; padding: 0.25rem 0; }
-        .weekly-bar { flex: 1; background: linear-gradient(180deg, #a855f7, #7c3aed); border-radius: 0.25rem 0.25rem 0 0; min-height: 0.2rem; transition: height 0.4s ease; position: relative; }
-        .weekly-bar.empty { background: rgba(255,255,255,0.08); }
-        .weekly-labels { display: flex; gap: 0.25rem; margin-top: 0.25rem; }
-        .weekly-label { flex: 1; text-align: center; font-size: 0.55rem; color: rgba(255,255,255,0.4); }
-        .period-btn.active { background: rgba(168,85,247,0.2); color: #c084fc; }
-        .volume-chart { display: flex; align-items: flex-end; gap: 0.25rem; height: 5rem; padding: 0.25rem 0; }
-        .volume-bar { flex: 1; background: linear-gradient(180deg, #a855f7, #7c3aed); border-radius: 0.25rem 0.25rem 0 0; min-height: 0.2rem; transition: height 0.4s ease; }
-        .volume-bar.empty { background: rgba(255,255,255,0.08); }
-        .volume-labels { display: flex; gap: 0.25rem; margin-top: 0.25rem; }
-        .volume-label { flex: 1; text-align: center; font-size: 0.55rem; color: rgba(255,255,255,0.4); }
-        .muscle-balance-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
-        .muscle-balance-name { width: 4rem; font-size: 0.65rem; color: rgba(255,255,255,0.7); }
-        .muscle-balance-track { flex: 1; height: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 0.25rem; overflow: hidden; }
-        .muscle-balance-fill { height: 100%; border-radius: 0.25rem; transition: width 0.4s ease; }
-        .muscle-balance-val { width: 2.5rem; font-size: 0.6rem; color: rgba(255,255,255,0.5); text-align: right; }
-        #athlete-svg [data-mg] { cursor: pointer; transition: all 0.3s ease; }
-        #athlete-svg [data-mg]:hover { filter: brightness(1.3); }
-        .mg-active { filter: brightness(1.4) drop-shadow(0 0 8px currentColor); }
-    </style>
+         /* Dashboard */
+         .stats-card {
+             background: rgba(255,255,255,0.04);
+             border: 1px solid rgba(255,255,255,0.08);
+             border-radius: 0.75rem;
+             padding: 0.7rem 0.6rem;
+             text-align: center;
+             transition: all 0.2s ease;
+         }
+         .stats-card .v { font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1; }
+         .stats-card .l { font-size: 0.55rem; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.3rem; }
+         .stats-card.accent { background: linear-gradient(135deg, rgba(168,85,247,0.18), rgba(124,58,237,0.08)); border-color: rgba(168,85,247,0.35); }
+         .stats-card.accent .v { color: #c084fc; text-shadow: 0 0 12px rgba(192,132,252,0.4); }
+         .stats-card.green { background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(22,163,74,0.08)); border-color: rgba(34,197,94,0.35); }
+         .stats-card.green .v { color: #4ade80; }
+         .stats-section-title { font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 0.08em; margin: 0.25rem 0 0.4rem; }
+         .pr-row { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; background: rgba(255,255,255,0.03); border-radius: 0.5rem; margin-bottom: 0.3rem; border: 1px solid rgba(255,255,255,0.06); }
+         .pr-row .pr-name { color: #fff; font-size: 0.78rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+         .pr-row .pr-vals { display: flex; gap: 0.5rem; flex-shrink: 0; }
+         .pr-row .pr-val { font-size: 0.7rem; color: rgba(255,255,255,0.6); }
+         .pr-row .pr-val strong { color: #c084fc; font-weight: 700; }
+         .ai-analysis-output h4 { font-size: 0.85rem; font-weight: 700; color: #c084fc; margin-top: 0.6rem; margin-bottom: 0.2rem; }
+         .ai-analysis-output p { font-size: 0.78rem; color: rgba(255,255,255,0.75); margin-bottom: 0.3rem; line-height: 1.5; }
+         .ai-analysis-output ul { list-style: disc; padding-left: 1.2rem; margin: 0.3rem 0; }
+         .ai-analysis-output li { font-size: 0.75rem; color: rgba(255,255,255,0.7); margin-bottom: 0.15rem; }
+         .ai-analysis-output strong { color: #fff; }
+         .chart-container { position: relative; width: 100%; height: 0; padding-bottom: 56.25%; }
+         .chart-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+         .chart-wrapper { width: 100%; }
+         #radar-container { aspect-ratio: 1; padding-bottom: 0; max-height: 320px; }
+         #volume-chart-wrapper { aspect-ratio: 16/9; max-height: 200px; }
+         #balance-chart-wrapper { aspect-ratio: 1; max-height: 280px; }
+         #progress-chart-wrapper { aspect-ratio: 16/9; max-height: 260px; }
+     </style>
 </head>
 <body class="h-screen flex flex-col overflow-x-hidden relative">
 
@@ -252,118 +266,108 @@
         <!-- Tab nav -->
         <div class="w-full flex justify-center mt-1.5" style="transform:scale(0.85); transform-origin:top center;">
             <div class="relative flex w-full max-w-sm p-1 rounded-full glassmorphism">
-                <button id="tab-active" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold transition-all text-gray-400">Статистика</button>
-                <button id="tab-templates" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold text-gray-400 transition-all">Тренировки</button>
+                 <button id="tab-active" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold transition-all text-gray-400">Статистика</button>
+                 <button id="tab-templates" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold text-white transition-all">Тренировки</button>
                 <button id="tab-history" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold text-gray-400 transition-all">История</button>
             </div>
         </div>
 
         <!-- Skeleton -->
-        <div id="workout-skeleton" class="w-full flex flex-col items-center mt-6 space-y-4 animate-pulse">
+        <div id="workout-skeleton" class="w-full flex flex-col items-center mt-6 space-y-4 animate-pulse hidden">
             <div class="w-full h-12 rounded-xl" style="background:rgba(255,255,255,0.04);"></div>
             <div class="w-full h-24 rounded-xl" style="background:rgba(255,255,255,0.04);"></div>
         </div>
 
-        <!-- ===== VIEW: Statistics (Dashboard) ===== -->
-        <div id="view-stats" class="view w-full flex-col items-center mt-2 gap-4">
+         <!-- ===== VIEW: Statistics (Dashboard) ===== -->
+         <div id="view-stats" class="view w-full flex-col items-center mt-2 gap-4" x-data="dashboardApp()" x-init="init()">
 
-            <!-- Empty state -->
-            <div id="summary-empty" class="w-full text-center py-8 hidden">
-                <div class="text-5xl mb-3">📊</div>
-                <p class="text-lg font-semibold text-gray-500 mb-1">Пока нет данных</p>
-                <p class="text-sm text-gray-600">Завершите первую тренировку!</p>
-            </div>
+             <!-- Empty state -->
+             <div id="summary-empty" class="w-full text-center py-8 hidden">
+                 <div class="text-5xl mb-3">📊</div>
+                 <p class="text-lg font-semibold text-gray-500 mb-1">Пока нет данных</p>
+                 <p class="text-sm text-gray-600">Завершите первую тренировку!</p>
+             </div>
 
-            <!-- Time period selector -->
-            <div class="w-full flex justify-center">
-                <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
-                    <button id="period-week" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold transition-all text-gray-400">Неделя</button>
-                    <button id="period-month" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold text-gray-400 transition-all">Месяц</button>
-                    <button id="period-3month" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold text-gray-400 transition-all">3 мес.</button>
-                </div>
-            </div>
+             <!-- Time period selector -->
+             <div class="w-full flex justify-center">
+                 <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
+                     <button id="period-week" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold transition-all text-gray-400" :class="activePeriod === 'week' && 'active'" @click="setPeriod('week')">Неделя</button>
+                     <button id="period-month" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold text-gray-400 transition-all" :class="activePeriod === 'month' && 'active'" @click="setPeriod('month')">Месяц</button>
+                     <button id="period-3month" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold text-gray-400 transition-all" :class="activePeriod === '3month' && 'active'" @click="setPeriod('3month')">3 мес.</button>
+                 </div>
+             </div>
 
-            <!-- Muscle groups grid -->
-            <div class="w-full">
-                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 text-center">Состояние мышц</div>
-                <div id="muscle-grid" class="grid grid-cols-3 gap-2">
-                    <!-- Filled by JS -->
-                </div>
-                <!-- Legend -->
-                <div class="flex justify-center gap-4 mt-3 text-[0.6rem] text-gray-500">
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>Восстановлена</span>
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span>Средне</span>
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>Устала</span>
-                </div>
-            </div>
+             <!-- Muscle Readiness Radar Chart -->
+             <div class="w-full">
+                 <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 text-center">Состояние мышц</div>
+                 <div id="radar-container" class="chart-wrapper flex justify-center">
+                     <canvas id="radar-chart" width="300" height="300"></canvas>
+                 </div>
+                 <div class="flex justify-center gap-4 mt-3 text-[0.6rem] text-gray-500">
+                     <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>Восстановлена</span>
+                     <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span>Средне</span>
+                     <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>Устала</span>
+                 </div>
+             </div>
 
-            <!-- Muscle detail panel (shown on click) -->
-            <div id="mg-detail-panel" class="w-full hidden">
-                <div id="mg-detail-name" class="text-base font-bold text-white text-center mb-2">—</div>
-                <div class="grid grid-cols-3 gap-2 text-center">
-                    <div class="py-2">
-                        <div id="mg-detail-rpe" class="text-lg font-bold" style="color: #c084fc;">—</div>
-                        <div class="text-[0.6rem] text-gray-500">Ср. RPE</div>
-                    </div>
-                    <div class="py-2">
-                        <div id="mg-detail-days" class="text-lg font-bold text-white">—</div>
-                        <div class="text-[0.6rem] text-gray-500">Дней назад</div>
-                    </div>
-                    <div class="py-2">
-                        <div id="mg-detail-volume" class="text-lg font-bold text-white">—</div>
-                        <div class="text-[0.6rem] text-gray-500">Объём 7д</div>
-                    </div>
-                </div>
-                <div id="mg-detail-status" class="mt-2 text-center text-xs text-gray-500">—</div>
-            </div>
+             <!-- Quick stats -->
+             <div class="w-full grid grid-cols-3 gap-3">
+                 <div class="stats-card accent">
+                     <div class="v" x-text="formatVolume(stats.this_week_volume || 0)">0</div>
+                     <div class="l">Объём нед., кг</div>
+                 </div>
+                 <div class="stats-card green">
+                     <div class="v" x-text="stats.total_workouts || 0">0</div>
+                     <div class="l">Тренировок</div>
+                 </div>
+                 <div class="stats-card">
+                     <div class="v" x-text="stats.streak_days || 0">0</div>
+                     <div class="l">Серия дней</div>
+                 </div>
+             </div>
 
-            <!-- Quick stats -->
-            <div class="w-full grid grid-cols-2 gap-3">
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-white" id="stat-week-volume">0</div>
-                    <div class="text-[0.6rem] text-gray-500 uppercase tracking-wide">Объём, кг</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-white" id="stat-avg-duration">—</div>
-                    <div class="text-[0.6rem] text-gray-500 uppercase tracking-wide">Среднее, мин</div>
-                </div>
-            </div>
+             <!-- AI Analysis button -->
+             <button id="ai-analysis-btn" class="w-full rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #fff; background: linear-gradient(135deg, #6366f1, #4f46e5);" @click="loadAIAnalysis()" :disabled="aiLoading">
+                 <span x-show="!aiLoading">🤖 Получить анализ прогресса</span>
+                 <span x-show="aiLoading">⏳ Анализ...</span>
+             </button>
 
-            <!-- AI Analysis button -->
-            <button id="ai-analysis-btn" class="w-full rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #fff; background: linear-gradient(135deg, #6366f1, #4f46e5);">
-                🤖 Получить анализ прогресса
-            </button>
+             <!-- AI Analysis result -->
+             <div id="ai-analysis-result" class="w-full rounded-xl p-4 hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                 <div id="ai-analysis-content" class="ai-analysis-output text-sm text-gray-300" x-html="aiHtml"></div>
+             </div>
 
-            <!-- AI Analysis result -->
-            <div id="ai-analysis-result" class="w-full hidden rounded-xl p-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
-                <div id="ai-analysis-content" class="text-sm text-gray-300"></div>
-            </div>
+             <!-- Volume chart -->
+             <div id="stats-volume-wrap" class="w-full">
+                 <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Объём за период</div>
+                 <div id="volume-chart-wrapper" class="chart-wrapper">
+                     <canvas id="volume-chart" width="400" height="200"></canvas>
+                 </div>
+             </div>
 
-            <!-- Volume chart -->
-            <div id="stats-volume-wrap" class="w-full">
-                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Объём</div>
-                <div class="volume-chart" id="stats-volume-chart"></div>
-                <div class="volume-labels" id="stats-volume-labels"></div>
-            </div>
+             <!-- Muscle balance -->
+             <div id="stats-muscle-balance" class="w-full">
+                 <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Мышечный баланс</div>
+                 <div id="balance-chart-wrapper" class="chart-wrapper">
+                     <canvas id="balance-chart" width="300" height="280"></canvas>
+                 </div>
+             </div>
 
-            <!-- Muscle balance -->
-            <div id="stats-muscle-balance" class="w-full">
-                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Мышечный баланс</div>
-                <div id="muscle-balance-chart" class="w-full"></div>
-            </div>
+             <!-- Progress chart -->
+             <div id="stats-progress-wrap" class="w-full">
+                 <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Прогрессия упражнений</div>
+                 <div id="progress-chart-wrapper" class="chart-wrapper">
+                     <canvas id="progress-chart" width="400" height="260"></canvas>
+                 </div>
+             </div>
 
-            <!-- Progress chart -->
-            <div id="stats-progress-wrap" class="w-full">
-                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Прогрессия</div>
-                <div id="progress-chart" class="w-full"></div>
-            </div>
+             <!-- Personal records -->
+             <div id="stats-pr-wrap" class="w-full">
+                 <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Личные рекорды</div>
+                 <div id="stats-personal-records" class="space-y-1.5" x-html="renderPersonalRecords()"></div>
+             </div>
 
-            <!-- Personal records -->
-            <div id="stats-pr-wrap" class="w-full">
-                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Личные рекорды</div>
-                <div id="stats-personal-records"></div>
-            </div>
-        </div>
+         </div>
 
         <!-- ===== VIEW: Active workout ===== -->
         <div id="view-active" class="view w-full flex-col items-center mt-1 gap-3">
@@ -499,34 +503,54 @@
     {% set active_page = 'workouts' %}
     {% include 'includes/bottom_nav.html' %}
 
-<script src="/static/js/api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="/static/js/api.js"></script>
 <script>
-const MUSCLE_ICONS = {
-    'Грудь':'🫁','Спина':'🔙','Ноги':'🦵','Плечи':'💪',
-    'Бицепс':'💪','Трицепс':'💪','Пресс':'🎯','Трапеция':'🔝',
-    'Предплечье':'🤲',
-};
 const MUSCLE_COLORS = {
     'Грудь':'#ef4444','Спина':'#f59e0b','Ноги':'#3b82f6','Плечи':'#a855f7',
     'Бицепс':'#22c55e','Трицепс':'#ec4899','Пресс':'#f97316','Трапеция':'#14b8a6',
     'Предплечье':'#8b5cf6','Икры':'#06b6d4','Кардио':'#f43f5e',
 };
-const FEELING_EMOJI = ['','😴','😕','😐','🙂','😊','🔥'];
+const MG_RADAR_ORDER = ['Грудь','Спина','Ноги','Плечи','Бицепс','Трицепс','Пресс','Трапеция','Предплечье','Икры'];
 
 let exerciseLibrary = [], templateList = [], workoutsHistory = [];
-let selectedMG = null, selectedExercises = new Set(), exercisesWithSets = [];
+let selectedExercises = new Set(), exercisesWithSets = [];
 let activeSession = null, timerInterval = null;
 let selectedRpe = null, weightStep = 2.5;
 let currentDetailId = null;
 let currentTemplateId = null;
-let currentPeriod = 'week'; // week, month, 3month
+let _charts = {};
 
 const $ = id => document.getElementById(id);
+
+function readabilityColor(score) {
+    if (score < 0.3) return '#22c55e';
+    if (score < 0.6) return '#eab308';
+    return '#ef4444';
+}
+function readinessStatus(score) {
+    if (score < 0.3) return 'Восстановлена — готова к нагрузке';
+    if (score < 0.6) return 'Средняя нагрузка — можно тренировать';
+    return 'Высокая нагрузка — рекомендуется отдых';
+}
+function formatVolume(v) {
+    if (!v || v < 1) return '0';
+    if (v < 1000) return Math.round(v).toString();
+    if (v < 10000) return (v / 1000).toFixed(1) + 'к';
+    return Math.round(v / 1000) + 'к';
+}
+function formatDate(d) {
+    if (!d) return '';
+    try { return new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }); } catch(e) { return d; }
+}
+function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showError(msg) { const e = $('error-message'); if (e) { e.textContent = msg; e.classList.remove('hidden'); setTimeout(()=>e.classList.add('hidden'),3000); } }
+
 const skel = $('workout-skeleton');
 const tabActive = $('tab-active'), tabTempl = $('tab-templates'), tabHist = $('tab-history');
 const vActive = $('view-active'), vStats = $('view-stats'), vTemplates = $('view-templates'), vBuilder = $('view-builder'),
       vHistory = $('view-history'), vDetail = $('view-detail'), vTemplate = $('view-template');
-const errMsg = $('error-message');
 
 function setActiveTab(name) {
     const map = { stats: [tabActive, vStats], templates: [tabTempl, vTemplates], history: [tabHist, vHistory] };
@@ -535,9 +559,6 @@ function setActiveTab(name) {
     if (!map[name]) return;
     map[name][0].classList.add('active');
     map[name][1].classList.add('active');
-    if (name === 'stats') loadDashboard();
-    if (name === 'templates') loadTemplates();
-    if (name === 'history') loadHistory();
 }
 
 function switchView(name) {
@@ -559,34 +580,253 @@ function switchView(name) {
         m[name][1].classList.add('active');
     }
 }
-
-tabActive.onclick = () => { switchView('stats'); loadDashboard(); };
+tabActive.onclick = () => { switchView('stats'); };
 tabTempl.onclick = () => { switchView('templates'); loadTemplates(); };
 tabHist.onclick = () => { switchView('history'); loadHistory(); };
 
-// Period selector
-function setPeriod(period) {
-    currentPeriod = period;
-    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-    const btnMap = { 'week': 'period-week', 'month': 'period-month', '3month': 'period-3month' };
-    $(btnMap[period]).classList.add('active');
-    loadDashboard();
+window.dashboardApp = function() {
+    return {
+        activePeriod: 'week',
+        stats: { total_workouts: 0, completed_workouts: 0, total_volume_kg: 0, total_sets: 0, streak_days: 0, this_week_volume: 0, avg_duration_min: null, personal_records: [] },
+        muscleReadiness: [],
+        volumeData: [],
+        muscleBalance: [],
+        progressData: [],
+        aiLoading: false,
+        aiHtml: '',
+
+        setPeriod(period) { this.activePeriod = period; this.loadDashboardData(); },
+        formatVolume(v) { return formatVolume(v); },
+
+        async init() {
+            try {
+                this.stats = (await (await fetchWithAuth('/api/workout-stats')).json()) || this.stats;
+            } catch(e) {}
+            try {
+                this.muscleReadiness = (await (await fetchWithAuth('/api/muscle-readiness')).json()) || [];
+            } catch(e) {}
+            await this.loadDashboardData();
+        },
+
+        async loadDashboardData() {
+            this.volumeData = (await (await fetchWithAuth(`/api/workout-stats/volume?period=${this.activePeriod}`)).json()) || [];
+            this.muscleBalance = (await (await fetchWithAuth(`/api/workout-stats/muscle-balance?period=${this.activePeriod}`)).json()) || [];
+            this.progressData = (await (await fetchWithAuth(`/api/workout-stats/progress?period=${this.activePeriod}`)).json()) || [];
+            this.$nextTick(() => this.renderCharts());
+        },
+
+        renderCharts() {
+            if (typeof Chart === 'undefined') return;
+            const textColor = 'rgba(255,255,255,0.6)';
+            const gridColor = 'rgba(255,255,255,0.07)';
+
+            // Destroy old charts
+            Object.values(_charts).forEach(c => c.destroy());
+            _charts = {};
+
+            // --- Radar chart: muscle readiness ---
+            const radarCanvas = $('radar-chart');
+            if (radarCanvas && this.muscleReadiness.length > 0) {
+                const labels = MG_RADAR_ORDER.filter(mg => this.muscleReadiness.find(r => r.muscle_group === mg));
+                const dataScores = labels.map(mg => {
+                    const r = this.muscleReadiness.find(x => x.muscle_group === mg);
+                    return r ? Math.round(r.avg_rpe * 10) : 0;
+                });
+                const dataVolume = labels.map(mg => {
+                    const r = this.muscleReadiness.find(x => x.muscle_group === mg);
+                    return r ? Math.min(100, Math.round(r.total_volume_7d / 50)) : 0;
+                });
+                _charts.radar = new Chart(radarCanvas, {
+                    type: 'radar',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: 'Нагруженность (RPE×10)', data: dataScores, backgroundColor: 'rgba(168,85,247,0.2)', borderColor: '#a855f7', borderWidth: 2, pointBackgroundColor: '#c084fc', pointBorderColor: '#fff', pointBorderWidth: 1 },
+                            { label: 'Объём 7д (норм.)', data: dataVolume, backgroundColor: 'rgba(34,197,94,0.15)', borderColor: '#22c55e', borderWidth: 2, pointBackgroundColor: '#4ade80', pointBorderColor: '#fff', pointBorderWidth: 1 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, aspectRatio: 1,
+                        scales: {
+                            r: {
+                                angleLines: { color: gridColor }, grid: { color: gridColor },
+                                pointLabels: { color: '#fff', font: { size: 10 } },
+                                ticks: { display: false }, suggestedMin: 0, suggestedMax: 100
+                            }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            // --- Bar chart: volume ---
+            const volCanvas = $('volume-chart');
+            if (volCanvas && this.volumeData.length > 0) {
+                _charts.volume = new Chart(volCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: this.volumeData.map(d => d.label),
+                        datasets: [{
+                            label: 'Объём (кг)',
+                            data: this.volumeData.map(d => d.volume),
+                            backgroundColor: 'rgba(168,85,247,0.6)', borderColor: '#a855f7', borderWidth: 1, borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: textColor, font: { size: 9 } } },
+                            y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 9 }, callback: v => formatVolume(v) } }
+                        }
+                    }
+                });
+            }
+
+            // --- Polar area: muscle balance ---
+            const balCanvas = $('balance-chart');
+            if (balCanvas && this.muscleBalance.length > 0) {
+                const colors = this.muscleBalance.map(d => MUSCLE_COLORS[d.muscle_group] || '#888');
+                _charts.balance = new Chart(balCanvas, {
+                    type: 'polarArea',
+                    data: {
+                        labels: this.muscleBalance.map(d => d.muscle_group + ' (' + formatVolume(d.volume) + ')'),
+                        datasets: [{
+                            data: this.muscleBalance.map(d => d.volume),
+                            backgroundColor: colors.map(c => c + '55'), borderColor: colors, borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            r: { grid: { color: gridColor }, ticks: { display: false } }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: textColor, font: { size: 9 }, boxWidth: 10, padding: 6 } }
+                        }
+                    }
+                });
+            }
+
+            // --- Line chart: progress ---
+            const progCanvas = $('progress-chart');
+            if (progCanvas && this.progressData.length > 0) {
+                const colors = ['#a855f7','#22c55e','#f59e0b','#ef4444','#3b82f6','#ec4899','#06b6d4'];
+                const datasets = this.progressData.slice(0, 5).map((ex, i) => {
+                    return {
+                        label: ex.name,
+                        data: ex.data.map(d => ({ x: d.week, y: d.weight })),
+                        borderColor: colors[i % colors.length],
+                        backgroundColor: colors[i % colors.length] + '22',
+                        borderWidth: 2.5, tension: 0.3, fill: false,
+                        pointRadius: 4, pointBackgroundColor: '#fff', pointBorderWidth: 2,
+                    };
+                });
+                const allWeeks = [...new Set(this.progressData.flatMap(ex => ex.data.map(d => d.week)))].sort((a,b) => a-b);
+                _charts.progress = new Chart(progCanvas, {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { position: 'top', labels: { color: textColor, font: { size: 9 }, boxWidth: 12, padding: 8 } },
+                            tooltip: { backgroundColor: 'rgba(28,28,40,0.9)', titleColor: '#fff', bodyColor: '#rgba(255,255,255,0.75)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }
+                        },
+                        scales: {
+                            x: { 
+                                type: 'linear', 
+                                grid: { color: gridColor }, 
+                                ticks: { 
+                                    color: textColor, 
+                                    font: { size: 9 },
+                                    callback: v => 'Н' + (v + 1),
+                                    stepSize: 1
+                                },
+                                title: { display: true, text: 'Неделя', color: textColor, font: { size: 10 } }
+                            },
+                            y: { 
+                                grid: { color: gridColor }, 
+                                ticks: { 
+                                    color: textColor, 
+                                    font: { size: 9 },
+                                    callback: v => v + ' кг'
+                                },
+                                title: { display: true, text: 'Вес', color: textColor, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }
+        },
+
+        renderPersonalRecords() {
+            const prs = this.stats.personal_records || [];
+            if (prs.length === 0) return '<div class="text-center text-gray-500 text-sm py-2">Пока нет рекордов</div>';
+            return prs.slice(0, 5).map(pr => `
+                <div class="pr-row">
+                    <span class="pr-name">${escapeHtml(pr.exercise_name || '')}</span>
+                    <div class="pr-vals">
+                        <span class="pr-val"><strong>${pr.max_weight_kg}</strong> кг</span>
+                        <span class="pr-val">× <strong>${pr.max_reps}</strong></span>
+                    </div>
+                </div>`).join('');
+        },
+
+        async loadAIAnalysis() {
+            this.aiLoading = true;
+            const resultDiv = $('ai-analysis-result');
+            resultDiv.classList.add('hidden');
+            try {
+                const res = await fetchWithAuth('/api/workout-stats/ai-analysis', { method: 'POST' });
+                if (!res.ok) throw new Error('Ошибка запроса');
+                const data = await res.json();
+                this.aiHtml = this.markdownToHtml(data.analysis || 'Не удалось получить анализ');
+                resultDiv.classList.remove('hidden');
+            } catch(e) {
+                this.aiHtml = '<p>Ошибка: ' + e.message + '</p>';
+                resultDiv.classList.remove('hidden');
+            } finally {
+                this.aiLoading = false;
+            }
+        },
+
+        markdownToHtml(text) {
+            return text
+                .replace(/###\s+(.+)/g, '<h4>$1</h4>')
+                .replace(/##\s+(.+)/g, '<h4>$1</h4>')
+                .replace(/^#\s+(.+)/gm, '<h4>$1</h4>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/^[-*]\s+(.+)/gm, '<li class="ml-4 list-disc" style="color:rgba(255,255,255,0.75);font-size:0.75rem;margin-bottom:0.15rem;">$1</li>')
+                .replace(/(<li[^>]*>[\s\S]*?<\/li>)/g, function(match) { return '<ul style="padding-left:1.2rem;margin:0.3rem 0;">' + match + '</ul>'; })
+                .replace(/\n\n/g, '<br/><br/>');
+        }
+    };
+};
+
+function continueWorkout() {
+    switchView('active');
+    loadActiveView();
 }
-$('period-week').onclick = () => setPeriod('week');
-$('period-month').onclick = () => setPeriod('month');
-$('period-3month').onclick = () => setPeriod('3month');
 
-// Set default period on load
-setPeriod('week');
-
-// ===== Templates =====
-async function loadTemplates() {
-    $('template-list').innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full slow-spin mx-auto"></div></div>';
-    try {
-        let res = await fetchWithAuth('/api/workout-templates');
-        templateList = res.ok ? await res.json() : [];
-        renderTemplates();
-    } catch(e) { $('template-list').innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; }
+function switchView(name) {
+    [vActive, vStats, vTemplates, vBuilder, vHistory, vDetail, vTemplate].forEach(v => v.classList.remove('active'));
+    [tabActive, tabTempl, tabHist].forEach(t => t.classList.remove('active'));
+    if (name === 'builder') vBuilder.classList.add('active');
+    else if (name === 'detail') {
+        vDetail.classList.add('active');
+        tabHist.classList.add('active');
+    } else if (name === 'template') {
+        vTemplate.classList.add('active');
+        tabTempl.classList.add('active');
+    } else if (name === 'active') {
+        vActive.classList.add('active');
+        loadActiveView();
+    } else {
+        const m = { stats: [vStats, tabActive], templates: [vTemplates, tabTempl], history: [vHistory, tabHist] };
+        m[name][0].classList.add('active');
+        m[name][1].classList.add('active');
+    }
 }
 
 function renderTemplates() {
@@ -1391,324 +1631,16 @@ $('detail-delete').onclick = async () => {
 };
 
 // ===== Utils =====
-function showError(msg) { errMsg.textContent = msg; errMsg.classList.remove('hidden'); setTimeout(()=>errMsg.classList.add('hidden'),3000); }
-function formatDate(d) {
-    if (!d) return '';
-    try {
-        const dt = new Date(d);
-        return dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-    } catch(e) { return d; }
-}
-function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s) { return String(s||'').replace(/'/g, '&#39;'); }
-
-// ===== Dashboard =====
-async function loadDashboard() {
-    try {
-        let res = await fetchWithAuth('/api/workout-stats');
-        if (!res.ok) { showEmptyState(); return; }
-        const s = await res.json();
-        console.log('Dashboard data:', s);
-        // Show data if we have any workouts or volume
-        if (!s || (s.total_workouts === 0 && (s.total_volume_kg || 0) === 0)) {
-            showEmptyState();
-            return;
-        }
-        hideEmptyState();
-        renderDashboard(s);
-    } catch(e) {
-        console.error('Dashboard error:', e);
-        showEmptyState();
-    }
-    // Load additional data
-    loadMuscleReadiness();
-    loadVolumeChart();
-    loadMuscleBalance();
-    loadProgress();
-}
-
-function showEmptyState() {
-    $('summary-empty').classList.remove('hidden');
-    $('stats-volume-wrap').classList.add('hidden');
-    $('stats-muscle-balance').classList.add('hidden');
-    $('stats-progress-wrap').classList.add('hidden');
-    $('stats-pr-wrap').classList.add('hidden');
-    $('stat-week-volume').textContent = '0';
-    $('stat-avg-duration').textContent = '—';
-}
-
-function hideEmptyState() {
-    $('summary-empty').classList.add('hidden');
-    $('stats-volume-wrap').classList.remove('hidden');
-    $('stats-muscle-balance').classList.remove('hidden');
-    $('stats-progress-wrap').classList.remove('hidden');
-    $('stats-pr-wrap').classList.remove('hidden');
-}
-
-// ===== Muscle Readiness =====
-async function loadMuscleReadiness() {
-    try {
-        let res = await fetchWithAuth('/api/muscle-readiness');
-        if (!res.ok) return;
-        const data = await res.json();
-        updateAthleteSVG(data);
-    } catch(e) { console.error(e); }
-}
-
-// ===== Volume Chart =====
-async function loadVolumeChart() {
-    try {
-        let res = await fetchWithAuth('/api/workout-stats/volume?period=' + currentPeriod);
-        if (!res.ok) return;
-        const data = await res.json();
-        renderVolumeChart(data);
-    } catch(e) { console.error(e); }
-}
-
-function renderVolumeChart(data) {
-    const chart = $('stats-volume-chart');
-    const labels = $('stats-volume-labels');
-    if (!chart || !labels) return;
-    
-    if (!data || data.length === 0) {
-        chart.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Нет данных</div>';
-        labels.innerHTML = '';
-        return;
-    }
-    
-    const maxVol = Math.max(...data.map(d => d.volume), 1);
-    let chartHtml = '';
-    let labelsHtml = '';
-    
-    for (const d of data) {
-        const height = Math.max(4, (d.volume / maxVol) * 100);
-        const isEmpty = d.volume === 0;
-        chartHtml += `<div class="volume-bar ${isEmpty ? 'empty' : ''}" style="height:${height}%" title="${formatVolume(d.volume)}"></div>`;
-        labelsHtml += `<div class="volume-label">${d.label}</div>`;
-    }
-    
-    chart.innerHTML = chartHtml;
-    labels.innerHTML = labelsHtml;
-}
-
-// ===== Muscle Balance =====
-async function loadMuscleBalance() {
-    try {
-        let res = await fetchWithAuth('/api/workout-stats/muscle-balance?period=' + currentPeriod);
-        if (!res.ok) return;
-        const data = await res.json();
-        renderMuscleBalance(data);
-    } catch(e) { console.error(e); }
-}
-
-function renderMuscleBalance(data) {
-    const container = $('muscle-balance-chart');
-    if (!container) return;
-    
-    if (!data || data.length === 0) {
-        container.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Нет данных</div>';
-        return;
-    }
-    
-    const maxVol = Math.max(...data.map(d => d.volume), 1);
-    let html = '';
-    
-    for (const d of data) {
-        const pct = (d.volume / maxVol) * 100;
-        const color = MUSCLE_COLORS[d.muscle_group] || '#888';
-        html += `<div class="muscle-balance-bar">
-            <span class="muscle-balance-name">${d.muscle_group}</span>
-            <div class="muscle-balance-track">
-                <div class="muscle-balance-fill" style="width:${pct}%; background:${color};"></div>
-            </div>
-            <span class="muscle-balance-val">${formatVolume(d.volume)}</span>
-        </div>`;
-    }
-    
-    container.innerHTML = html;
-}
-
-// ===== Progress Chart =====
-async function loadProgress() {
-    try {
-        let res = await fetchWithAuth('/api/workout-stats/progress?period=' + currentPeriod);
-        if (!res.ok) return;
-        const data = await res.json();
-        renderProgress(data);
-    } catch(e) { console.error(e); }
-}
-
-function renderProgress(data) {
-    const container = $('progress-chart');
-    if (!container) return;
-    
-    if (!data || data.length === 0) {
-        container.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Недостаточно данных</div>';
-        return;
-    }
-    
-    let html = '<div class="space-y-3">';
-    const colors = ['#a855f7', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
-    
-    for (let i = 0; i < Math.min(3, data.length); i++) {
-        const ex = data[i];
-        const color = colors[i];
-        const firstWeight = ex.data[0]?.weight || 0;
-        const lastWeight = ex.data[ex.data.length - 1]?.weight || 0;
-        const diff = lastWeight - firstWeight;
-        const diffText = diff > 0 ? `+${diff}` : `${diff}`;
-        const diffColor = diff > 0 ? 'text-green-400' : diff < 0 ? 'text-red-400' : 'text-gray-400';
-        
-        // Mini sparkline
-        const maxW = Math.max(...ex.data.map(d => d.weight));
-        const minW = Math.min(...ex.data.map(d => d.weight));
-        const range = maxW - minW || 1;
-        const points = ex.data.map((d, idx) => {
-            const x = (idx / (ex.data.length - 1)) * 100;
-            const y = 100 - ((d.weight - minW) / range) * 80 - 10;
-            return `${x},${y}`;
-        }).join(' ');
-        
-        html += `<div class="rounded-lg p-3" style="background:rgba(255,255,255,0.03);">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-medium text-white">${ex.name}</span>
-                <span class="text-xs ${diffColor}">${firstWeight} → ${lastWeight} кг (${diffText})</span>
-            </div>
-            <svg viewBox="0 0 100 50" class="w-full h-8" preserveAspectRatio="none">
-                <polyline fill="none" stroke="${color}" stroke-width="2" points="${points}" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </div>`;
-    }
-    
-    html += '</div>';
-    container.innerHTML = html;
-}
-
-function readinessColor(score) {
-    if (score < 0.3) return '#22c55e'; // green - recovered
-    if (score < 0.6) return '#eab308'; // yellow - moderate
-    return '#ef4444'; // red - fatigued
-}
-
-function readinessStatus(score) {
-    if (score < 0.3) return 'Восстановлена — готова к нагрузке';
-    if (score < 0.6) return 'Средняя нагрузка — можно тренировать';
-    return 'Высокая нагрузка — рекомендуется отдых';
-}
-
-function updateAthleteSVG(data) {
-    const grid = $('muscle-grid');
-    if (!grid) return;
-
-    // Sort by readiness (most fatigued first)
-    const sorted = [...data].sort((a, b) => b.readiness_score - a.readiness_score);
-
-    const icons = {
-        'Грудь': '🏋️',
-        'Спина': '🔙',
-        'Ноги': '🦵',
-        'Плечи': '💪',
-        'Бицепс': '💪',
-        'Трицепс': '💪',
-        'Пресс': '🧘',
-        'Предплечье': '🤲',
-        'Трапеция': '🔝',
-    };
-
-    grid.innerHTML = sorted.map(item => {
-        const color = readinessColor(item.readiness_score);
-        const icon = icons[item.muscle_group] || '💪';
-        const status = readinessStatus(item.readiness_score);
-        const opacity = 0.7 + item.readiness_score * 0.3;
-
-        return `<div class="py-3 cursor-pointer transition-all hover:opacity-80 text-center"
-                    onclick="showMgDetail('${item.muscle_group}', ${item.readiness_score}, ${item.avg_rpe}, ${item.last_trained_days_ago || 'null'}, ${item.total_volume_7d})">
-            <div class="text-2xl mb-1">${icon}</div>
-            <div class="text-xs font-semibold text-white truncate">${item.muscle_group}</div>
-            <div class="flex items-center justify-center gap-1 mt-1">
-                <span class="w-1.5 h-1.5 rounded-full" style="background: ${color};"></span>
-                <span class="text-[0.6rem]" style="color: ${color};">RPE ${item.avg_rpe.toFixed(1)}</span>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function showMgDetail(mg, score, rpe, days, volume) {
-    $('mg-detail-name').textContent = mg;
-    $('mg-detail-rpe').textContent = rpe.toFixed(1);
-    $('mg-detail-days').textContent = days !== null ? days : '—';
-    $('mg-detail-volume').textContent = Math.round(volume) + ' кг';
-    $('mg-detail-status').textContent = readinessStatus(score);
-    $('mg-detail-status').style.color = readinessColor(score);
-    $('mg-detail-panel').classList.remove('hidden');
-}
-
-function formatVolume(v) {
-    if (!v || v < 1000) return Math.round(v || 0).toString();
-    if (v < 10000) return (v / 1000).toFixed(1) + 'к';
-    return Math.round(v / 1000) + 'к';
-}
-
-function renderDashboard(s) {
-    $('stat-week-volume').textContent = formatVolume(s.this_week_volume || 0);
-    $('stat-avg-duration').textContent = s.avg_duration_min != null ? Math.round(s.avg_duration_min) : '—';
-}
 
 // ===== Init =====
 (async function() {
     skel.classList.remove('hidden');
     await loadExerciseLibrary();
     skel.classList.add('hidden');
-    loadTemplates();
-    loadDashboard();
-    // Check for active workout on page load
-    const hasActive = await checkActiveWorkout();
-    if (hasActive) {
-        switchView('active');
-    } else {
-        switchView('templates');
-    }
+    switchView('templates');
+    await loadTemplates();
 })();
-
-async function checkActiveWorkout() {
-    try {
-        let res = await fetchWithAuth('/api/workouts');
-        if (!res.ok) return false;
-        const list = await res.json();
-        const ongoing = list.find(w => !w.is_completed);
-        if (!ongoing) return false;
-         let detailRes = await fetchWithAuth(`/api/workouts/${ongoing.id}`);
-         if (!detailRes.ok) return false;
-         activeSession = await detailRes.json();
-         renderActive();
-         return true;
-     } catch(e) { return false; }
- }
-
-// ===== AI Analysis =====
-$('ai-analysis-btn').onclick = async () => {
-    const btn = $('ai-analysis-btn');
-    const resultDiv = $('ai-analysis-result');
-    const contentDiv = $('ai-analysis-content');
-    
-    btn.disabled = true;
-    btn.textContent = '⏳ Анализ...';
-    resultDiv.classList.add('hidden');
-    
-    try {
-        let res = await fetchWithAuth('/api/workout-stats/ai-analysis', { method: 'POST' });
-        if (!res.ok) throw new Error('Ошибка запроса');
-        const data = await res.json();
-        contentDiv.textContent = data.analysis || 'Не удалось получить анализ';
-        resultDiv.classList.remove('hidden');
-    } catch(e) {
-        contentDiv.textContent = 'Ошибка: ' + e.message;
-        resultDiv.classList.remove('hidden');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '🤖 Получить анализ прогресса';
-    }
-};
 </script>
 </body>
 </html>
