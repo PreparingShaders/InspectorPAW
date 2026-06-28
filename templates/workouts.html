@@ -6,31 +6,1709 @@
     <title>Тренировки - ProgressLab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/css/dashboard.css">
-
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ProgressLab">
     <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png">
     <link rel="manifest" href="/static/manifest.json">
-</head>
-<body class="h-dvh flex flex-col">
+    <style>
+        .tab-btn { transition: all 0.3s ease-in-out; }
+        .tab-btn.active { background-color: rgba(255,255,255,0.1); text-shadow: 0 0 8px rgba(255,255,255,0.8); color: #fff; }
+        .view { display: none; }
+        .view.active { display: flex; }
+        .step { display: none !important; }
+        .step.active { display: block !important; }
+        .mg-tile {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            min-width: 0;
+        }
+        .mg-tile:active { transform: scale(0.95); }
+        .mg-tile .name { font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.9); line-height: 1.2; }
+        .mg-tile .count { font-size: 0.6rem; color: rgba(255,255,255,0.4); margin-top: 0.1rem; }
+        .exercise-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        .exercise-card.completed { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); opacity: 0.6; transition: opacity 0.3s; }
+        .set-row {
+            display: grid;
+            grid-template-columns: 1.5rem 1fr 1fr 1fr 1.5rem;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0;
+        }
+        .set-row-active {
+            display: grid;
+            grid-template-columns: 1.5rem 1fr 1fr 1fr 1.5rem;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0;
+        }
+        .set-row.done, .set-row-active.done { opacity: 0.55; }
+        .set-row.done .set-value, .set-row-active.done .set-value { text-decoration: line-through; }
+        .check-circle {
+            width: 1.6rem; height: 1.6rem; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.15);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+            font-size: 0.8rem;
+        }
+        .check-circle.done { background: #22c55e; border-color: #22c55e; }
+        .check-circle:active { transform: scale(0.85); }
+        .spin-btn {
+            width: 1.8rem; height: 1.8rem; border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            color: white; font-size: 0.9rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.1s ease; user-select: none; flex-shrink: 0;
+        }
+        .spin-btn:active { transform: scale(0.85); background: rgba(255,255,255,0.15); }
+        .set-value {
+            font-size: 1rem; font-weight: 700; text-align: center;
+            width: 100%; min-height: 2.2rem; color: white;
+            background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.1); border-radius: 0; outline: none;
+            -moz-appearance: textfield;
+        }
+        .set-value::-webkit-inner-spin-button, .set-value::-webkit-outer-spin-button { -webkit-appearance: none; }
+        .set-value:focus { border-bottom-color: #c084fc; }
+        .set-value::placeholder { color: rgba(255,255,255,0.2); }
+        .set-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.35); text-align: center; }
+        .add-set-btn {
+            width: 100%; padding: 0.35rem; border-radius: 0.5rem;
+            border: 1px dashed rgba(255,255,255,0.15);
+            background: transparent; color: rgba(255,255,255,0.4);
+            font-size: 0.7rem; cursor: pointer; transition: all 0.2s;
+            margin-top: 0.4rem;
+        }
+        .add-set-btn:hover { border-color: rgba(192,132,252,0.4); color: #c084fc; }
+        .search-input {
+            width: 100%; padding: 0.6rem 0.75rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.75rem; color: white; font-size: 0.85rem;
+            outline: none; transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .search-input:focus { border-color: rgba(192,132,252,0.5); }
+        .search-input::placeholder { color: rgba(255,255,255,0.3); }
+        .template-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.75rem; padding: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        .template-card-active {
+            background: rgba(34,197,94,0.08);
+            border: 1px solid rgba(34,197,94,0.5);
+            border-radius: 0.75rem; padding: 0.75rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 12px rgba(34,197,94,0.2);
+        }
+        .history-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.75rem; padding: 0.75rem;
+            cursor: pointer; transition: all 0.3s ease;
+        }
+        .history-card:active { transform: scale(0.98); }
+        .active-card {
+            background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(74,222,128,0.06));
+            border: 1px solid rgba(34,197,94,0.4);
+            border-radius: 0.75rem; padding: 0.75rem;
+            cursor: pointer; transition: all 0.3s ease;
+            animation: pulse-border 2.5s infinite;
+        }
+        .active-card:active { transform: scale(0.98); }
+        @keyframes pulse-border {
+            0%,100% { box-shadow: 0 0 6px rgba(34,197,94,0.25); }
+            50% { box-shadow: 0 0 18px rgba(34,197,94,0.45); }
+        }
+        .empty-state { text-align: center; padding: 2rem 1rem; color: rgba(255,255,255,0.4); }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-down { animation: slideDown 0.2s ease-out; }
 
-    <header class="text-center pb-2" style="padding-top: calc(2.5rem + env(safe-area-inset-top));">
-        <h1 class="text-3xl font-extrabold tracking-wider">Тренировки</h1>
+        .rpe-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .rpe-btn:hover { background: rgba(255,255,255,0.1); }
+        .rpe-btn.selected {
+            background: rgba(168,85,247,0.2);
+            border-color: #a855f7;
+            color: #fff;
+        }
+        .set-row-rpe {
+            display: flex;
+            align-items: center;
+            padding: 0.3rem 0;
+            border-top: 1px dashed rgba(255,255,255,0.08);
+            margin-top: 0.3rem;
+            grid-column: 1 / -1;
+        }
+        .rpe-adjust {
+            width: 1.5rem;
+            height: 1.5rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .rpe-value {
+            min-width: 1.5rem;
+            text-align: center;
+            font-weight: 700;
+            color: #c084fc;
+        }
+
+        .warmup-toggle {
+            width: 1.6rem; height: 1.6rem; border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.5); font-size: 0.6rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.1s ease; user-select: none; flex-shrink: 0;
+        }
+        .warmup-toggle.active { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+        .warmup-toggle:active { transform: scale(0.85); }
+
+        .stat-tile {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.75rem;
+            padding: 0.6rem; text-align: center;
+        }
+        .stat-tile .v { font-size: 1.25rem; font-weight: 700; color: #fff; }
+        .stat-tile .l { font-size: 0.6rem; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        /* Dashboard */
+        .stats-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 0.75rem;
+            padding: 0.7rem 0.6rem;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .stats-card .v { font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1; }
+        .stats-card .l { font-size: 0.55rem; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.3rem; }
+        .stats-card.accent { background: linear-gradient(135deg, rgba(168,85,247,0.18), rgba(124,58,237,0.08)); border-color: rgba(168,85,247,0.35); }
+        .stats-card.accent .v { color: #c084fc; text-shadow: 0 0 12px rgba(192,132,252,0.4); }
+        .stats-card.green { background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(22,163,74,0.08)); border-color: rgba(34,197,94,0.35); }
+        .stats-card.green .v { color: #4ade80; }
+        .stats-section-title { font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 0.08em; margin: 0.25rem 0 0.4rem; }
+        .mg-bar-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; font-size: 0.75rem; }
+        .mg-bar-row .mg-name { width: 5rem; color: rgba(255,255,255,0.7); flex-shrink: 0; }
+        .mg-bar-row .mg-bar { flex: 1; height: 0.5rem; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
+        .mg-bar-row .mg-fill { height: 100%; background: linear-gradient(90deg, #a855f7, #7c3aed); border-radius: 999px; transition: width 0.4s ease; }
+        .mg-bar-row .mg-val { color: rgba(255,255,255,0.55); font-size: 0.7rem; min-width: 3rem; text-align: right; }
+        .pr-row { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; background: rgba(255,255,255,0.03); border-radius: 0.5rem; margin-bottom: 0.3rem; border: 1px solid rgba(255,255,255,0.06); }
+        .pr-row .pr-name { color: #fff; font-size: 0.78rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pr-row .pr-vals { display: flex; gap: 0.5rem; flex-shrink: 0; }
+        .pr-row .pr-val { font-size: 0.7rem; color: rgba(255,255,255,0.6); }
+        .pr-row .pr-val strong { color: #c084fc; font-weight: 700; }
+        .weekly-chart { display: flex; align-items: flex-end; gap: 0.25rem; height: 4rem; padding: 0.25rem 0; }
+        .weekly-bar { flex: 1; background: linear-gradient(180deg, #a855f7, #7c3aed); border-radius: 0.25rem 0.25rem 0 0; min-height: 0.2rem; transition: height 0.4s ease; position: relative; }
+        .weekly-bar.empty { background: rgba(255,255,255,0.08); }
+        .weekly-labels { display: flex; gap: 0.25rem; margin-top: 0.25rem; }
+        .weekly-label { flex: 1; text-align: center; font-size: 0.55rem; color: rgba(255,255,255,0.4); }
+        .period-btn.active { background: rgba(168,85,247,0.2); color: #c084fc; }
+        .volume-chart { display: flex; align-items: flex-end; gap: 0.25rem; height: 5rem; padding: 0.25rem 0; }
+        .volume-bar { flex: 1; background: linear-gradient(180deg, #a855f7, #7c3aed); border-radius: 0.25rem 0.25rem 0 0; min-height: 0.2rem; transition: height 0.4s ease; }
+        .volume-bar.empty { background: rgba(255,255,255,0.08); }
+        .volume-labels { display: flex; gap: 0.25rem; margin-top: 0.25rem; }
+        .volume-label { flex: 1; text-align: center; font-size: 0.55rem; color: rgba(255,255,255,0.4); }
+        .muscle-balance-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
+        .muscle-balance-name { width: 4rem; font-size: 0.65rem; color: rgba(255,255,255,0.7); }
+        .muscle-balance-track { flex: 1; height: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 0.25rem; overflow: hidden; }
+        .muscle-balance-fill { height: 100%; border-radius: 0.25rem; transition: width 0.4s ease; }
+        .muscle-balance-val { width: 2.5rem; font-size: 0.6rem; color: rgba(255,255,255,0.5); text-align: right; }
+        #athlete-svg [data-mg] { cursor: pointer; transition: all 0.3s ease; }
+        #athlete-svg [data-mg]:hover { filter: brightness(1.3); }
+        .mg-active { filter: brightness(1.4) drop-shadow(0 0 8px currentColor); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-x-hidden relative">
+
+    <header class="text-center pb-1" style="padding-top: calc(0.01rem + env(safe-area-inset-top));">
+        <h1 class="text-lg font-bold tracking-wide" style="color: var(--color-amber); text-shadow: 0 0 10px rgba(222,184,135,0.4);">Тренировки</h1>
+        <div class="mx-auto mt-1 h-px w-20" style="background: linear-gradient(90deg, transparent, var(--color-amber), transparent); opacity:0.4;"></div>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-center px-4 text-center pb-24">
-        <div class="w-full max-w-md">
-            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h2 class="mt-4 text-xl font-semibold text-white">Раздел в разработке</h2>
-            <p class="mt-2 text-gray-400">Мы усердно работаем над созданием этого раздела. Загляните позже!</p>
+    <main class="flex-grow flex flex-col items-center justify-start px-4 space-y-0 pb-24">
+
+        <!-- Tab nav -->
+        <div class="w-full flex justify-center mt-1.5" style="transform:scale(0.85); transform-origin:top center;">
+            <div class="relative flex w-full max-w-sm p-1 rounded-full glassmorphism">
+                <button id="tab-active" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold transition-all text-gray-400">Статистика</button>
+                <button id="tab-templates" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold text-gray-400 transition-all">Тренировки</button>
+                <button id="tab-history" class="tab-btn flex-1 rounded-full py-1.5 text-sm font-semibold text-gray-400 transition-all">История</button>
+            </div>
         </div>
+
+        <!-- Skeleton -->
+        <div id="workout-skeleton" class="w-full flex flex-col items-center mt-6 space-y-4 animate-pulse">
+            <div class="w-full h-12 rounded-xl" style="background:rgba(255,255,255,0.04);"></div>
+            <div class="w-full h-24 rounded-xl" style="background:rgba(255,255,255,0.04);"></div>
+        </div>
+
+        <!-- ===== VIEW: Statistics (Dashboard) ===== -->
+        <div id="view-stats" class="view w-full flex-col items-center mt-2 gap-4">
+
+            <!-- Empty state -->
+            <div id="summary-empty" class="w-full text-center py-8 hidden">
+                <div class="text-5xl mb-3">📊</div>
+                <p class="text-lg font-semibold text-gray-500 mb-1">Пока нет данных</p>
+                <p class="text-sm text-gray-600">Завершите первую тренировку!</p>
+            </div>
+
+            <!-- Time period selector -->
+            <div class="w-full flex justify-center">
+                <div class="relative flex w-full max-w-xs p-1 rounded-full glassmorphism">
+                    <button id="period-week" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold transition-all text-gray-400">Неделя</button>
+                    <button id="period-month" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold text-gray-400 transition-all">Месяц</button>
+                    <button id="period-3month" class="period-btn flex-1 rounded-full py-1.5 text-xs font-semibold text-gray-400 transition-all">3 мес.</button>
+                </div>
+            </div>
+
+            <!-- Muscle groups grid -->
+            <div class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 text-center">Состояние мышц</div>
+                <div id="muscle-grid" class="grid grid-cols-3 gap-2">
+                    <!-- Filled by JS -->
+                </div>
+                <!-- Legend -->
+                <div class="flex justify-center gap-4 mt-3 text-[0.6rem] text-gray-500">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>Восстановлена</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span>Средне</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>Устала</span>
+                </div>
+            </div>
+
+            <!-- Muscle detail panel (shown on click) -->
+            <div id="mg-detail-panel" class="w-full hidden">
+                <div id="mg-detail-name" class="text-base font-bold text-white text-center mb-2">—</div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="py-2">
+                        <div id="mg-detail-rpe" class="text-lg font-bold" style="color: #c084fc;">—</div>
+                        <div class="text-[0.6rem] text-gray-500">Ср. RPE</div>
+                    </div>
+                    <div class="py-2">
+                        <div id="mg-detail-days" class="text-lg font-bold text-white">—</div>
+                        <div class="text-[0.6rem] text-gray-500">Дней назад</div>
+                    </div>
+                    <div class="py-2">
+                        <div id="mg-detail-volume" class="text-lg font-bold text-white">—</div>
+                        <div class="text-[0.6rem] text-gray-500">Объём 7д</div>
+                    </div>
+                </div>
+                <div id="mg-detail-status" class="mt-2 text-center text-xs text-gray-500">—</div>
+            </div>
+
+            <!-- Quick stats -->
+            <div class="w-full grid grid-cols-2 gap-3">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-white" id="stat-week-volume">0</div>
+                    <div class="text-[0.6rem] text-gray-500 uppercase tracking-wide">Объём, кг</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-white" id="stat-avg-duration">—</div>
+                    <div class="text-[0.6rem] text-gray-500 uppercase tracking-wide">Среднее, мин</div>
+                </div>
+            </div>
+
+            <!-- AI Analysis button -->
+            <button id="ai-analysis-btn" class="w-full rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #fff; background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                🤖 Получить анализ прогресса
+            </button>
+
+            <!-- AI Analysis result -->
+            <div id="ai-analysis-result" class="w-full hidden rounded-xl p-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                <div id="ai-analysis-content" class="text-sm text-gray-300"></div>
+            </div>
+
+            <!-- Volume chart -->
+            <div id="stats-volume-wrap" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Объём</div>
+                <div class="volume-chart" id="stats-volume-chart"></div>
+                <div class="volume-labels" id="stats-volume-labels"></div>
+            </div>
+
+            <!-- Muscle balance -->
+            <div id="stats-muscle-balance" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Мышечный баланс</div>
+                <div id="muscle-balance-chart" class="w-full"></div>
+            </div>
+
+            <!-- Progress chart -->
+            <div id="stats-progress-wrap" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Прогрессия</div>
+                <div id="progress-chart" class="w-full"></div>
+            </div>
+
+            <!-- Personal records -->
+            <div id="stats-pr-wrap" class="w-full">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Личные рекорды</div>
+                <div id="stats-personal-records"></div>
+            </div>
+        </div>
+
+        <!-- ===== VIEW: Active workout ===== -->
+        <div id="view-active" class="view w-full flex-col items-center mt-1 gap-3">
+            <div id="active-empty" class="empty-state hidden w-full">
+                <div class="text-5xl mb-3">🏋️</div>
+                <p class="text-lg font-semibold text-gray-500 mb-1">Нет активной тренировки</p>
+                <p class="text-sm text-gray-600">Запустите шаблон, чтобы начать</p>
+            </div>
+            <div id="active-container" class="w-full space-y-3 hidden">
+                <div class="glassmorphism rounded-2xl p-3 border border-white/10">
+                    <div class="flex items-center justify-between mb-2">
+                        <div>
+                            <h2 id="active-name" class="text-base font-bold text-white"></h2>
+                            <p id="active-date" class="text-xs text-gray-500"></p>
+                        </div>
+                        <div class="text-right">
+                            <div id="active-timer" class="text-lg font-bold text-green-400">00:00</div>
+                            <div class="text-[0.55rem] text-gray-500 uppercase tracking-wide">время</div>
+                        </div>
+                    </div>
+                    <div class="w-full h-1.5 rounded-full" style="background:rgba(255,255,255,0.08);">
+                        <div id="active-progress-fill" class="h-full rounded-full transition-all" style="width:0%;background:linear-gradient(90deg,#22c55e,#4ade80);"></div>
+                    </div>
+                    <div class="flex justify-between text-[0.6rem] text-gray-500 mt-1">
+                        <span id="active-progress-text">0 / 0 подходов</span>
+                        <span id="active-progress-pct">0%</span>
+                    </div>
+                </div>
+                <div id="active-exercises" class="w-full space-y-3"></div>
+                <button id="finish-workout-btn" class="w-full rounded-full py-3 text-sm font-bold text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#22c55e,#16a34a); box-shadow:0 0 12px rgba(34,197,94,0.4);">✓ Завершить тренировку</button>
+            </div>
+        </div>
+
+        <!-- ===== VIEW: Templates list ===== -->
+        <div id="view-templates" class="view w-full flex-col items-center mt-1 gap-3">
+            <button id="new-template-btn" class="w-full rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">+ Создать тренировку</button>
+            <div id="template-list" class="w-full space-y-2"></div>
+        </div>
+
+        <!-- ===== VIEW: Builder (new template) ===== -->
+        <div id="view-builder" class="view w-full flex-col items-center mt-1 gap-3">
+
+            <!-- Step 1: select exercises -->
+            <div id="bstep-1" class="step active w-full space-y-3">
+                <input type="text" id="exercise-search" class="search-input" placeholder="Поиск упражнений...">
+                <div class="flex gap-2">
+                    <button id="b1-cancel" class="flex-1 rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Отмена</button>
+                    <button id="b1-next" class="flex-1 rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Далее (<span id="selected-count">0</span>)</button>
+                </div>
+                <div id="mg-tiles" class="grid grid-cols-3 gap-2 w-full"></div>
+                <div id="mg-exercises" class="w-full space-y-1"></div>
+            </div>
+
+            <!-- Step 2: sets editor with weight/reps per set -->
+            <div id="bstep-2" class="step w-full space-y-3">
+                <input type="text" id="workout-name" class="search-input" placeholder="Название тренировки *" required>
+                <div id="exercises-sets-container" class="w-full space-y-3"></div>
+                <div class="flex gap-2 pt-2">
+                    <button id="b2-back" class="flex-1 rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Назад</button>
+                    <button id="save-template-btn" class="flex-1 rounded-full py-2.5 text-sm font-bold transition-all active:scale-95" style="color: #22c55e; border: 1px solid #22c55e;">Сохранить</button>
+                </div>
+            </div>
+
+            <!-- Step 3: success -->
+            <div id="bstep-3" class="step w-full space-y-4 text-center" style="margin-top:3rem;">
+                <div class="text-5xl mb-3">✅</div>
+                <p class="text-lg font-bold text-white">Тренировка сохранена!</p>
+                <button id="b3-new" class="w-full rounded-full py-2.5 text-sm font-semibold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Ещё тренировку</button>
+                <button id="b3-list" class="w-full rounded-full py-2.5 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">К тренировкам</button>
+            </div>
+        </div>
+
+        <!-- ===== VIEW: History ===== -->
+        <div id="view-history" class="view w-full flex-col items-center mt-1 gap-3">
+            <div id="workout-history-list" class="w-full space-y-2"></div>
+        </div>
+
+        <!-- ===== VIEW: Workout detail ===== -->
+        <div id="view-detail" class="view w-full flex-col items-center mt-1 gap-3">
+            <div class="w-full flex items-center justify-between">
+                <button id="detail-back" class="text-gray-400 text-sm">&larr; Назад</button>
+                <button id="detail-delete" class="text-red-500 text-xs">Удалить</button>
+            </div>
+            <div id="detail-content" class="w-full space-y-3"></div>
+        </div>
+
+        <!-- ===== VIEW: Template preview ===== -->
+        <div id="view-template" class="view w-full flex-col items-center mt-1 gap-3">
+            <div class="w-full flex items-center justify-between">
+                <button id="template-back" class="text-gray-400 text-sm">&larr; Назад</button>
+                <div class="flex gap-2">
+                    <button id="template-edit" class="text-sm" style="color: #a855f7;">Редактировать</button>
+                    <button id="template-delete" class="text-gray-500 text-xs">Удалить</button>
+                </div>
+            </div>
+            <div id="template-content" class="w-full space-y-3"></div>
+        </div>
+
+        <!-- ===== MODAL: Finish workout ===== -->
+        <div id="finish-overlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden" style="padding:1rem;">
+            <div class="glassmorphism rounded-2xl p-5 border border-white/10 w-full max-w-xs space-y-4">
+                <h3 class="text-lg font-bold text-center text-white">Завершить тренировку</h3>
+                <div>
+                    <label class="text-xs text-gray-500 block mb-2 text-center">Насколько была сложной тренировка?</label>
+                    <div class="flex justify-between gap-1" id="finish-rpe">
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="1">1</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="2">2</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="3">3</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="4">4</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="5">5</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="6">6</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="7">7</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="8">8</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="9">9</button>
+                        <button type="button" class="rpe-btn flex-1 py-2 text-sm rounded-lg" data-v="10">10</button>
+                    </div>
+                    <div class="flex justify-between text-[0.6rem] text-gray-500 mt-1 px-1">
+                        <span>Легко</span>
+                        <span>Сложно</span>
+                    </div>
+                </div>
+                <textarea id="finish-notes" class="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white text-sm placeholder-gray-600 resize-none h-16" placeholder="Заметки (необязательно)..."></textarea>
+                <div class="flex gap-2">
+                    <button id="finish-cancel" class="flex-1 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all glassmorphism">Отмена</button>
+                    <button id="finish-confirm" class="flex-1 rounded-full py-2 text-sm font-bold text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#22c55e,#16a34a);">Готово</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-message" class="text-red-500 text-center mt-4"></div>
     </main>
 
     {% set active_page = 'workouts' %}
     {% include 'includes/bottom_nav.html' %}
 
+<script src="/static/js/api.js"></script>
+<script>
+const MUSCLE_ICONS = {
+    'Грудь':'🫁','Спина':'🔙','Ноги':'🦵','Плечи':'💪',
+    'Бицепс':'💪','Трицепс':'💪','Пресс':'🎯','Трапеция':'🔝',
+    'Предплечье':'🤲',
+};
+const MUSCLE_COLORS = {
+    'Грудь':'#ef4444','Спина':'#f59e0b','Ноги':'#3b82f6','Плечи':'#a855f7',
+    'Бицепс':'#22c55e','Трицепс':'#ec4899','Пресс':'#f97316','Трапеция':'#14b8a6',
+    'Предплечье':'#8b5cf6','Икры':'#06b6d4','Кардио':'#f43f5e',
+};
+const FEELING_EMOJI = ['','😴','😕','😐','🙂','😊','🔥'];
+
+let exerciseLibrary = [], templateList = [], workoutsHistory = [];
+let selectedMG = null, selectedExercises = new Set(), exercisesWithSets = [];
+let activeSession = null, timerInterval = null;
+let selectedRpe = null, weightStep = 2.5;
+let currentDetailId = null;
+let currentTemplateId = null;
+let currentPeriod = 'week'; // week, month, 3month
+
+const $ = id => document.getElementById(id);
+const skel = $('workout-skeleton');
+const tabActive = $('tab-active'), tabTempl = $('tab-templates'), tabHist = $('tab-history');
+const vActive = $('view-active'), vStats = $('view-stats'), vTemplates = $('view-templates'), vBuilder = $('view-builder'),
+      vHistory = $('view-history'), vDetail = $('view-detail'), vTemplate = $('view-template');
+const errMsg = $('error-message');
+
+function setActiveTab(name) {
+    const map = { stats: [tabActive, vStats], templates: [tabTempl, vTemplates], history: [tabHist, vHistory] };
+    [tabActive, tabTempl, tabHist].forEach(t => t.classList.remove('active'));
+    [vActive, vStats, vTemplates, vBuilder, vHistory, vDetail].forEach(v => v.classList.remove('active'));
+    if (!map[name]) return;
+    map[name][0].classList.add('active');
+    map[name][1].classList.add('active');
+    if (name === 'stats') loadDashboard();
+    if (name === 'templates') loadTemplates();
+    if (name === 'history') loadHistory();
+}
+
+function switchView(name) {
+    [vActive, vStats, vTemplates, vBuilder, vHistory, vDetail, vTemplate].forEach(v => v.classList.remove('active'));
+    [tabActive, tabTempl, tabHist].forEach(t => t.classList.remove('active'));
+    if (name === 'builder') vBuilder.classList.add('active');
+    else if (name === 'detail') {
+        vDetail.classList.add('active');
+        tabHist.classList.add('active');
+    } else if (name === 'template') {
+        vTemplate.classList.add('active');
+        tabTempl.classList.add('active');
+    } else if (name === 'active') {
+        vActive.classList.add('active');
+        loadActiveView();
+    } else {
+        const m = { stats: [vStats, tabActive], templates: [vTemplates, tabTempl], history: [vHistory, tabHist] };
+        m[name][0].classList.add('active');
+        m[name][1].classList.add('active');
+    }
+}
+
+tabActive.onclick = () => { switchView('stats'); loadDashboard(); };
+tabTempl.onclick = () => { switchView('templates'); loadTemplates(); };
+tabHist.onclick = () => { switchView('history'); loadHistory(); };
+
+// Period selector
+function setPeriod(period) {
+    currentPeriod = period;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    const btnMap = { 'week': 'period-week', 'month': 'period-month', '3month': 'period-3month' };
+    $(btnMap[period]).classList.add('active');
+    loadDashboard();
+}
+$('period-week').onclick = () => setPeriod('week');
+$('period-month').onclick = () => setPeriod('month');
+$('period-3month').onclick = () => setPeriod('3month');
+
+// Set default period on load
+setPeriod('week');
+
+// ===== Templates =====
+async function loadTemplates() {
+    $('template-list').innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full slow-spin mx-auto"></div></div>';
+    try {
+        let res = await fetchWithAuth('/api/workout-templates');
+        templateList = res.ok ? await res.json() : [];
+        renderTemplates();
+    } catch(e) { $('template-list').innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; }
+}
+
+function renderTemplates() {
+    if (!templateList.length) {
+        $('template-list').innerHTML = `<div class="empty-state">
+            <p class="text-lg font-semibold text-gray-500 mb-1">У вас нет тренировок</p>
+            <p class="text-sm text-gray-600">Создайте свою первую тренировку</p>
+        </div>`;
+        return;
+    }
+    let html = '';
+    for (const t of templateList) {
+        const exCount = t.exercises ? t.exercises.length : 0;
+        const totalSets = t.exercises ? t.exercises.reduce((s,e)=>s + (e.sets?e.sets.length:0), 0) : 0;
+        const isActive = activeSession && activeSession.template_id === t.id;
+        const cardClass = isActive ? 'template-card-active' : 'template-card';
+        const btnText = isActive ? '▶ Продолжить' : '▶ Запустить';
+        const btnAction = isActive ? `continueWorkout()` : `startFromTemplate(${t.id})`;
+        const btnStyle = isActive ? 'color: #22c55e; border: 1px solid #22c55e;' : 'color: #fff; background: linear-gradient(135deg, #16a34a, #15803d); border: none;';
+        html += `<div class="${cardClass}">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex-1">
+                    <div class="text-base font-bold text-white">${escapeHtml(t.name || 'Без названия')}</div>
+                    <div class="text-xs text-gray-500">${exCount} упражнений · ${totalSets} подходов</div>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-2">
+                <button onclick="${btnAction}" class="flex-1 rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="${btnStyle}">${btnText}</button>
+                <button onclick="viewTemplate(${t.id})" class="rounded-full py-2 px-3 text-sm font-semibold text-gray-400 transition-all active:scale-95" style="border: 1px solid rgba(255,255,255,0.1);">Редактировать</button>
+                <button onclick="deleteTemplate(${t.id})" class="rounded-full py-2 px-3 text-sm font-semibold text-gray-500 transition-all active:scale-95" style="border: 1px solid rgba(255,255,255,0.1);">✕</button>
+            </div>
+        </div>`;
+    }
+    $('template-list').innerHTML = html;
+}
+
+async function deleteTemplate(id) {
+    if (!confirm('Удалить шаблон?')) return;
+    try {
+        await fetchWithAuth(`/api/workouts/${id}`, { method: 'DELETE' });
+        loadTemplates();
+    } catch(e) { showError('Ошибка'); }
+}
+
+// ===== Template Preview =====
+async function viewTemplate(id) {
+    currentTemplateId = id;
+    switchView('template');
+    $('template-content').innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full slow-spin mx-auto"></div></div>';
+    try {
+        let res = await fetchWithAuth(`/api/workouts/${id}`);
+        if (!res.ok) throw new Error();
+        const t = await res.json();
+        renderTemplatePreview(t);
+    } catch(e) { $('template-content').innerHTML = '<div class="empty-state">Ошибка</div>'; }
+}
+
+function renderTemplatePreview(t) {
+    console.log('Template data:', t);
+    let exHtml = '';
+    if (!t.exercises || t.exercises.length === 0) {
+        exHtml = '<div class="text-gray-500 text-sm">Нет упражнений</div>';
+    } else {
+        for (const ex of t.exercises) {
+            let setsHtml = '';
+            for (const s of ex.sets || []) {
+                setsHtml += `<div class="flex items-center gap-3 py-1 text-sm">
+                    <span class="w-6 text-center text-gray-500">${s.is_warmup ? '🔥' : s.set_number}</span>
+                    <span class="flex-1 text-white">${s.weight_kg != null ? s.weight_kg + ' кг' : '—'}</span>
+                    <span class="w-16 text-center text-white">${s.reps != null ? s.reps + ' раз' : '—'}</span>
+                </div>`;
+            }
+            exHtml += `<div class="pb-3 ${exHtml ? 'border-t border-white/5 pt-3' : ''}">
+                <div class="text-sm font-medium text-white mb-2">${escapeHtml(ex.exercise?.name || '')}</div>
+                ${setsHtml}
+            </div>`;
+        }
+    }
+    $('template-content').innerHTML = `
+        <div class="text-lg font-bold text-white">${escapeHtml(t.name || 'Без названия')}</div>
+        <div class="text-xs text-gray-500 mb-3">${(t.exercises||[]).length} упражнений</div>
+        ${exHtml}
+    `;
+}
+
+$('template-back').onclick = () => switchView('templates');
+$('template-edit').onclick = () => { if (currentTemplateId) editTemplate(currentTemplateId); };
+$('template-delete').onclick = async () => {
+    if (!currentTemplateId) return;
+    if (!confirm('Удалить тренировку?')) return;
+    try { await fetchWithAuth(`/api/workouts/${currentTemplateId}`, { method: 'DELETE' }); } catch(e) {}
+    switchView('templates'); loadTemplates();
+};
+
+async function editTemplate(id) {
+    try {
+        let res = await fetchWithAuth(`/api/workouts/${id}`);
+        if (!res.ok) throw new Error();
+        const t = await res.json();
+        currentTemplateId = id;
+        switchView('builder');
+        $('workout-name').value = t.name || '';
+        selectedExercises = new Set();
+        exercisesWithSets = [];
+        for (const ex of t.exercises || []) {
+            if (ex.exercise_id) selectedExercises.add(ex.exercise_id);
+            exercisesWithSets.push({
+                exercise: { id: ex.exercise_id, name: ex.exercise?.name || '' },
+                sets: (ex.sets || []).map(s => ({ set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps, is_warmup: s.is_warmup }))
+            });
+        }
+        showBStep(1);
+        await loadExerciseLibrary();
+        renderExercises('');
+    } catch(e) { showError('Ошибка загрузки'); }
+}
+
+// ===== Builder =====
+async function openBuilder() {
+    switchView('builder');
+    selectedExercises = new Set(); exercisesWithSets = [];
+    $('exercises-sets-container').innerHTML = '';
+    $('workout-name').value = '';
+    $('exercise-search').value = '';
+    showBStep(1);
+    await loadExerciseLibrary();
+    renderExercises('');
+}
+
+function showBStep(n) {
+    document.querySelectorAll('#view-builder > .step').forEach(el => el.classList.remove('active'));
+    $(`bstep-${n}`).classList.add('active');
+}
+
+async function loadExerciseLibrary() {
+    try {
+        let res = await fetchWithAuth('/exercise-library');
+        exerciseLibrary = res.ok ? await res.json() : [];
+    } catch(e) { exerciseLibrary = []; }
+}
+
+function renderExercises(filter) {
+    // Render group tiles
+    const groups = {};
+    for (const ex of exerciseLibrary) {
+        const mg = ex.muscle_group || 'Другие';
+        if (!groups[mg]) groups[mg] = [];
+        groups[mg].push(ex);
+    }
+    let tilesHtml = '';
+    for (const [mg, exercises] of Object.entries(groups)) {
+        const color = MUSCLE_COLORS[mg] || '#888';
+        tilesHtml += `<div class="mg-tile" onclick="filterByGroup('${escapeAttr(mg)}')" style="border-color:rgba(255,255,255,0.1); background:rgba(255,255,255,0.03)">
+            <div class="name">${escapeHtml(mg)}</div>
+            <div class="count">${exercises.length}</div>
+        </div>`;
+    }
+    $('mg-tiles').innerHTML = tilesHtml || '<div class="text-gray-500 text-sm col-span-3 text-center py-4">Ничего не найдено</div>';
+
+    // Render all exercises (filtered)
+    let exercisesHtml = '';
+    for (const ex of exerciseLibrary) {
+        if (filter && !ex.name.toLowerCase().includes(filter.toLowerCase()) && !(ex.muscle_group||'').toLowerCase().includes(filter.toLowerCase())) continue;
+        const sel = selectedExercises.has(ex.id);
+        exercisesHtml += `<div class="flex items-center gap-2 py-2 px-2 cursor-pointer transition-all ${sel?'bg-purple-900/20':''}" onclick="toggleEx(${ex.id})">
+            <div class="w-5 h-5 rounded border-2 flex items-center justify-center text-xs ${sel?'bg-purple-500 border-purple-500':'border-white/20'}" style="flex-shrink:0;">
+                ${sel?'✓':''}
+            </div>
+            <span class="text-sm font-medium text-white flex-1">${escapeHtml(ex.name)}</span>
+            <span class="text-xs text-gray-600">${escapeHtml(ex.muscle_group||'')}</span>
+        </div>`;
+    }
+    $('mg-exercises').innerHTML = exercisesHtml || '<div class="text-gray-500 text-sm text-center py-4">Ничего не найдено</div>';
+    $('selected-count').textContent = selectedExercises.size;
+}
+
+function filterByGroup(mg) {
+    $('exercise-search').value = mg;
+    renderExercises(mg);
+}
+
+function toggleEx(id) {
+    selectedExercises.has(id) ? selectedExercises.delete(id) : selectedExercises.add(id);
+    renderExercises($('exercise-search').value);
+}
+
+$('exercise-search').oninput = (e) => renderExercises(e.target.value);
+$('new-template-btn').onclick = openBuilder;
+
+// Builder step 1 buttons
+$('b1-cancel').onclick = () => switchView('templates');
+$('b1-next').onclick = () => {
+    if (!selectedExercises.size) { showError('Выберите упражнения'); return; }
+    buildSets(); showBStep(2); renderSets();
+};
+
+// Builder step 2 buttons
+$('b2-back').onclick = () => { showBStep(1); renderExercises($('exercise-search').value); };
+
+function buildSets() {
+    exercisesWithSets = [];
+    for (const id of selectedExercises) {
+        const ex = exerciseLibrary.find(e => e.id === id);
+        if (ex) exercisesWithSets.push({ exercise: ex, sets: [{set_number:1,weight_kg:null,reps:null,is_warmup:false}] });
+    }
+}
+
+function renderSets() {
+    let html = '';
+    for (let ei=0; ei<exercisesWithSets.length; ei++) {
+        const e = exercisesWithSets[ei];
+        let setsHtml = '';
+        for (let si=0; si<e.sets.length; si++) {
+            const s = e.sets[si];
+            const warmupClass = s.is_warmup ? 'warmup-toggle active' : 'warmup-toggle';
+            setsHtml += `<div class="set-row" data-ei="${ei}" data-si="${si}">
+                <div class="${warmupClass}" title="Разминка" onclick="toggleBuilderWarmup(${ei},${si})">🔥</div>
+                <span class="text-xs text-gray-500 text-center">${s.is_warmup?'<span class="text-amber-400" title="Разминка">🔥</span>':s.set_number}</span>
+                <input class="set-value" type="number" step="0.5" inputmode="decimal" placeholder="—" value="${s.weight_kg??''}" onchange="setBuilderValue(${ei},${si},'weight_kg',this.value)">
+                <input class="set-value" type="number" inputmode="numeric" placeholder="—" value="${s.reps??''}" onchange="setBuilderValue(${ei},${si},'reps',this.value)">
+                <button onclick="removeBuilderSet(${ei},${si})" class="text-red-400 text-sm px-1" title="Удалить подход">✕</button>
+            </div>`;
+        }
+        html += `<div class="exercise-card slide-down" data-ei="${ei}">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-sm font-bold text-white">${escapeHtml(e.exercise.name)}</div>
+                <button onclick="removeEx(${ei})" class="text-red-500 text-xs px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">Убрать</button>
+            </div>
+            <div class="set-row text-[0.55rem] uppercase tracking-wide text-gray-500 pb-1 border-b border-white/10" style="font-weight:600;">
+                <div class="text-center" title="Разминка">🔥</div>
+                <div class="text-center">№</div>
+                <div class="text-center">кг</div>
+                <div class="text-center">повторы</div>
+                <div></div>
+            </div>
+            ${setsHtml}
+            <button class="add-set-btn" onclick="addBuilderSet(${ei})">+ добавить подход</button>
+        </div>`;
+    }
+    $('exercises-sets-container').innerHTML = html;
+}
+
+function setBuilderValue(ei, si, field, val) {
+    const s = exercisesWithSets[ei]?.sets?.[si];
+    if (!s) return;
+    if (val === '' || val == null) { s[field] = null; return; }
+    const num = parseFloat(val);
+    if (isNaN(num)) { s[field] = null; return; }
+    s[field] = field === 'reps' ? Math.round(num) : num;
+}
+
+function addBuilderSet(ei) {
+    const e = exercisesWithSets[ei];
+    if (!e) return;
+    const n = e.sets.length + 1;
+    if (n > 20) return;
+    const prev = e.sets[e.sets.length - 1] || {};
+    e.sets.push({
+        set_number: n,
+        weight_kg: prev.weight_kg ?? null,
+        reps: prev.reps ?? null,
+        is_warmup: false,
+    });
+    renderSets();
+}
+
+function removeBuilderSet(ei, si) {
+    const e = exercisesWithSets[ei];
+    if (!e || e.sets.length <= 1) return;
+    e.sets.splice(si, 1);
+    e.sets.forEach((s, i) => s.set_number = i + 1);
+    renderSets();
+}
+
+function toggleBuilderWarmup(ei, si) {
+    const s = exercisesWithSets[ei]?.sets?.[si];
+    if (!s) return;
+    s.is_warmup = !s.is_warmup;
+    renderSets();
+}
+
+function removeEx(ei) {
+    const id = exercisesWithSets[ei]?.exercise?.id;
+    exercisesWithSets.splice(ei,1);
+    if (id) selectedExercises.delete(id);
+    exercisesWithSets.length ? renderSets() : (showBStep(1), renderExercises($('exercise-search').value));
+}
+
+async function saveTemplate() {
+    const btn = $('save-template-btn');
+    const nameInput = $('workout-name');
+    const wName = nameInput.value?.trim();
+    if (!wName) {
+        nameInput.style.borderColor = '#ef4444';
+        nameInput.focus();
+        setTimeout(() => { nameInput.style.borderColor = 'rgba(255,255,255,0.1)'; }, 2000);
+        return;
+    }
+    btn.disabled = true; btn.textContent = 'Сохранение...'; btn.style.opacity = '.5';
+    try {
+        const payload = {
+            name: wName,
+            notes: null,
+            exercises: exercisesWithSets.map((e, idx) => ({
+                exercise_id: e.exercise.id,
+                sort_order: idx,
+                sets: e.sets.map(s => ({ set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps, is_warmup: s.is_warmup }))
+            }))
+        };
+        let res;
+        if (currentTemplateId) {
+            // Update existing template
+            res = await fetchWithAuth(`/api/workouts/${currentTemplateId}`, {
+                method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+        } else {
+            // Create new template
+            res = await fetchWithAuth('/api/workout-templates', {
+                method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+        }
+        if (!res.ok) { let e = await res.json().catch(()=>({})); throw new Error(e.detail||'Ошибка'); }
+        currentTemplateId = null;
+        showBStep(3);
+        loadTemplates();
+    } catch(e) { showError(e.message); }
+    finally { btn.disabled = false; btn.textContent = 'Сохранить'; btn.style.opacity = '1'; }
+}
+$('save-template-btn').onclick = saveTemplate;
+$('b3-new').onclick = openBuilder;
+$('b3-list').onclick = () => switchView('templates');
+
+// ===== Start workout from template =====
+async function startFromTemplate(tid) {
+    if (activeSession) { showError('У вас уже есть активная тренировка'); return; }
+    try {
+        let res = await fetchWithAuth(`/api/workouts/from-template/${tid}`, { method: 'POST' });
+        if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail||'Ошибка');
+        let s = await res.json();
+        activeSession = s;
+        renderTemplates();
+        switchView('active');
+        loadActiveView();
+    } catch(e) { showError(e.message); }
+}
+
+function continueWorkout() {
+    switchView('active');
+    loadActiveView();
+}
+
+// ===== Active workout =====
+async function loadActiveView() {
+    try {
+        let res = await fetchWithAuth('/api/workouts');
+        if (!res.ok) { renderActiveEmpty(); return; }
+        const list = await res.json();
+        const ongoing = list.find(w => !w.is_completed);
+        if (!ongoing) { renderActiveEmpty(); return; }
+        let detailRes = await fetchWithAuth(`/api/workouts/${ongoing.id}`);
+        if (!detailRes.ok) { renderActiveEmpty(); return; }
+        activeSession = await detailRes.json();
+        renderActive();
+    } catch(e) { renderActiveEmpty(); }
+}
+
+function renderActiveEmpty() {
+    activeSession = null;
+    stopTimer();
+    $('active-empty').classList.remove('hidden');
+    $('active-container').classList.add('hidden');
+}
+
+function renderActive() {
+    if (!activeSession) { renderActiveEmpty(); return; }
+    $('active-empty').classList.add('hidden');
+    $('active-container').classList.remove('hidden');
+    $('active-name').textContent = activeSession.name || 'Тренировка';
+    $('active-date').textContent = formatDate(activeSession.date);
+    renderActiveExercises();
+    startTimer();
+    // Load previous data in background
+    loadPreviousExerciseData().then(() => renderActiveExercises());
+}
+
+function renderActiveExercises() {
+    let completedCount = 0, totalSets = 0;
+    // Build array with completion status
+    const exercises = [];
+    for (const ex of activeSession.exercises || []) {
+        let setsHtml = '';
+        let exDone = 0;
+        // Get previous data for this exercise
+        const prevData = getPreviousExerciseData(ex.exercise_id);
+        for (const s of ex.sets || []) {
+            totalSets++;
+            const done = !!s.is_done;
+            if (done) { exDone++; completedCount++; }
+            setsHtml += renderActiveSetRow(s, ex, done, prevData, s.set_number);
+        }
+        // RPE row
+        const exRpe = ex.rpe || 7;
+        setsHtml += `<div class="set-row set-row-rpe" data-ex-id="${ex.id}">
+            <span class="text-xs text-gray-500 flex items-center gap-2 ml-auto">
+                <span>Сложность:</span>
+                <button class="spin-btn rpe-adjust" onclick="adjustExRpe(${ex.id}, -1)">−</button>
+                <span class="rpe-value" id="ex-rpe-${ex.id}">${exRpe}</span>
+                <button class="spin-btn rpe-adjust" onclick="adjustExRpe(${ex.id}, 1)">+</button>
+            </span>
+        </div>`;
+        const isCompleted = exDone === ex.sets.length && ex.sets.length > 0;
+        exercises.push({ ex, setsHtml, isCompleted });
+    }
+    // Sort: incomplete first, completed at the end
+    exercises.sort((a, b) => (a.isCompleted === b.isCompleted) ? 0 : a.isCompleted ? 1 : -1);
+    // Build HTML
+    let html = '';
+    for (const item of exercises) {
+        const prevData = getPreviousExerciseData(item.ex.exercise_id);
+        const prevLabel = prevData ? `<span class="text-xs text-gray-500 ml-2">(${prevData.weight_kg}кг × ${prevData.reps})</span>` : '';
+        html += `<div class="exercise-card ${item.isCompleted ? 'completed' : ''}" data-ex-id="${item.ex.id}">
+            <div class="text-sm font-bold text-white mb-1">${escapeHtml(item.ex.exercise?.name || 'Упражнение')}</div>
+            <div class="set-row text-[0.6rem] text-gray-500 mb-1">
+                <span class="w-6 text-center">№</span>
+                <span class="flex-1 text-center">Пред.</span>
+                <span class="flex-1 text-center">кг</span>
+                <span class="flex-1 text-center">повторы</span>
+                <span class="w-6"></span>
+            </div>
+            ${item.setsHtml}
+        </div>`;
+    }
+    $('active-exercises').innerHTML = html;
+    updateProgress(completedCount, totalSets);
+    // Auto-show finish modal when all sets completed
+    if (totalSets > 0 && completedCount === totalSets) {
+        setTimeout(() => showFinishModal(), 500);
+    }
+}
+
+function showFinishModal() {
+    $('finish-overlay').classList.remove('hidden');
+    selectedRpe = null;
+    document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
+}
+
+// Store previous exercise data
+let previousExerciseData = {};
+
+function getPreviousExerciseData(exerciseId) {
+    return previousExerciseData[exerciseId] || null;
+}
+
+async function loadPreviousExerciseData() {
+    previousExerciseData = {};
+    try {
+        // Get completed workouts
+        let res = await fetchWithAuth('/api/workouts');
+        if (!res.ok) return;
+        const workouts = await res.json();
+        const completed = workouts.filter(w => w.is_completed).sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+        // Get details for last few workouts to find previous values
+        for (const w of completed.slice(0, 3)) {
+            let detailRes = await fetchWithAuth(`/api/workouts/${w.id}`);
+            if (!detailRes.ok) continue;
+            const detail = await detailRes.json();
+            for (const ex of detail.exercises || []) {
+                if (!previousExerciseData[ex.exercise_id] && ex.sets && ex.sets.length > 0) {
+                    // Store all sets with their numbers
+                    previousExerciseData[ex.exercise_id] = ex.sets
+                        .filter(s => s.weight_kg && s.reps)
+                        .map(s => ({ set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps }));
+                }
+            }
+        }
+    } catch(e) { console.error('Failed to load previous data:', e); }
+}
+
+function adjustExRpe(exId, delta) {
+    for (const ex of activeSession.exercises || []) {
+        if (ex.id === exId) {
+            let val = ex.rpe || 7;
+            val = Math.min(10, Math.max(1, val + delta));
+            ex.rpe = val;
+            const el = $('ex-rpe-' + exId);
+            if (el) el.textContent = val;
+            break;
+        }
+    }
+}
+
+function renderActiveSetRow(s, ex, done, prevData, setNumber) {
+    const prevSet = prevData ? prevData.find(p => p.set_number === setNumber) : null;
+    const prevLabel = prevSet ? `${prevSet.weight_kg ?? '—'}×${prevSet.reps ?? '—'}` : '—';
+    return `<div class="set-row set-row-active ${done?'done':''}" data-set-id="${s.id}" data-ex-id="${ex.id}">
+        <span class="text-xs text-gray-500 w-6 text-center flex-shrink-0">${s.is_warmup?'<span class="text-amber-400" title="Разминка">🔥</span>':s.set_number}</span>
+        <span class="text-xs text-purple-400/60 flex-1 text-center">${prevLabel}</span>
+        <input class="set-value flex-1" id="aw-${s.id}" type="number" step="0.5" inputmode="decimal" value="${s.weight_kg??''}" placeholder="кг" onfocus="this.select()" onchange="updateSet(${s.id},'weight_kg')">
+        <input class="set-value flex-1" id="ar-${s.id}" type="number" inputmode="numeric" value="${s.reps??''}" placeholder="раз" onfocus="this.select()" onchange="updateSet(${s.id},'reps')">
+        <div class="check-circle ${done?'done':''}" onclick="toggleSetDone(${s.id})" title="Отметить выполненным">${done?'✓':''}</div>
+    </div>`;
+}
+
+function updateProgress(done, total) {
+    const pct = total ? Math.round(done/total*100) : 0;
+    $('active-progress-fill').style.width = pct + '%';
+    $('active-progress-text').textContent = `${done} / ${total} подходов`;
+    $('active-progress-pct').textContent = `${pct}%`;
+}
+
+function findSet(sid) {
+    for (const ex of activeSession?.exercises || []) {
+        for (const s of ex.sets || []) if (s.id === sid) return { set: s, ex };
+    }
+    return null;
+}
+
+async function patchSet(sid, partial) {
+    const found = findSet(sid);
+    if (!found) return false;
+    const s = found.set;
+    Object.assign(s, partial);
+    try {
+        let res = await fetchWithAuth(`/api/workout-sets/${sid}`, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(partial)
+        });
+        if (!res.ok) throw new Error();
+        const updated = await res.json();
+        Object.assign(s, updated);
+        return true;
+    } catch(e) { showError('Ошибка сохранения'); return false; }
+}
+
+async function toggleSetDone(sid) {
+    const found = findSet(sid);
+    if (!found) return;
+    const s = found.set;
+    const newDone = !s.is_done;
+    let partial = { is_done: newDone };
+    if (newDone) {
+        const wInput = document.getElementById(`aw-${sid}`);
+        const rInput = document.getElementById(`ar-${sid}`);
+        const w = parseFloat(wInput?.value);
+        const r = parseInt(rInput?.value, 10);
+        if (isNaN(w) || w <= 0) { showError('Сначала укажите вес'); wInput?.focus(); return; }
+        if (isNaN(r) || r <= 0) { showError('Сначала укажите повторы'); rInput?.focus(); return; }
+        partial.weight_kg = w;
+        partial.reps = r;
+    }
+    const ok = await patchSet(sid, partial);
+    if (!ok) return;
+    updateSetRow(s);
+    recomputeProgress();
+    renderActiveExercises();
+}
+
+function updateSetRow(s) {
+    const row = document.querySelector(`[data-set-id="${s.id}"]`);
+    if (!row) return;
+    const done = !!s.is_done;
+    row.classList.toggle('done', done);
+    const circle = row.querySelector('.check-circle');
+    circle.classList.toggle('done', done);
+    circle.textContent = done ? '✓' : '';
+    const wInput = row.querySelector(`#aw-${s.id}`);
+    const rInput = row.querySelector(`#ar-${s.id}`);
+    if (document.activeElement !== wInput) wInput.value = s.weight_kg ?? '';
+    if (document.activeElement !== rInput) rInput.value = s.reps ?? '';
+    const exCard = row.closest('[data-ex-id]');
+    const allRows = exCard ? exCard.querySelectorAll('.set-row') : [];
+    const allDone = Array.from(allRows).length > 0 && Array.from(allRows).every(r => r.classList.contains('done'));
+    if (exCard) exCard.classList.toggle('completed', allDone);
+}
+
+function recomputeProgress() {
+    let done = 0, total = 0;
+    for (const ex of activeSession?.exercises || []) {
+        for (const s of ex.sets || []) {
+            total++;
+            if (s.is_done) done++;
+        }
+    }
+    updateProgress(done, total);
+}
+
+async function bumpSet(sid, field, delta) {
+    const found = findSet(sid);
+    if (!found) return;
+    const s = found.set;
+    const cur = s[field] ?? 0;
+    const v = field === 'weight_kg' ? Math.round((cur + delta) * 20) / 20 : Math.round(cur + delta);
+    const clamped = Math.max(0, Math.min(999, v));
+    await patchSet(sid, { [field]: clamped });
+    updateSetRow(s);
+}
+
+async function updateSet(sid, field) {
+    const found = findSet(sid);
+    if (!found) return;
+    const s = found.set;
+    const partial = {};
+    if (field === 'weight_kg') {
+        const wInput = document.getElementById(`aw-${sid}`);
+        const raw = wInput.value.trim();
+        if (raw === '') partial.weight_kg = null;
+        else {
+            const w = parseFloat(raw);
+            partial.weight_kg = isNaN(w) ? null : Math.max(0, Math.min(999, w));
+        }
+    } else if (field === 'reps') {
+        const rInput = document.getElementById(`ar-${sid}`);
+        const raw = rInput.value.trim();
+        if (raw === '') partial.reps = null;
+        else {
+            const r = parseInt(raw, 10);
+            partial.reps = isNaN(r) ? null : Math.max(0, Math.min(999, r));
+        }
+    }
+    if (Object.keys(partial).length === 0) return;
+    await patchSet(sid, partial);
+    updateSetRow(s);
+}
+
+// ===== Finish workout =====
+$('finish-workout-btn').onclick = () => {
+    if (!activeSession) return;
+    showFinishModal();
+};
+$('finish-cancel').onclick = () => $('finish-overlay').classList.add('hidden');
+document.querySelectorAll('.rpe-btn').forEach(b => {
+    b.onclick = () => {
+        document.querySelectorAll('.rpe-btn').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected'); selectedRpe = parseInt(b.dataset.v);
+    };
+});
+
+// ===== Timer =====
+function getTimerKey() {
+    return activeSession ? `workout_timer_${activeSession.id}` : null;
+}
+
+function startTimer() {
+    stopTimer();
+    const key = getTimerKey();
+    if (!key) return;
+    // Save start time if not exists
+    if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, Date.now().toString());
+    }
+    const startTime = parseInt(localStorage.getItem(key), 10);
+    const updateTimer = () => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const m = Math.floor(elapsed / 60);
+        const s = elapsed % 60;
+        const el = $('active-timer');
+        if (el) el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    };
+    updateTimer();
+    timerInterval = setInterval(updateTimer, 1000);
+}
+
+function stopTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+}
+
+function clearTimer() {
+    const key = getTimerKey();
+    if (key) localStorage.removeItem(key);
+}
+$('finish-confirm').onclick = async () => {
+    if (!activeSession) return;
+    const notes = $('finish-notes').value?.trim() || null;
+    // Calculate duration from timer
+    let durationMin = null;
+    const timerKey = `workout_timer_${activeSession.id}`;
+    if (localStorage.getItem(timerKey)) {
+        const startTime = parseInt(localStorage.getItem(timerKey), 10);
+        durationMin = Math.floor((Date.now() - startTime) / 60000);
+    }
+    try {
+        // Save exercise RPEs first
+        for (const ex of activeSession.exercises || []) {
+            if (ex.rpe) {
+                await fetchWithAuth(`/api/workout-exercises/${ex.id}/rpe`, {
+                    method: 'PATCH', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ rpe: ex.rpe })
+                });
+            }
+        }
+        let res = await fetchWithAuth(`/api/workouts/${activeSession.id}/complete`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ duration_min: durationMin, feeling: selectedRpe, notes })
+        });
+        if (!res.ok) throw new Error('Ошибка');
+        activeSession = null;
+        clearTimer();
+        stopTimer();
+        $('finish-overlay').classList.add('hidden');
+        switchView('history');
+        loadHistory();
+    } catch(e) { showError('Ошибка завершения'); }
+};
+
+// ===== History =====
+async function loadHistory() {
+    $('workout-history-list').innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full slow-spin mx-auto"></div></div>';
+    try {
+        let res = await fetchWithAuth('/api/workouts');
+        workoutsHistory = res.ok ? await res.json() : [];
+        renderHistory();
+    } catch(e) { $('workout-history-list').innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; }
+}
+
+function renderHistory() {
+    if (!workoutsHistory.length) {
+        $('workout-history-list').innerHTML = '<div class="empty-state"><p class="text-lg font-semibold text-gray-500 mb-1">Нет тренировок</p><p class="text-sm text-gray-600">Завершённые тренировки появятся здесь</p></div>';
+        return;
+    }
+    let html = '';
+    for (const w of workoutsHistory) {
+        const isOngoing = !w.is_completed;
+        const cardClass = isOngoing ? 'active-card' : 'history-card';
+        const status = isOngoing ? '<span class="text-xs text-green-400 font-semibold">⏳ В процессе</span>' : '<span class="text-xs text-gray-500">✅ Завершена</span>';
+        html += `<div class="${cardClass}" onclick="showDetail(${w.id})">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="text-base font-bold text-white">${escapeHtml(w.name || 'Тренировка')}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">${formatDate(w.date)}${w.duration_min?` · ${w.duration_min} мин`:''}${w.feeling?` · RPE ${w.feeling}`:''}</div>
+                </div>
+                <div class="text-right">${status}</div>
+            </div>
+        </div>`;
+    }
+    $('workout-history-list').innerHTML = html;
+}
+
+// ===== Detail =====
+async function showDetail(id) {
+    currentDetailId = id;
+    switchView('detail');
+    $('detail-content').innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full slow-spin mx-auto"></div></div>';
+    try {
+        let res = await fetchWithAuth(`/api/workouts/${id}`);
+        if (!res.ok) throw new Error();
+        const w = await res.json();
+        renderDetail(w);
+    } catch(e) { $('detail-content').innerHTML = '<div class="empty-state">Ошибка</div>'; }
+}
+
+function renderDetail(w) {
+    let totalSets = 0, completedSets = 0, totalVolume = 0;
+    const exHtml = [];
+    for (const ex of w.exercises || []) {
+        let setsHtml = '';
+        for (const s of ex.sets || []) {
+            totalSets++;
+            const done = !!s.is_done;
+            if (done) { completedSets++; totalVolume += (s.weight_kg || 0) * (s.reps || 0); }
+            setsHtml += `<div class="set-row ${done?'':'opacity-50'}">
+                <span class="text-xs text-gray-500 w-6 text-center flex-shrink-0">${s.is_warmup?'<span class="text-amber-400" title="Разминка">🔥</span>':s.set_number}</span>
+                <span class="text-sm flex-1 text-center font-semibold">${s.weight_kg!=null?s.weight_kg:'—'} <span class="text-xs text-gray-500">кг</span></span>
+                <span class="text-sm flex-1 text-center font-semibold">×</span>
+                <span class="text-sm flex-1 text-center font-semibold">${s.reps!=null?s.reps:'—'} <span class="text-xs text-gray-500">раз</span></span>
+                ${done?'<span class="text-green-400 text-xs">✓</span>':''}
+            </div>`;
+        }
+        exHtml.push(`<div class="exercise-card">
+            <div class="text-sm font-bold text-white mb-1">${escapeHtml(ex.exercise?.name || 'Упражнение')}</div>
+            ${setsHtml}
+        </div>`);
+    }
+    const rpe = w.feeling ? w.feeling : null;
+    const status = w.is_completed ? '✅ Завершена' : '⏳ В процессе';
+    $('detail-content').innerHTML = `
+        <div class="glassmorphism rounded-2xl p-4 border border-white/10">
+            <h2 class="text-xl font-bold text-white">${escapeHtml(w.name || 'Тренировка')}</h2>
+            <p class="text-sm text-gray-500">${formatDate(w.date)} · ${status}</p>
+            ${w.duration_min || w.feeling || w.notes ? `<div class="flex flex-wrap gap-2 mt-3 text-xs">
+                ${w.duration_min?`<span class="px-2 py-1 rounded-full bg-white/5 border border-white/10">⏱ ${w.duration_min} мин</span>`:''}
+                ${rpe?`<span class="px-2 py-1 rounded-full bg-white/5 border border-white/10">RPE ${rpe}</span>`:''}
+            </div>` : ''}
+            ${w.notes?`<p class="text-sm text-gray-400 mt-3 italic">"${escapeHtml(w.notes)}"</p>`:''}
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+            <div class="stat-tile"><div class="v">${completedSets}/${totalSets}</div><div class="l">подходов</div></div>
+            <div class="stat-tile"><div class="v">${(w.exercises||[]).length}</div><div class="l">упражнений</div></div>
+            <div class="stat-tile"><div class="v">${Math.round(totalVolume)}</div><div class="l">объём, кг</div></div>
+        </div>
+        ${exHtml.join('')}
+    `;
+}
+
+$('detail-back').onclick = () => switchView('history');
+$('detail-delete').onclick = async () => {
+    if (!currentDetailId) return;
+    if (!confirm('Удалить тренировку?')) return;
+    try { await fetchWithAuth(`/api/workouts/${currentDetailId}`, { method: 'DELETE' }); }
+    catch(e) {}
+    switchView('history'); loadHistory();
+};
+
+// ===== Utils =====
+function showError(msg) { errMsg.textContent = msg; errMsg.classList.remove('hidden'); setTimeout(()=>errMsg.classList.add('hidden'),3000); }
+function formatDate(d) {
+    if (!d) return '';
+    try {
+        const dt = new Date(d);
+        return dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch(e) { return d; }
+}
+function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s) { return String(s||'').replace(/'/g, '&#39;'); }
+
+// ===== Dashboard =====
+async function loadDashboard() {
+    try {
+        let res = await fetchWithAuth('/api/workout-stats');
+        if (!res.ok) { showEmptyState(); return; }
+        const s = await res.json();
+        console.log('Dashboard data:', s);
+        // Show data if we have any workouts or volume
+        if (!s || (s.total_workouts === 0 && (s.total_volume_kg || 0) === 0)) {
+            showEmptyState();
+            return;
+        }
+        hideEmptyState();
+        renderDashboard(s);
+    } catch(e) {
+        console.error('Dashboard error:', e);
+        showEmptyState();
+    }
+    // Load additional data
+    loadMuscleReadiness();
+    loadVolumeChart();
+    loadMuscleBalance();
+    loadProgress();
+}
+
+function showEmptyState() {
+    $('summary-empty').classList.remove('hidden');
+    $('stats-volume-wrap').classList.add('hidden');
+    $('stats-muscle-balance').classList.add('hidden');
+    $('stats-progress-wrap').classList.add('hidden');
+    $('stats-pr-wrap').classList.add('hidden');
+    $('stat-week-volume').textContent = '0';
+    $('stat-avg-duration').textContent = '—';
+}
+
+function hideEmptyState() {
+    $('summary-empty').classList.add('hidden');
+    $('stats-volume-wrap').classList.remove('hidden');
+    $('stats-muscle-balance').classList.remove('hidden');
+    $('stats-progress-wrap').classList.remove('hidden');
+    $('stats-pr-wrap').classList.remove('hidden');
+}
+
+// ===== Muscle Readiness =====
+async function loadMuscleReadiness() {
+    try {
+        let res = await fetchWithAuth('/api/muscle-readiness');
+        if (!res.ok) return;
+        const data = await res.json();
+        updateAthleteSVG(data);
+    } catch(e) { console.error(e); }
+}
+
+// ===== Volume Chart =====
+async function loadVolumeChart() {
+    try {
+        let res = await fetchWithAuth('/api/workout-stats/volume?period=' + currentPeriod);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderVolumeChart(data);
+    } catch(e) { console.error(e); }
+}
+
+function renderVolumeChart(data) {
+    const chart = $('stats-volume-chart');
+    const labels = $('stats-volume-labels');
+    if (!chart || !labels) return;
+    
+    if (!data || data.length === 0) {
+        chart.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Нет данных</div>';
+        labels.innerHTML = '';
+        return;
+    }
+    
+    const maxVol = Math.max(...data.map(d => d.volume), 1);
+    let chartHtml = '';
+    let labelsHtml = '';
+    
+    for (const d of data) {
+        const height = Math.max(4, (d.volume / maxVol) * 100);
+        const isEmpty = d.volume === 0;
+        chartHtml += `<div class="volume-bar ${isEmpty ? 'empty' : ''}" style="height:${height}%" title="${formatVolume(d.volume)}"></div>`;
+        labelsHtml += `<div class="volume-label">${d.label}</div>`;
+    }
+    
+    chart.innerHTML = chartHtml;
+    labels.innerHTML = labelsHtml;
+}
+
+// ===== Muscle Balance =====
+async function loadMuscleBalance() {
+    try {
+        let res = await fetchWithAuth('/api/workout-stats/muscle-balance?period=' + currentPeriod);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderMuscleBalance(data);
+    } catch(e) { console.error(e); }
+}
+
+function renderMuscleBalance(data) {
+    const container = $('muscle-balance-chart');
+    if (!container) return;
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Нет данных</div>';
+        return;
+    }
+    
+    const maxVol = Math.max(...data.map(d => d.volume), 1);
+    let html = '';
+    
+    for (const d of data) {
+        const pct = (d.volume / maxVol) * 100;
+        const color = MUSCLE_COLORS[d.muscle_group] || '#888';
+        html += `<div class="muscle-balance-bar">
+            <span class="muscle-balance-name">${d.muscle_group}</span>
+            <div class="muscle-balance-track">
+                <div class="muscle-balance-fill" style="width:${pct}%; background:${color};"></div>
+            </div>
+            <span class="muscle-balance-val">${formatVolume(d.volume)}</span>
+        </div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+// ===== Progress Chart =====
+async function loadProgress() {
+    try {
+        let res = await fetchWithAuth('/api/workout-stats/progress?period=' + currentPeriod);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderProgress(data);
+    } catch(e) { console.error(e); }
+}
+
+function renderProgress(data) {
+    const container = $('progress-chart');
+    if (!container) return;
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Недостаточно данных</div>';
+        return;
+    }
+    
+    let html = '<div class="space-y-3">';
+    const colors = ['#a855f7', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
+    
+    for (let i = 0; i < Math.min(3, data.length); i++) {
+        const ex = data[i];
+        const color = colors[i];
+        const firstWeight = ex.data[0]?.weight || 0;
+        const lastWeight = ex.data[ex.data.length - 1]?.weight || 0;
+        const diff = lastWeight - firstWeight;
+        const diffText = diff > 0 ? `+${diff}` : `${diff}`;
+        const diffColor = diff > 0 ? 'text-green-400' : diff < 0 ? 'text-red-400' : 'text-gray-400';
+        
+        // Mini sparkline
+        const maxW = Math.max(...ex.data.map(d => d.weight));
+        const minW = Math.min(...ex.data.map(d => d.weight));
+        const range = maxW - minW || 1;
+        const points = ex.data.map((d, idx) => {
+            const x = (idx / (ex.data.length - 1)) * 100;
+            const y = 100 - ((d.weight - minW) / range) * 80 - 10;
+            return `${x},${y}`;
+        }).join(' ');
+        
+        html += `<div class="rounded-lg p-3" style="background:rgba(255,255,255,0.03);">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-white">${ex.name}</span>
+                <span class="text-xs ${diffColor}">${firstWeight} → ${lastWeight} кг (${diffText})</span>
+            </div>
+            <svg viewBox="0 0 100 50" class="w-full h-8" preserveAspectRatio="none">
+                <polyline fill="none" stroke="${color}" stroke-width="2" points="${points}" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>`;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function readinessColor(score) {
+    if (score < 0.3) return '#22c55e'; // green - recovered
+    if (score < 0.6) return '#eab308'; // yellow - moderate
+    return '#ef4444'; // red - fatigued
+}
+
+function readinessStatus(score) {
+    if (score < 0.3) return 'Восстановлена — готова к нагрузке';
+    if (score < 0.6) return 'Средняя нагрузка — можно тренировать';
+    return 'Высокая нагрузка — рекомендуется отдых';
+}
+
+function updateAthleteSVG(data) {
+    const grid = $('muscle-grid');
+    if (!grid) return;
+
+    // Sort by readiness (most fatigued first)
+    const sorted = [...data].sort((a, b) => b.readiness_score - a.readiness_score);
+
+    const icons = {
+        'Грудь': '🏋️',
+        'Спина': '🔙',
+        'Ноги': '🦵',
+        'Плечи': '💪',
+        'Бицепс': '💪',
+        'Трицепс': '💪',
+        'Пресс': '🧘',
+        'Предплечье': '🤲',
+        'Трапеция': '🔝',
+    };
+
+    grid.innerHTML = sorted.map(item => {
+        const color = readinessColor(item.readiness_score);
+        const icon = icons[item.muscle_group] || '💪';
+        const status = readinessStatus(item.readiness_score);
+        const opacity = 0.7 + item.readiness_score * 0.3;
+
+        return `<div class="py-3 cursor-pointer transition-all hover:opacity-80 text-center"
+                    onclick="showMgDetail('${item.muscle_group}', ${item.readiness_score}, ${item.avg_rpe}, ${item.last_trained_days_ago || 'null'}, ${item.total_volume_7d})">
+            <div class="text-2xl mb-1">${icon}</div>
+            <div class="text-xs font-semibold text-white truncate">${item.muscle_group}</div>
+            <div class="flex items-center justify-center gap-1 mt-1">
+                <span class="w-1.5 h-1.5 rounded-full" style="background: ${color};"></span>
+                <span class="text-[0.6rem]" style="color: ${color};">RPE ${item.avg_rpe.toFixed(1)}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showMgDetail(mg, score, rpe, days, volume) {
+    $('mg-detail-name').textContent = mg;
+    $('mg-detail-rpe').textContent = rpe.toFixed(1);
+    $('mg-detail-days').textContent = days !== null ? days : '—';
+    $('mg-detail-volume').textContent = Math.round(volume) + ' кг';
+    $('mg-detail-status').textContent = readinessStatus(score);
+    $('mg-detail-status').style.color = readinessColor(score);
+    $('mg-detail-panel').classList.remove('hidden');
+}
+
+function formatVolume(v) {
+    if (!v || v < 1000) return Math.round(v || 0).toString();
+    if (v < 10000) return (v / 1000).toFixed(1) + 'к';
+    return Math.round(v / 1000) + 'к';
+}
+
+function renderDashboard(s) {
+    $('stat-week-volume').textContent = formatVolume(s.this_week_volume || 0);
+    $('stat-avg-duration').textContent = s.avg_duration_min != null ? Math.round(s.avg_duration_min) : '—';
+}
+
+// ===== Init =====
+(async function() {
+    skel.classList.remove('hidden');
+    await loadExerciseLibrary();
+    skel.classList.add('hidden');
+    loadTemplates();
+    loadDashboard();
+    // Check for active workout on page load
+    const hasActive = await checkActiveWorkout();
+    if (hasActive) {
+        switchView('active');
+    } else {
+        switchView('templates');
+    }
+})();
+
+async function checkActiveWorkout() {
+    try {
+        let res = await fetchWithAuth('/api/workouts');
+        if (!res.ok) return false;
+        const list = await res.json();
+        const ongoing = list.find(w => !w.is_completed);
+        if (!ongoing) return false;
+         let detailRes = await fetchWithAuth(`/api/workouts/${ongoing.id}`);
+         if (!detailRes.ok) return false;
+         activeSession = await detailRes.json();
+         renderActive();
+         return true;
+     } catch(e) { return false; }
+ }
+
+// ===== AI Analysis =====
+$('ai-analysis-btn').onclick = async () => {
+    const btn = $('ai-analysis-btn');
+    const resultDiv = $('ai-analysis-result');
+    const contentDiv = $('ai-analysis-content');
+    
+    btn.disabled = true;
+    btn.textContent = '⏳ Анализ...';
+    resultDiv.classList.add('hidden');
+    
+    try {
+        let res = await fetchWithAuth('/api/workout-stats/ai-analysis', { method: 'POST' });
+        if (!res.ok) throw new Error('Ошибка запроса');
+        const data = await res.json();
+        contentDiv.textContent = data.analysis || 'Не удалось получить анализ';
+        resultDiv.classList.remove('hidden');
+    } catch(e) {
+        contentDiv.textContent = 'Ошибка: ' + e.message;
+        resultDiv.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🤖 Получить анализ прогресса';
+    }
+};
+</script>
 </body>
 </html>

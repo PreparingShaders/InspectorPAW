@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey, Enum as SAEnum
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -8,6 +8,16 @@ import enum
 class UserRole(enum.Enum):
     USER = "user"
     ADMIN = "admin"
+
+class ProcessingLevel(enum.Enum):
+    WHOLE = "WHOLE"
+    MINIMALLY_PROCESSED = "MINIMALLY_PROCESSED"
+    ULTRA_PROCESSED = "ULTRA_PROCESSED"
+
+class MicronutrientDensity(enum.Enum):
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
 
 class User(Base):
     __tablename__ = "users"
@@ -24,7 +34,7 @@ class User(Base):
     email_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     # Поля для ролей и премиум-статуса
-    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    role = Column(SAEnum(UserRole), default=UserRole.USER, nullable=False)
     premium_expires_at = Column(DateTime(timezone=True), nullable=True) # Заменено is_premium на premium_expires_at
 
     # Поля для сброса пароля
@@ -69,13 +79,20 @@ class Meal(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     meal_type = Column(String, nullable=True) # 'breakfast', 'lunch', 'dinner', 'snack'
-    food_name = Column(String, nullable=True) # Добавлено поле для названия блюда
+    food_name = Column(String, nullable=True)
     
     # Итоговые КБЖУ для приема пищи
     total_calories = Column(Float, default=0.0)
     total_protein = Column(Float, default=0.0)
     total_fat = Column(Float, default=0.0)
     total_carbohydrates = Column(Float, default=0.0)
+
+    # Новые поля для оценки качества пищи от AI
+    ai_comment = Column(String, nullable=True)
+    ai_score = Column(Integer, nullable=True)
+    processing_level = Column(SAEnum(ProcessingLevel), nullable=True)
+    satiety_index = Column(Integer, nullable=True)
+    micronutrient_density = Column(SAEnum(MicronutrientDensity), nullable=True)
 
     user = relationship("User", back_populates="meals")
 

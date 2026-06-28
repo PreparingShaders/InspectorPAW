@@ -2,10 +2,10 @@
 
 :root {
     /* Основная палитра */
-    --color-amber: #F5E1B0;
-    --color-protein-white: #FFFFFF;
-    --color-golden-orange: #E2A35D;
-    --color-muted-teal: #569DAA;
+    --color-amber: #DEB887;           /* калории — burlywood */
+    --color-protein-white: #FFFFFF;   /* белки — белый */
+    --color-golden-orange: #DAA520;   /* жиры — goldenrod */
+    --color-muted-teal: #4ADE80;      /* углеводы — зелёный */
     --color-pantone-gray: #E0E0E0;
     --color-inactive-icon: rgba(255, 255, 255, 0.4);
     --color-over-limit-red: #FF6B6B; /* Нежно-красный для перебора */
@@ -14,10 +14,10 @@
     --color-error-red: #EF4444; /* Красный для ошибки */
 
     /* Фоны для колец */
-    --bg-ring-amber: rgba(245, 225, 176, 0.1);
+    --bg-ring-amber: rgba(222, 184, 135, 0.12);
     --bg-ring-protein-white: rgba(255, 255, 255, 0.1);
-    --bg-ring-golden-orange: rgba(226, 163, 93, 0.1);
-    --bg-ring-muted-teal: rgba(86, 157, 170, 0.1);
+    --bg-ring-golden-orange: rgba(218, 165, 32, 0.12);
+    --bg-ring-muted-teal: rgba(74, 222, 128, 0.12);
     --bg-ring-over-limit-red: rgba(255, 107, 107, 0.15);
     --bg-ring-over-limit-green: rgba(80, 200, 120, 0.15);
 
@@ -39,6 +39,50 @@ body {
     min-height: 100vh;
     min-height: 100dvh;
 }
+
+/* --- Стили для интерактивного кольца --- */
+/* iPhone 14 Pro: 393px viewport, px-4 → ~361px контент; кольцо ~80% ширины */
+#interactive-rings-container {
+    position: relative;
+    cursor: pointer;
+    width: min(314px, calc(100vw - 48px));
+    margin: 0 auto;
+    padding: 6px 0 10px;
+}
+
+#interactive-rings-container svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+}
+
+/* Nutrition step-3: кольцо визуально выше (подписи снизу тянут центр вниз) */
+#step-3 #interactive-rings-container {
+    padding-top: 0;
+    padding-bottom: 4px;
+    margin-top: -6px;
+}
+
+#step-3 #interactive-rings-container svg {
+    transform: translateY(-16px);
+    margin-bottom: -16px;
+}
+
+.nutrient-ring-segment {
+    fill: none;
+    transition: stroke-dasharray 0.5s ease-out, stroke-dashoffset 0.5s ease-out;
+    filter: url(#drop-shadow);
+}
+
+.nutrient-ring-label {
+    font-size: 12px;
+    fill: white;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none; /* Labels should not block clicks on the ring */
+}
+
 
 /* --- Анимация свечения --- */
 @keyframes neon-pulse-amber { 0%, 100% { box-shadow: 0 0 5px 1px var(--color-amber); } 50% { box-shadow: 0 0 8px 2px var(--color-amber); } }
@@ -300,4 +344,83 @@ input[type=range].styled-slider::-moz-range-thumb {
         animation: none !important;
         box-shadow: 0 0 10px 2px var(--color-over-limit-green), 0 0 15px 2px rgba(80,200,120,0.4) !important;
     }
+}
+
+/* --- Стили для кнопок выбора типа приема пищи --- */
+.meal-type-btn {
+    transition: all 0.2s ease;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+}
+.meal-type-btn.active {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.15);
+}
+.meal-type-btn:hover:not(.active) {
+    color: rgba(255, 255, 255, 0.7);
+}
+#meal-type-group.error {
+    border-color: rgb(239 68 68) !important;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+/* --- Shake-анимация --- */
+.shake {
+    animation: shake 0.4s ease-in-out;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+}
+
+/* --- Стили для контейнера кнопки отправки на анализ --- */
+#send-ai-container {
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.25s ease;
+}
+#send-ai-container:hover {
+    border-color: rgba(192, 132, 252, 0.8);
+    box-shadow: 0 0 24px rgba(168, 85, 247, 0.55), 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+#send-ai-container:has(button:active) {
+    transform: scale(0.97);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+}
+#send-ai-container button {
+    background: transparent;
+}
+#send-ai-container button:hover {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* --- Стили для спиннера загрузки --- */
+.slow-spin {
+    animation: spin 2.5s linear infinite;
+    position: relative;
+    border-color: rgba(168, 85, 247, 0.4) !important;
+    box-shadow:
+        0 0 30px rgba(168, 85, 247, 0.3),
+        0 0 60px rgba(168, 85, 247, 0.1),
+        inset 0 0 20px rgba(168, 85, 247, 0.08);
+    background: radial-gradient(circle at 40% 35%, rgba(192, 132, 252, 0.15), rgba(168, 85, 247, 0.03) 50%, transparent 80%);
+}
+.slow-spin::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 30%, rgba(192, 132, 252, 0.3) 50%, transparent 70%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    animation: spin 3s linear infinite reverse;
+    z-index: -1;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }

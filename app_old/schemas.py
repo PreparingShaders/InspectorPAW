@@ -1,8 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field, validator, computed_field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import date, datetime
 import re
-from .models import UserRole
+from .models import UserRole, ProcessingLevel, MicronutrientDensity
 from .config import settings
 
 # --- AI Hub Chat Schema ---
@@ -127,25 +127,39 @@ class MealTotals(BaseModel):
 # --- Analysis Schemas ---
 class Recommendations(BaseModel):
     calories: Optional[str] = None
-    proteins: Optional[str] = None
-    fats: Optional[str] = None
+    protein: Optional[str] = None
+    fat: Optional[str] = None
     carbohydrates: Optional[str] = None
+
+class FoodQuality(BaseModel):
+    ai_score: int = Field(..., ge=0, le=100)
+    processing_level: ProcessingLevel
+    satiety_index: int = Field(..., ge=1, le=5)
+    micronutrient_density: MicronutrientDensity
+    toxic_coach_comment: str
 
 class AnalysisResponse(BaseModel):
     suggested_totals: MealTotals
+    food_quality: Optional[FoodQuality] = None
     ai_response_text: str
     ai_coach_advice: Optional[str] = None
     recommendations: Optional[Recommendations] = None
-    nutrition_model_used: Optional[str] = None # Модель для анализа КБЖУ
-    coach_model_used: Optional[str] = None      # Модель для совета
+    nutrition_model_used: Optional[str] = None
+    coach_model_used: Optional[str] = None
 
 # --- Meal Schemas ---
 class MealBase(BaseModel):
     meal_type: Optional[str] = None
     food_name: Optional[str] = None
+    # Новые поля для оценки качества
+    ai_comment: Optional[str] = None
+    ai_score: Optional[int] = None
+    processing_level: Optional[ProcessingLevel] = None
+    satiety_index: Optional[int] = None
+    micronutrient_density: Optional[MicronutrientDensity] = None
 
 class MealCreate(MealBase, MealTotals):
-    ai_coach_advice: Optional[str] = None
+    pass
 
 class Meal(MealBase, MealTotals):
     id: int

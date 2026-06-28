@@ -2,25 +2,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Глобальный перехватчик для fetch ---
     async function fetchWithAuth(url, options = {}) {
         const token = localStorage.getItem('accessToken');
-
-        // Добавляем заголовок авторизации, если он еще не установлен
         if (token && !options.headers?.Authorization) {
             if (!options.headers) {
                 options.headers = {};
             }
             options.headers['Authorization'] = `Bearer ${token}`;
         }
-
         const response = await fetch(url, options);
-
-        // Если токен истек или невалиден, выходим из системы
         if (response.status === 401) {
             localStorage.removeItem('accessToken');
             window.location.href = '/login';
-            // Возвращаем "пустой" Promise, чтобы остановить выполнение цепочки .then()
             return new Promise(() => {});
         }
-
         return response;
     }
 
@@ -46,7 +39,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const aiCoachAdvice = document.getElementById('ai-coach-advice');
     const nutritionModelInfo = document.getElementById('nutrition-model-info');
 
-    let currentFoodName = '';
+    let currentAnalysisResult = null;
+    let currentMealId = null;
 
     // --- Управление состоянием формы анализа ---
     const analysisStateKey = 'analysisInProgress';
@@ -65,51 +59,353 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function resetAnalysisUI() {
-        // Не скрываем resultsSection, а сбрасываем его содержимое
         aiResponseTextDiv.innerHTML = '';
-
-        const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
+        const fields = ['calories', 'protein', 'fat', 'carbohydrates', 'fiber'];
         fields.forEach(field => {
             const slider = document.getElementById(`${field}-slider`);
-            const input = document.getElementById(field);
-            slider.value = 0;
-            input.value = 0;
+            const input = document.getElementById(`${field}`);
+            if (slider && input) {
+                slider.value = 0;
+                input.value = 0;
+            }
         });
-
-        // Скрываем только AI коуча, так как он относится к конкретному анализу
         aiCoachSection.style.display = 'none';
         localStorage.removeItem('lastAiAdvice');
         localStorage.removeItem('lastCoachModel');
-
         clearAnalysisState();
+        currentAnalysisResult = null;
+        currentMealId = null;
+        document.getElementById('stats-title').textContent = 'Средние данные';
+        const qualityDetails = document.getElementById('quality-details');
+        if (qualityDetails) qualityDetails.style.display = 'none';
     }
 
     function populateResultsFromState(state) {
         if (!state) return;
-
         currentFoodName = state.foodName;
+        currentAnalysisResult = state;
         aiResponseTextDiv.innerHTML = `<p>${currentFoodName}</p>`;
-
         document.getElementById('meal-type').value = state.mealType;
-
-        const fields = ['calories', 'protein', 'fat', 'carbohydrates'];
+        const fields = ['calories', 'protein', 'fat', 'carbohydrates', 'fiber'];
         fields.forEach(field => {
             const slider = document.getElementById(`${field}-slider`);
-            const input = document.getElementById(field);
-            const value = state.values[field] || 0;
+            const input = document.getElementById(`${field}`);
+            const value = state.values?.[field] || 0;
+            if (slider && input) {
+                slider.value = value;
+                input.value = value;
+                const config = { minBuffer: field === 'calories' ? 500 : 30, step: field === 'calories' ? 10 : 1 };
+                const buffer = Math.max(value * 0.5, config.minBuffer);
+                const minValue = Math.max(0, Math.floor((value - buffer) / config.step) * config.step);
+                const maxValue = Math.ceil((value + buffer) / config.step) * config.step;
+                slider.min = minValue;
+                slider.max = maxValue;
+            }
+        });
+        resultsSection.style.display = 'block';
+        updateRingForCurrentMeal(state);
+        updateQualitySection(state);
+    }
 
-            slider.value = value;
-            input.value = value;
+    function updateRingForCurrentMeal(state) {
+        const container = document.getElementById('interactive-rings-container');
+        if (!container || !state) return;
+        const values = state.values || {};
+        const nutrientData = [
+            { id: 'protein', label: 'Белки', value: values.protein || 0, color: 'var(--color-protein-white)' },
+            { id: 'fat', label: 'Жиры', value: values.fat || 0, color: 'var(--color-golden-orange)' },
+            { id: 'carbohydrates', label: 'Углеводы', value: values.carbohydrates || 0, color: 'var(--color-muted-teal)' },
+            { id: 'fiber', label: 'Клетчатка', value: values.fiber || 0, color: '#8B4513' }
+        ];
+        createInteractiveRing(container, nutrientData, values.calories || 0, state.aiScore ?? null);
+        document.getElementById('stats-title').textContent = 'Качество блюда';
+    }
 
-            const config = { minBuffer: field === 'calories' ? 500 : 30, step: field === 'calories' ? 10 : 1 };
-            const buffer = Math.max(value * 0.5, config.minBuffer);
-            const minValue = Math.max(0, Math.floor((value - buffer) / config.step) * config.step);
-            const maxValue = Math.ceil((value + buffer) / config.step) * config.step;
-            slider.min = minValue;
-            slider.max = maxValue;
+    // --- Новый, исправленный код для интерактивного кольца ---
+    function getScoreColor(score) {
+        if (score === null || score === undefined) return 'var(--text-secondary)';
+        if (score <= 40) return '#EF4444';
+        if (score <= 70) return '#F59E0B';
+        return '#10B981';
+    }
+
+    function createInteractiveRing(container, data, totalCalories, aiScore) {
+        container.innerHTML = '';
+
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        const viewBoxSize = 300;
+        svg.setAttribute("viewBox", `0 0 ${viewBoxSize} ${viewBoxSize}`);
+
+        const defs = document.createElementNS(svgNS, "defs");
+        const filter = document.createElementNS(svgNS, "filter");
+        filter.setAttribute("id", "drop-shadow");
+        filter.innerHTML = `<feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.4"/>`;
+        defs.appendChild(filter);
+        svg.appendChild(defs);
+
+        const center = viewBoxSize / 2;
+        const radius = 100;
+        const strokeWidth = 25;
+        const circumference = 2 * Math.PI * radius;
+        const gapDegrees = 2.5;
+
+        const totalGrams = data.reduce((sum, item) => sum + item.value, 0);
+
+        if (totalGrams === 0) {
+            const placeholder = document.createElementNS(svgNS, "circle");
+            placeholder.setAttribute("cx", center);
+            placeholder.setAttribute("cy", center);
+            placeholder.setAttribute("r", radius);
+            placeholder.setAttribute("stroke", "var(--border-color)");
+            placeholder.setAttribute("stroke-width", strokeWidth);
+            placeholder.setAttribute("fill", "none");
+            svg.appendChild(placeholder);
+            const centerText = document.createElementNS(svgNS, "text");
+            centerText.setAttribute("x", "50%");
+            centerText.setAttribute("y", "50%");
+            centerText.setAttribute("text-anchor", "middle");
+            centerText.setAttribute("dominant-baseline", "middle");
+            centerText.setAttribute("font-size", "20");
+            centerText.setAttribute("fill", "var(--text-secondary)");
+            centerText.textContent = "Нет данных";
+            svg.appendChild(centerText);
+            container.appendChild(svg);
+            return;
+        }
+
+        let currentAngle = 0;
+        const segments = [];
+        const labels = [];
+
+        data.forEach(item => {
+            const percentage = item.value / totalGrams;
+            const angle = 360 * percentage;
+            const arcLength = (circumference / 360) * (angle > gapDegrees ? angle - gapDegrees : angle);
+
+            const segment = document.createElementNS(svgNS, "circle");
+            segment.setAttribute("cx", center);
+            segment.setAttribute("cy", center);
+            segment.setAttribute("r", radius);
+            segment.setAttribute("stroke", item.color);
+            segment.setAttribute("stroke-width", strokeWidth);
+            segment.setAttribute("stroke-dasharray", `${arcLength} ${circumference}`);
+            segment.setAttribute("stroke-linecap", "butt");
+            segment.setAttribute("transform", `rotate(${currentAngle - 90 + gapDegrees / 2}, ${center}, ${center})`);
+            segment.setAttribute("fill", "none");
+            segment.setAttribute("filter", "url(#drop-shadow)");
+            segments.push(segment);
+
+            item.startAngle = currentAngle;
+            item.endAngle = currentAngle + angle;
+
+            const labelRadius = radius + strokeWidth;
+            const midAngleRad = (currentAngle + angle / 2 - 90) * Math.PI / 180;
+            const x = center + labelRadius * Math.cos(midAngleRad);
+            const y = center + labelRadius * Math.sin(midAngleRad);
+
+            const label = document.createElementNS(svgNS, "text");
+            label.setAttribute("class", "nutrient-ring-label");
+            label.setAttribute("x", x);
+            label.setAttribute("y", y);
+            label.textContent = item.label;
+            labels.push(label);
+
+            currentAngle += angle;
         });
 
-        resultsSection.style.display = 'block';
+        segments.forEach(s => svg.appendChild(s));
+        labels.forEach(l => svg.appendChild(l));
+
+        const scoreColor = getScoreColor(aiScore);
+        const centerText = document.createElementNS(svgNS, "text");
+        centerText.setAttribute("x", "50%");
+        centerText.setAttribute("y", "50%");
+        centerText.setAttribute("text-anchor", "middle");
+        centerText.setAttribute("dominant-baseline", "middle");
+        centerText.innerHTML = `
+            <tspan x="50%" dy="-0.6em" font-size="28" font-weight="bold" fill="${scoreColor}">${aiScore !== null && aiScore !== undefined ? aiScore : '—'}</tspan>
+            <tspan x="50%" dy="1.1em" font-size="14" fill="var(--text-secondary)">Score</tspan>
+            <tspan x="50%" dy="2.4em" font-size="22" font-weight="bold" fill="var(--color-amber)">${Math.round(totalCalories)}</tspan>
+            <tspan x="50%" dy="3.6em" font-size="14" fill="var(--text-secondary)">ккал</tspan>
+        `;
+        svg.appendChild(centerText);
+
+        svg.addEventListener('click', (event) => {
+            const rect = svg.getBoundingClientRect();
+            const x = event.clientX - rect.left - center;
+            const y = event.clientY - rect.top - center;
+
+            let clickAngle = Math.atan2(y, x) * 180 / Math.PI + 90;
+            if (clickAngle < 0) {
+                clickAngle += 360;
+            }
+
+            const clickedSegment = data.find(item => clickAngle >= item.startAngle && clickAngle < item.endAngle);
+
+            if (clickedSegment) {
+                console.log(`Clicked on ${clickedSegment.label}`);
+                const input = document.getElementById(clickedSegment.id);
+                if (input) {
+                    const sliderGroup = input.closest('.slider-group');
+                    if (sliderGroup) {
+                        sliderGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        input.focus();
+                    }
+                }
+            }
+        });
+
+        container.appendChild(svg);
+    }
+
+    async function fetchAndDrawRing() {
+        try {
+            const response = await fetchWithAuth('/users/me/average-stats');
+            if (!response.ok) throw new Error('Could not fetch average stats.');
+            const stats = await response.json();
+
+            const container = document.getElementById('interactive-rings-container');
+            if (!container) return;
+
+            const nutrientData = [
+                { id: 'protein', label: 'Белки', value: stats.avg_protein || 0, color: 'var(--color-protein-white)' },
+                { id: 'fat', label: 'Жиры', value: stats.avg_fat || 0, color: 'var(--color-golden-orange)' },
+                { id: 'carbohydrates', label: 'Углеводы', value: stats.avg_carbohydrates || 0, color: 'var(--color-muted-teal)' },
+                { id: 'fiber', label: 'Клетчатка', value: stats.avg_fiber || 0, color: '#8B4513' }
+            ];
+
+            createInteractiveRing(container, nutrientData, stats.avg_calories, null);
+            document.getElementById('stats-title').textContent = 'Средние данные';
+            const qualityDetails = document.getElementById('quality-details');
+            if (qualityDetails) qualityDetails.style.display = 'none';
+
+            mealLogsContainer.dataset.targetCalories = stats.target_calories;
+            mealLogsContainer.dataset.targetProtein = stats.target_protein;
+            mealLogsContainer.dataset.targetFat = stats.target_fat;
+            mealLogsContainer.dataset.targetCarbohydrates = stats.target_carbohydrates;
+
+        } catch (error) {
+            console.error("Error fetching average stats for ring:", error);
+            const container = document.getElementById('interactive-rings-container');
+            if (container) createInteractiveRing(container, [], 0, null);
+        }
+    }
+
+    function getRiskColor(score) {
+        if (score === null || score === undefined) return 'var(--text-secondary)';
+        if (score <= 3) return '#10B981';
+        if (score <= 7) return '#F59E0B';
+        return '#EF4444';
+    }
+
+    function getProcessingLevelLabel(level) {
+        const map = {
+            'WHOLE': 'Цельные продукты',
+            'MINIMALLY_PROCESSED': 'Минимальная обработка',
+            'ULTRA_PROCESSED': 'Ультраобработанные'
+        };
+        return map[level] || level || '—';
+    }
+
+    function getMicronutrientLabel(level) {
+        const map = {
+            'HIGH': 'Высокая плотность',
+            'MEDIUM': 'Средняя плотность',
+            'LOW': 'Низкая плотность'
+        };
+        return map[level] || level || '—';
+    }
+
+    function updateQualitySection(state) {
+        const qualityDetails = document.getElementById('quality-details');
+        if (!qualityDetails) return;
+
+        const foodQuality = state.foodQuality;
+        const aiAnalysisDetails = state.aiAnalysisDetails;
+        const values = state.values || {};
+
+        if (!foodQuality && !aiAnalysisDetails) {
+            qualityDetails.style.display = 'none';
+            return;
+        }
+
+        qualityDetails.style.display = 'block';
+        document.getElementById('stats-title').textContent = 'Качество блюда';
+
+        let html = '';
+
+        if (foodQuality) {
+            const scoreColor = getScoreColor(foodQuality.ai_score);
+            html += `
+                <div class="glassmorphism rounded-xl p-4 neon-glow-pantone-gray text-center">
+                    <div class="text-sm text-gray-400 mb-1">Оценка качества</div>
+                    <div class="text-4xl font-black" style="color: ${scoreColor};">${foodQuality.ai_score ?? '—'}</div>
+                    <div class="text-xs text-gray-500 mt-1">Score</div>
+                </div>
+            `;
+        }
+
+        if (aiAnalysisDetails && aiAnalysisDetails.length > 0) {
+            html += '<div class="space-y-2">';
+            aiAnalysisDetails.forEach((detail, index) => {
+                const criteria = detail.criteria || {};
+                html += `
+                    <div class="glassmorphism rounded-xl p-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-white">${detail.name || 'Ингредиент ' + (index + 1)}</span>
+                            <span class="text-xs text-gray-400">${detail.estimated_weight_g ?? '?'}г</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-1 text-xs">
+                            <div class="flex justify-between"><span class="text-gray-400">Калории:</span><span>${detail.calories ?? 0} ккал</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Белки:</span><span>${detail.protein_g ?? 0}г</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Жиры:</span><span>${detail.fat_g ?? 0}г</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Углеводы:</span><span>${detail.carbs_g ?? 0}г</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Клетчатка:</span><span>${detail.fiber_g ?? 0}г</span></div>
+                        </div>
+                        <div class="mt-2 space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Впитывание масла</span>
+                                <span style="color: ${getRiskColor(criteria.oil_absorption)};">${criteria.oil_absorption ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Переработка</span>
+                                <span style="color: ${getRiskColor(criteria.processing)};">${criteria.processing ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Скрытые ингредиенты</span>
+                                <span style="color: ${getRiskColor(criteria.hidden_ingredients)};">${criteria.hidden_ingredients ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Качество белка</span>
+                                <span style="color: ${getRiskColor(10 - (criteria.protein_quality ?? 5))};">${criteria.protein_quality ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Микроэлементы</span>
+                                <span style="color: ${getRiskColor(10 - (criteria.micronutrients ?? 5))};">${criteria.micronutrients ?? '—'}/10</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Калорийность</span>
+                                <span style="color: ${getRiskColor(criteria.calorie_density)};">${criteria.calorie_density ?? '—'}/10</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        if (foodQuality) {
+            html += `
+                <div class="glassmorphism rounded-xl p-3 space-y-1 text-xs">
+                    <div class="flex justify-between"><span class="text-gray-400">Уровень обработки</span><span>${getProcessingLevelLabel(foodQuality.processing_level)}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Плотность микроэлементов</span><span>${getMicronutrientLabel(foodQuality.micronutrient_density)}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Индекс сытости</span><span>${foodQuality.satiety_index ?? '—'}/5</span></div>
+                </div>
+            `;
+        }
+
+        qualityDetails.innerHTML = html;
     }
 
     function updateRingWithOverflow(ringId, value, maxValue) {
@@ -130,24 +426,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const valueElement = document.getElementById(valueElementId);
         if (valueElement) {
             valueElement.textContent = Math.round(value);
-        }
-    }
-
-    async function fetchAndDisplayAverageStats() {
-        try {
-            const response = await fetchWithAuth('/users/me/average-stats');
-            if (!response.ok) throw new Error('Could not fetch average stats.');
-            const stats = await response.json();
-            updateRingWithOverflow('avg-calories-ring', stats.avg_calories, stats.target_calories);
-            updateRingWithOverflow('avg-protein-ring', stats.avg_protein, stats.target_protein);
-            updateRingWithOverflow('avg-fat-ring', stats.avg_fat, stats.target_fat);
-            updateRingWithOverflow('avg-carbs-ring', stats.avg_carbohydrates, stats.target_carbohydrates);
-            mealLogsContainer.dataset.targetCalories = stats.target_calories;
-            mealLogsContainer.dataset.targetProtein = stats.target_protein;
-            mealLogsContainer.dataset.targetFat = stats.target_fat;
-            mealLogsContainer.dataset.targetCarbohydrates = stats.target_carbohydrates;
-        } catch (error) {
-            console.error("Error fetching average stats:", error);
         }
     }
 
@@ -260,6 +538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupSliderSync('protein-slider', 'protein', true);
     setupSliderSync('fat-slider', 'fat', true);
     setupSliderSync('carbohydrates-slider', 'carbohydrates', true);
+    setupSliderSync('fiber-slider', 'fiber');
     document.getElementById('meal-type').addEventListener('change', saveCurrentAnalysis);
 
     function saveCurrentAnalysis() {
@@ -271,7 +550,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 protein: document.getElementById('protein').value,
                 fat: document.getElementById('fat').value,
                 carbohydrates: document.getElementById('carbohydrates').value,
-            }
+                fiber: document.getElementById('fiber').value,
+            },
+            aiScore: currentAnalysisResult?.aiScore ?? null,
+            aiAnalysisDetails: currentAnalysisResult?.aiAnalysisDetails ?? null,
+            foodQuality: currentAnalysisResult?.foodQuality ?? null,
         };
         saveAnalysisState(state);
     }
@@ -361,6 +644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             nutritionModelInfo.textContent = `Проанализировано с помощью: ${result.nutrition_model_used || 'модель не указана'}`;
 
+            currentAnalysisResult = result;
             currentFoodName = result.ai_response_text;
             const initialState = {
                 foodName: currentFoodName,
@@ -370,10 +654,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     protein: Math.round(result.suggested_totals.total_protein || 0),
                     fat: Math.round(result.suggested_totals.total_fat || 0),
                     carbohydrates: Math.round(result.suggested_totals.total_carbohydrates || 0),
-                }
+                    fiber: Math.round(result.suggested_totals.total_fiber || 0),
+                },
+                aiScore: result.food_quality?.ai_score ?? null,
+                aiAnalysisDetails: result.ai_analysis_details ?? null,
+                foodQuality: result.food_quality ?? null,
             };
             saveAnalysisState(initialState);
             populateResultsFromState(initialState);
+            updateQualitySection(initialState);
 
             resultsSection.style.display = 'block';
             analysisStatus.innerHTML = '<span style="color: #50C878;">✓ Анализ завершён!</span>';
@@ -403,6 +692,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             total_protein: parseFloat(document.getElementById('protein').value),
             total_fat: parseFloat(document.getElementById('fat').value),
             total_carbohydrates: parseFloat(document.getElementById('carbohydrates').value),
+            total_fiber: parseFloat(document.getElementById('fiber').value) || 0,
+            ai_score: currentAnalysisResult?.aiScore ?? null,
+            ai_analysis_details: currentAnalysisResult?.aiAnalysisDetails ?? null,
+            oil_absorption_score: currentAnalysisResult?.foodQuality?.oil_absorption_score ?? null,
+            ultra_processing_score: currentAnalysisResult?.foodQuality?.ultra_processing_score ?? null,
+            hidden_ingredients_risk: currentAnalysisResult?.foodQuality?.hidden_ingredients_risk ?? null,
+            processing_level: currentAnalysisResult?.foodQuality?.processing_level ?? null,
+            micronutrient_density: currentAnalysisResult?.foodQuality?.micronutrient_density ?? null,
+            satiety_index: currentAnalysisResult?.foodQuality?.satiety_index ?? null,
+            ai_comment: currentAnalysisResult?.foodQuality?.toxic_coach_comment ?? null,
         };
 
         try {
@@ -426,7 +725,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => { errorMessageDiv.textContent = ''; errorMessageDiv.style.color = ''; }, 3000);
 
             await fetchAndDisplayMealHistory();
-            await fetchAndDisplayAverageStats();
+            await fetchAndDrawRing(); // Обновляем кольцо после добавления еды
         } catch (error) {
             errorMessageDiv.textContent = error.message;
         } finally {
@@ -447,8 +746,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savedState = loadAnalysisState();
     if (savedState) {
         populateResultsFromState(savedState);
+    } else {
+        await fetchAndDrawRing();
     }
-
-    await fetchAndDisplayAverageStats();
     await fetchAndDisplayMealHistory();
 });

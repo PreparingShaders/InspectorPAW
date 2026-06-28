@@ -205,7 +205,7 @@ def delete_meal(db: Session, meal_id: int):
     return db_meal
 
 def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.Meal:
-    """Создает запись о приеме пищи с итоговыми КБЖУ."""
+    """Создает запись о приеме пищи с итоговыми КБЖУ и оценкой качества."""
     db_meal = models.Meal(
         user_id=user_id,
         meal_type=meal.meal_type,
@@ -214,7 +214,12 @@ def create_meal(db: Session, meal: schemas.MealCreate, user_id: int) -> models.M
         total_protein=meal.total_protein,
         total_fat=meal.total_fat,
         total_carbohydrates=meal.total_carbohydrates,
-        timestamp=datetime.now(settings.MSK_TZ) # Устанавливаем время с часовым поясом
+        ai_comment=meal.ai_comment,
+        ai_score=meal.ai_score,
+        processing_level=meal.processing_level,
+        satiety_index=meal.satiety_index,
+        micronutrient_density=meal.micronutrient_density,
+        timestamp=datetime.now(settings.MSK_TZ)
     )
     db.add(db_meal)
     db.commit()
