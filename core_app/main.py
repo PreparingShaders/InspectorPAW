@@ -1557,7 +1557,7 @@ def read_muscle_balance(
     period: str = "week",
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_active_user),
-):
+) -> List[schemas.MuscleBalance]:
     return crud.get_muscle_balance(db, user_id=current_user.id, period=period)
 
 

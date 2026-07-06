@@ -297,18 +297,32 @@
                  </div>
              </div>
 
-             <!-- Muscle Readiness Radar Chart -->
-             <div class="w-full">
-                 <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 text-center">Состояние мышц</div>
-                 <div id="radar-container" class="chart-wrapper flex justify-center">
-                     <canvas id="radar-chart" width="300" height="300"></canvas>
-                 </div>
-                 <div class="flex justify-center gap-4 mt-3 text-[0.6rem] text-gray-500">
-                     <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>Восстановлена</span>
-                     <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span>Средне</span>
-                     <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>Устала</span>
-                 </div>
-             </div>
+<!-- Muscle Readiness Radar Chart -->
+              <div class="w-full">
+                  <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 text-center">Состояние мышц</div>
+                  <div id="radar-container" class="chart-wrapper flex justify-center">
+                      <canvas id="radar-chart" width="300" height="300"></canvas>
+                  </div>
+                  <div class="flex justify-center gap-4 mt-3 text-[0.6rem] text-gray-500">
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>Восстановлена</span>
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span>Средне</span>
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>Устала</span>
+                  </div>
+                  <div class="mt-3 space-y-1" x-show="muscleReadiness.length > 0">
+                      <template x-for="m in muscleReadiness" :key="m.muscle_group">
+                          <div class="flex items-center justify-between text-[0.65rem]">
+                              <div class="flex items-center gap-2">
+                                  <span :class="m.readiness_score < 0.3 ? 'text-green-400' : (m.readiness_score < 0.6 ? 'text-yellow-400' : 'text-red-400')">&#9679;</span>
+                                  <span class="text-white" x-text="m.muscle_group"></span>
+                              </div>
+                              <div class="text-gray-500">
+                                  <span x-text="m.readiness_score < 0.3 ? 'Восстановлена' : (m.readiness_score < 0.6 ? 'Средне' : 'Устала')"></span>
+                                  <span class="text-gray-600" x-text="' · ' + m.total_sets_7d + ' подходов'"></span>
+                              </div>
+                          </div>
+                      </template>
+                  </div>
+              </div>
 
              <!-- Quick stats -->
              <div class="w-full grid grid-cols-3 gap-3">
@@ -345,13 +359,28 @@
                  </div>
              </div>
 
-             <!-- Muscle balance -->
-             <div id="stats-muscle-balance" class="w-full">
-                 <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Мышечный баланс</div>
-                 <div id="balance-chart-wrapper" class="chart-wrapper">
-                     <canvas id="balance-chart" width="300" height="280"></canvas>
-                 </div>
-             </div>
+<!-- Muscle balance -->
+              <div id="stats-muscle-balance" class="w-full">
+                  <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Мышечный баланс (рабочие подходы RPE 7-10)</div>
+                  <div id="balance-chart-wrapper" class="chart-wrapper">
+                      <canvas id="balance-chart" width="300" height="280"></canvas>
+                  </div>
+                  <div class="mt-3 space-y-1" x-show="muscleBalance.length > 0">
+                      <template x-for="m in muscleBalance" :key="m.muscle_group">
+                          <div class="flex items-center justify-between text-[0.65rem]">
+                              <div class="flex items-center gap-2">
+                                  <span :class="m.status === 'оптимум' ? 'text-green-400' : (m.status === 'перетренированность' ? 'text-red-400' : 'text-amber-400')">&#9679;</span>
+                                  <span class="text-white" x-text="m.muscle_group"></span>
+                              </div>
+                              <div class="text-gray-500">
+                                  <span x-text="m.status === 'оптимум' ? 'Оптимум' : (m.status === 'перетренированность' ? 'Перетренированность' : 'Недостаток')"></span>
+                                  <span class="text-gray-600" x-text="' · ' + m.working_sets + ' подх.'"></span>
+                              </div>
+                          </div>
+                      </template>
+                      <div class="text-[0.6rem] text-gray-600 mt-2">MEV: 6-10 · MAV: 12-20 · MRV: 22+</div>
+                  </div>
+              </div>
 
              <!-- Progress chart -->
              <div id="stats-progress-wrap" class="w-full">
@@ -636,13 +665,25 @@ window.dashboardApp = function() {
                     const r = this.muscleReadiness.find(x => x.muscle_group === mg);
                     return r ? Math.min(100, Math.round(r.total_volume_7d / 50)) : 0;
                 });
+                const dataReadiness = labels.map(mg => {
+                    const r = this.muscleReadiness.find(x => x.muscle_group === mg);
+                    return r ? Math.round(r.readiness_score * 100) : 0;
+                });
+                const readinessColors = labels.map(mg => {
+                    const r = this.muscleReadiness.find(x => x.muscle_group === mg);
+                    const score = r ? r.readiness_score : 0;
+                    if (score < 0.3) return '#22c55e';
+                    if (score < 0.6) return '#eab308';
+                    return '#ef4444';
+                });
                 _charts.radar = new Chart(radarCanvas, {
                     type: 'radar',
                     data: {
                         labels,
                         datasets: [
                             { label: 'Нагруженность (RPE×10)', data: dataScores, backgroundColor: 'rgba(168,85,247,0.2)', borderColor: '#a855f7', borderWidth: 2, pointBackgroundColor: '#c084fc', pointBorderColor: '#fff', pointBorderWidth: 1 },
-                            { label: 'Объём 7д (норм.)', data: dataVolume, backgroundColor: 'rgba(34,197,94,0.15)', borderColor: '#22c55e', borderWidth: 2, pointBackgroundColor: '#4ade80', pointBorderColor: '#fff', pointBorderWidth: 1 }
+                            { label: 'Объём 7д (норм.)', data: dataVolume, backgroundColor: 'rgba(34,197,94,0.15)', borderColor: '#22c55e', borderWidth: 2, pointBackgroundColor: '#4ade80', pointBorderColor: '#fff', pointBorderWidth: 1 },
+                            { label: 'Готовность (%)', data: dataReadiness, backgroundColor: 'rgba(239,68,68,0.1)', borderColor: '#ef4444', borderWidth: 1, borderDash: [5, 5], pointBackgroundColor: readinessColors, pointBorderColor: '#fff', pointBorderWidth: 1 }
                         ]
                     },
                     options: {
@@ -654,7 +695,7 @@ window.dashboardApp = function() {
                                 ticks: { display: false }, suggestedMin: 0, suggestedMax: 100
                             }
                         },
-                        plugins: { legend: { display: false } }
+                        plugins: { legend: { display: true, position: 'bottom', labels: { color: textColor, font: { size: 9 } } } }
                     }
                 });
             }
@@ -686,13 +727,16 @@ window.dashboardApp = function() {
             // --- Polar area: muscle balance ---
             const balCanvas = $('balance-chart');
             if (balCanvas && this.muscleBalance.length > 0) {
-                const colors = this.muscleBalance.map(d => MUSCLE_COLORS[d.muscle_group] || '#888');
+                const colors = this.muscleBalance.map(d => {
+                    const s = d.status || 'недостаток';
+                    return s === 'оптимум' ? '#22c55e' : (s === 'перетренированность' ? '#ef4444' : '#f59e0b');
+                });
                 _charts.balance = new Chart(balCanvas, {
                     type: 'polarArea',
                     data: {
-                        labels: this.muscleBalance.map(d => d.muscle_group + ' (' + formatVolume(d.volume) + ')'),
+                        labels: this.muscleBalance.map(d => d.muscle_group + ' (' + d.working_sets + ' раб.)'),
                         datasets: [{
-                            data: this.muscleBalance.map(d => d.volume),
+                            data: this.muscleBalance.map(d => d.working_sets),
                             backgroundColor: colors.map(c => c + '55'), borderColor: colors, borderWidth: 1
                         }]
                     },
