@@ -1617,7 +1617,7 @@ async def get_ai_analysis(
     ]) if muscle_readiness else "Нет данных"
     
     balance_text = "\n".join([
-        f"- {b['muscle_group']}: {b['volume']:.0f}кг"
+        f"- {b['muscle_group']}: {b['working_sets']} раб.подх. (статус: {b['status']})"
         for b in muscle_balance
     ]) if muscle_balance else "Нет данных"
     
