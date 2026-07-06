@@ -338,10 +338,32 @@ def create_workout(
     return db_session
 
 
-def get_user_workouts(db: Session, user_id: int, limit: int = 50) -> List[models.WorkoutSession]:
-    return (
+def get_user_workouts(db: Session, user_id: int, limit: int = 100, template_id: Optional[int] = None, period_days: int = 0) -> List[models.WorkoutSession]:
+    from datetime import timedelta
+    from sqlalchemy import or_
+    
+    query = (
         db.query(models.WorkoutSession)
         .filter(models.WorkoutSession.user_id == user_id, models.WorkoutSession.is_template == False)
+    )
+    
+    # Фильтр по шаблону
+    if template_id is not None:
+        query = query.filter(models.WorkoutSession.template_id == template_id)
+    
+    # Фильтр по периоду - по дате завершения (completed_at) если тренировка завершена
+    if period_days > 0:
+        cutoff_date = date.today() - timedelta(days=period_days)
+        # Используем completed_at для завершенных, date для незавершенных
+        query = query.filter(
+            or_(
+                models.WorkoutSession.completed_at >= cutoff_date,
+                models.WorkoutSession.date >= cutoff_date
+            )
+        )
+    
+    return (
+        query
         .order_by(desc(models.WorkoutSession.date), desc(models.WorkoutSession.id))
         .limit(limit)
         .all()
