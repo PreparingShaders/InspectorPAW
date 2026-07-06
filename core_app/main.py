@@ -54,11 +54,6 @@ async def redirect_to_root():
     return RedirectResponse(url="/")
 
 
-@app.get("/dashboard")
-async def read_dashboard_page(request: Request):
-    return templates.TemplateResponse(request, "index.html")
-
-
 @app.get("/profile")
 async def read_profile_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     meals_today = crud.count_meals_today(db, user_id=current_user.id)

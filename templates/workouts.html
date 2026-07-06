@@ -1633,6 +1633,15 @@ $('detail-delete').onclick = async () => {
 // ===== Utils =====
 function escapeAttr(s) { return String(s||'').replace(/'/g, '&#39;'); }
 
+async function loadTemplates() {
+    $('template-list').innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full slow-spin mx-auto"></div></div>';
+    try {
+        let res = await fetchWithAuth('/api/workout-templates');
+        templateList = res.ok ? await res.json() : [];
+        renderTemplates();
+    } catch(e) { $('template-list').innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; }
+}
+
 // ===== Init =====
 (async function() {
     skel.classList.remove('hidden');
