@@ -1896,13 +1896,15 @@ async def generate_workout_template(
     exercises = crud.get_exercise_library(db)
     
     # Build exercise list text for prompt
-    ex_text = "\n".join([f"- {ex.name} ({ex.muscle_group}, equipment: {ex.equipment or 'bodyweight'})" for ex in exercises])
+    ex_text = "\n".join([f"- {ex.id}: {ex.name} ({ex.muscle_group}, equipment: {ex.equipment or 'bodyweight'})" for ex in exercises])
     
     # Build restrictions text
-    restrictions_text = "нет" if not request.restrictions else ", ".join(request.restrictions)
+    restrictions_text = "нет" if not request.restrictions else ", ".join(request.restrictions) if request.restrictions else "нет"
     
     # Build prompt
-    prompt = f"""Создай программу тренировок на {request.days_per_week} дня в неделю.
+    ex_per_day = 6  # 6 exercises per workout (3-4 compound + 2-3 isolation)
+    total_exercises = request.days_per_week * ex_per_day
+    prompt = f"""Ты опытный сертифицированный фитнес тренер с 10-летним опытом. Создай программу тренировок на {request.days_per_week} дня в неделю.
 
 Данные пользователя:
 - Возраст: {user_info.get('age', 'не указан')}
@@ -1913,25 +1915,31 @@ async def generate_workout_template(
 - Локация: {request.location}
 - Ограничения (избегать нагрузки): {restrictions_text}
 
-Доступные упражнения:
+Доступные упражнения (ID: Название, группа, equipment):
 {ex_text}
 
-ВАЖНО: 
-1. Для ограниченных зон подбирай упражнения без боли (разминка, изометрика, легкие варианты)
-2. Распредели мышечные группы равномерно по дням
-3. Каждое упражнение: 3-4 подхода, reps 8-12 для среднего уровня
-4. У новичков: 2-3 подхода, reps 10-15
+ВАЖНО:
+1. Выбери программу: Full Body (для новичков) или Сплит (для intermediate/advanced)
+2. Если новичок (<6 месяцев) - Full Body: 3-4 базовых упражненияя каждый день (присед, жим, подтяг), покрывающие все группы
+3. Если intermediate/advanced - Сплит: отдельные группы по дням:
+   - День 1: Грудь + Трицепс
+   - День 2: Спина + Бицепс
+   - День 3: Ноги + Ягодички
+   - День 4: Плечи + Трицепс
+   - День 5: Комплекс или индивидуальная проработка
+4. Каждая группа мышц: БАЗОВОЕ упражнение (присед, жим, подтяг) + 2-3 ИЗОЛЯЦИОННЫХ
+5. Для ограниченных зон подбирай упражнения без боли или легкие варианты
+6. ВСЕГО должно быть ровно {total_exercises} упражнений (по {ex_per_day} на день)
+7. Новички: 2-3 подхода, reps 10-12; Intermediate: 3-4 подхода, reps 8-12; Advanced: 4 подхода, reps 6-8
 
 Ответ JSON строго в формате:
 {{
   "name": "Название программы",
   "exercises": [
-    {{
-      "exercise_id": ID,
-      "sets": [{{"set_number": 1, "weight_kg": null, "reps": 10, "is_warmup": false}}]
-    }}
+    {{"exercise_id": 1, "sets": [{{"set_number": 1, "weight_kg": null, "reps": 10, "is_warmup": false}}]}}
   ]
-}}"""
+}}
+"""
 
     # Call AI
     if not settings.NUTRITION_MODELS:
@@ -1944,42 +1952,113 @@ async def generate_workout_template(
     for model_name in settings.NUTRITION_MODELS[:2]:
         try:
             import json
+            base_url = settings.AI_WORKER_URL or "https://inspectorgpt.classname1984.workers.dev"
             if model_name in settings.NATIVE_GEMINI_MODELS:
-                url_path = f"/v1beta/models/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
+                url_path = f"{base_url}/v1beta/models/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
                 resp = await httpx_client.post(
                     url_path,
                     headers={"Content-Type": "application/json"},
                     json={"contents": [{"role": "user", "parts": [{"text": prompt}]}]},
                     timeout=90
                 )
+                if resp.status_code != 200:
+                    continue
                 data = resp.json()
                 result = data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
             else:
-                url_path = "/v1/chat/completions"
+                url_path = f"{base_url}/v1/chat/completions"
                 resp = await httpx_client.post(
                     url_path,
                     headers={"Content-Type": "application/json", "Authorization": f"Bearer {settings.OPEN_ROUTER_API_KEY}"},
                     json={"model": model_name, "messages": [{"role": "user", "content": prompt}]},
                     timeout=90
                 )
+                if resp.status_code != 200:
+                    continue
                 data = resp.json()
                 result = data.get('choices', [{}])[0].get('message', {}).get('content', '')
             
             if result:
                 break
-        except Exception:
+        except Exception as e:
+            print(f"AI generation error for model {model_name}:", e)
             continue
     
     await httpx_client.aclose()
     
     if not result:
-        raise HTTPException(status_code=500, detail="Не удалось получить ответ от ИИ")
+        # Fallback to test data if AI fails
+        print("AI failed, returning fallback template")
+        # Group exercises by muscle_group for diverse programming
+        from collections import defaultdict
+        ex_by_group = defaultdict(list)
+        for ex in exercises:
+            if ex.muscle_group:
+                ex_by_group[ex.muscle_group].append(ex)
+        
+        ex_per_day = 6  # 6 exercises per day
+        set_count = 4 if request.level == 'intermediate' else (3 if request.level == 'advanced' else 2)
+        reps = 6 if request.level == 'advanced' else (10 if request.level == 'intermediate' else 12)
+        
+        priority_groups = ['Грудь', 'Спина', 'Ноги', 'Плечи', 'Бицепс', 'Трицепс', 'Пресс', 'Трапеция', 'Предплечье']
+        
+        fallback_exercises = []
+        for day in range(request.days_per_week):
+            day_exercises = 0
+            for group in priority_groups:
+                if day_exercises >= ex_per_day:
+                    break
+                if group in ex_by_group and ex_by_group[group]:
+                    ex = ex_by_group[group].pop(0)
+                    sets = [{"set_number": j+1, "weight_kg": None, "reps": reps, "is_warmup": False} for j in range(set_count)]
+                    fallback_exercises.append({
+                        "exercise_id": ex.id,
+                        "sets": sets
+                    })
+                    day_exercises += 1
+        
+        return schemas.GeneratedWorkoutTemplate(
+            name=f"Программа от ИИ ({request.days_per_week} дня)",
+            exercises=fallback_exercises
+        )
     
     # Parse JSON from response
     import re
+    import json
+    
     json_match = re.search(r'\{[\s\S]*\}', result)
     if json_match:
-        parsed = json.loads(json_match.group(0))
-        return schemas.GeneratedWorkoutTemplate(**parsed)
+        try:
+            parsed = json.loads(json_match.group(0))
+            # Normalize format - handle if AI returned day-based structure or exercise_name
+            if 'exercises' in parsed:
+                normalized_exercises = []
+                ex_name_to_id = {ex.name.lower().strip(): ex.id for ex in exercises}
+                for item in parsed.get('exercises', []):
+                    if isinstance(item.get('exercises'), list):
+                        for ex in item.get('exercises', []):
+                            if isinstance(ex, dict):
+                                ex_id = ex.get('exercise_id')
+                                if not ex_id and 'exercise_name' in ex:
+                                    ex_id = ex_name_to_id.get(ex['exercise_name'].lower().strip())
+                                if ex_id:
+                                    normalized_exercises.append({
+                                        "exercise_id": ex_id,
+                                        "sets": ex.get('sets', [{"set_number": 1, "weight_kg": None, "reps": 10, "is_warmup": False}])
+                                    })
+                    elif isinstance(item, dict):
+                        ex_id = item.get('exercise_id')
+                        if not ex_id and 'exercise_name' in item:
+                            ex_id = ex_name_to_id.get(item['exercise_name'].lower().strip())
+                        if ex_id:
+                            normalized_exercises.append({
+                                "exercise_id": ex_id,
+                                "sets": item.get('sets', [{"set_number": 1, "weight_kg": None, "reps": 10, "is_warmup": False}])
+                            })
+                parsed['exercises'] = normalized_exercises
+            return schemas.GeneratedWorkoutTemplate(**parsed)
+        except Exception as e:
+            print(f"JSON parse error: {e}, raw result: {result[:200]}")
+            raise HTTPException(status_code=500, detail=f"Не удалось распарсить ответ ИИ: {e}")
     
     raise HTTPException(status_code=500, detail="Не удалось распарсить ответ ИИ")

@@ -440,7 +440,7 @@
                          <button class="aigen-location-btn flex-1 rounded-xl py-3 text-sm font-semibold transition-all" data-value="gym">🏋️<br>Зал</button>
                          <button class="aigen-location-btn flex-1 rounded-xl py-3 text-sm font-semibold transition-all" data-value="street">🌳<br>Улица</button>
                      </div>
-                     <button class="aigen-next w-full rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Далее</button>
+                     <button id="aigen-step1-next" class="w-full rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Далее</button>
                  </div>
 
                  <!-- Step 2: Days per week -->
@@ -453,8 +453,8 @@
                          <button class="aigen-days-btn w-12 h-12 rounded-full text-sm font-bold transition-all" data-value="5">5</button>
                      </div>
                      <div class="flex gap-2">
-                         <button class="aigen-back w-1/2 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Назад</button>
-                         <button class="aigen-next w-1/2 rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Далее</button>
+                         <button id="aigen-step2-back" class="w-1/2 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Назад</button>
+                         <button id="aigen-step2-next" class="w-1/2 rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Далее</button>
                      </div>
                  </div>
 
@@ -467,8 +467,8 @@
                          <button class="aigen-level-btn w-full rounded-full py-2.5 text-sm font-semibold transition-all" data-value="advanced">Профи (2+ лет)</button>
                      </div>
                      <div class="flex gap-2">
-                         <button class="aigen-back w-1/2 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Назад</button>
-                         <button class="aigen-next w-1/2 rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Далее</button>
+                         <button id="aigen-step3-back" class="w-1/2 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Назад</button>
+                         <button id="aigen-step3-next" class="w-1/2 rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="color: #a855f7; border: 1px solid #a855f7;">Далее</button>
                      </div>
                  </div>
 
@@ -484,8 +484,8 @@
                          <button class="aigen-restrict-btn w-full rounded-full py-2 text-xs transition-all" data-value="heart">Сердце</button>
                      </div>
                      <div class="flex gap-2">
-                         <button class="aigen-back w-1/2 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Назад</button>
-                         <button id="aigen-generate" class="aigen-generate w-1/2 rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="color: #22c55e; border: 1px solid #22c55e;">Генерировать</button>
+                         <button id="aigen-step4-back" class="w-1/2 rounded-full py-2 text-sm font-semibold text-gray-400 transition-all" style="border: 1px solid rgba(255,255,255,0.1);">Назад</button>
+                         <button id="aigen-generate" class="w-1/2 rounded-full py-2 text-sm font-bold transition-all active:scale-95" style="color: #22c55e; border: 1px solid #22c55e;">Генерировать</button>
                      </div>
                  </div>
 
@@ -1829,10 +1829,12 @@ let aiGenData = { location: null, days: null, level: null, restrictions: [] };
 
 function showAIGenStep(n) {
     document.querySelectorAll('.aigen-step').forEach(el => el.classList.add('hidden'));
-    $(`aigen-step-${n}`).classList.remove('hidden');
+    const el = n === 'loading' ? $('aigen-loading') : $(`aigen-step-${n}`);
+    if (el) el.classList.remove('hidden');
 }
 
 $('ai-generate-btn').onclick = () => {
+    console.log('AI generate button clicked');
     aiGenData = { location: null, days: null, level: null, restrictions: [] };
     $('ai-gen-overlay').classList.remove('hidden');
     showAIGenStep(1);
@@ -1879,23 +1881,24 @@ document.querySelectorAll('.aigen-restrict-btn').forEach(btn => {
 });
 
 // Navigation
-$('aigen-step-1').querySelector('.aigen-next').onclick = () => {
+$('aigen-step1-next').onclick = () => {
     if (!aiGenData.location) return;
     showAIGenStep(2);
 };
-$('aigen-step-2').querySelector('.aigen-back').onclick = () => showAIGenStep(1);
-$('aigen-step-2').querySelector('.aigen-next').onclick = () => {
+$('aigen-step2-back').onclick = () => showAIGenStep(1);
+$('aigen-step2-next').onclick = () => {
     if (!aiGenData.days) return;
     showAIGenStep(3);
 };
-$('aigen-step-3').querySelector('.aigen-back').onclick = () => showAIGenStep(2);
-$('aigen-step-3').querySelector('.aigen-next').onclick = () => {
+$('aigen-step3-back').onclick = () => showAIGenStep(2);
+$('aigen-step3-next').onclick = () => {
     if (!aiGenData.level) return;
     showAIGenStep(4);
 };
-$('aigen-step-4').querySelector('.aigen-back').onclick = () => showAIGenStep(3);
+$('aigen-step4-back').onclick = () => showAIGenStep(3);
 
 $('aigen-generate').onclick = async () => {
+    console.log('Generate clicked', aiGenData);
     if (!aiGenData.location || !aiGenData.days || !aiGenData.level) return;
     showAIGenStep('loading');
     try {
@@ -1909,30 +1912,83 @@ $('aigen-generate').onclick = async () => {
                 restrictions: aiGenData.restrictions
             })
         });
-        if (!res.ok) throw new Error('Ошибка генерации');
-        const data = await res.json();
-        $('ai-gen-overlay').classList.add('hidden');
-        // Load into builder
-        currentTemplateId = null;
-        selectedExercises = new Set();
-        switchView('builder');
-        $('workout-name').value = data.name || 'Тренировка от ИИ';
-        exercisesWithSets = data.exercises.map(ex => {
-            selectedExercises.add(ex.exercise_id);
-            return {
-                exercise: { id: ex.exercise_id, name: '' },
-                sets: ex.sets
-            };
-        });
-        // Load exercise names
-        for (const ex of exercisesWithSets) {
-            const libEx = exerciseLibrary.find(e => e.id === ex.exercise.id);
-            if (libEx) ex.exercise.name = libEx.name;
+        console.log('Response:', res.status);
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Ошибка генерации: ${res.status} ${err}`);
         }
-        showBStep(2);
-        renderSets();
+        const data = await res.json();
+        console.log('Data:', data);
+        
+        // Calculate exercises per workout
+        const exPerWorkout = 6; // 6 exercises per workout
+        const numWorkouts = aiGenData.days || 3;
+        
+        $('ai-gen-overlay').classList.add('hidden');
+        
+        // Split exercises into multiple workouts
+        const allExercises = data.exercises;
+        if (allExercises.length > exPerWorkout) {
+            // Multiple workouts - create them directly
+            currentTemplateId = null;
+            selectedExercises = new Set();
+            
+            for (let i = 0; i < numWorkouts; i++) {
+                const workoutExercises = allExercises.slice(i * exPerWorkout, (i + 1) * exPerWorkout);
+                if (workoutExercises.length === 0) continue;
+                
+                $('workout-name').value = `${data.name || 'Тренировка'} - День ${i + 1}`;
+                exercisesWithSets = workoutExercises.map(ex => {
+                    selectedExercises.add(ex.exercise_id);
+                    return {
+                        exercise: { id: ex.exercise_id, name: '' },
+                        sets: ex.sets
+                    };
+                });
+                // Save workout directly
+                try {
+                    const payload = {
+                        name: `${data.name || 'Тренировка'} - День ${i + 1}`,
+                        notes: null,
+                        exercises: exercisesWithSets.map((e, idx) => ({
+                            exercise_id: e.exercise.id,
+                            sort_order: idx,
+                            sets: e.sets.map(s => ({ set_number: s.set_number, weight_kg: s.weight_kg, reps: s.reps, is_warmup: s.is_warmup }))
+                        }))
+                    };
+                    const saveRes = await fetchWithAuth('/api/workout-templates', {
+                        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+                    });
+                    if (!saveRes.ok) throw new Error('Ошибка сохранения');
+                } catch(e) { console.error('Save error:', e); }
+                exercisesWithSets = [];
+                selectedExercises.clear();
+            }
+            await loadTemplates();
+            switchView('templates');
+        } else {
+            // Single workout
+            currentTemplateId = null;
+            selectedExercises = new Set();
+            switchView('builder');
+            $('workout-name').value = data.name || 'Тренировка от ИИ';
+            exercisesWithSets = allExercises.map(ex => {
+                selectedExercises.add(ex.exercise_id);
+                return {
+                    exercise: { id: ex.exercise_id, name: '' },
+                    sets: ex.sets
+                };
+            });
+            for (const ex of exercisesWithSets) {
+                const libEx = exerciseLibrary.find(e => e.id === ex.exercise.id);
+                if (libEx) ex.exercise.name = libEx.name;
+            }
+            showBStep(2);
+            renderSets();
+        }
     } catch(e) {
-        showError('Не удалось сгенерировать программу');
+        console.error('Generate error:', e);
+        showError(e.message || 'Не удалось сгенерировать программу');
         $('ai-gen-overlay').classList.add('hidden');
     }
 };
