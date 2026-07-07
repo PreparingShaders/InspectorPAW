@@ -220,27 +220,6 @@
         .pr-row .pr-vals { display: flex; gap: 0.5rem; flex-shrink: 0; }
         .pr-row .pr-val { font-size: 0.7rem; color: rgba(255,255,255,0.6); }
         .pr-row .pr-val strong { color: #c084fc; font-weight: 700; }
-         /* Dashboard */
-         .stats-card {
-             background: rgba(255,255,255,0.04);
-             border: 1px solid rgba(255,255,255,0.08);
-             border-radius: 0.75rem;
-             padding: 0.7rem 0.6rem;
-             text-align: center;
-             transition: all 0.2s ease;
-         }
-         .stats-card .v { font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1; }
-         .stats-card .l { font-size: 0.55rem; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.3rem; }
-         .stats-card.accent { background: linear-gradient(135deg, rgba(168,85,247,0.18), rgba(124,58,237,0.08)); border-color: rgba(168,85,247,0.35); }
-         .stats-card.accent .v { color: #c084fc; text-shadow: 0 0 12px rgba(192,132,252,0.4); }
-         .stats-card.green { background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(22,163,74,0.08)); border-color: rgba(34,197,94,0.35); }
-         .stats-card.green .v { color: #4ade80; }
-         .stats-section-title { font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 0.08em; margin: 0.25rem 0 0.4rem; }
-         .pr-row { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; background: rgba(255,255,255,0.03); border-radius: 0.5rem; margin-bottom: 0.3rem; border: 1px solid rgba(255,255,255,0.06); }
-         .pr-row .pr-name { color: #fff; font-size: 0.78rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-         .pr-row .pr-vals { display: flex; gap: 0.5rem; flex-shrink: 0; }
-         .pr-row .pr-val { font-size: 0.7rem; color: rgba(255,255,255,0.6); }
-         .pr-row .pr-val strong { color: #c084fc; font-weight: 700; }
          .ai-analysis-output h4 { font-size: 0.85rem; font-weight: 700; color: #c084fc; margin-top: 0.6rem; margin-bottom: 0.2rem; }
          .ai-analysis-output p { font-size: 0.78rem; color: rgba(255,255,255,0.75); margin-bottom: 0.3rem; line-height: 1.5; }
          .ai-analysis-output ul { list-style: disc; padding-left: 1.2rem; margin: 0.3rem 0; }
@@ -624,6 +603,14 @@ tabActive.onclick = () => { switchView('stats'); };
 tabTempl.onclick = () => { switchView('templates'); loadTemplates(); };
 tabHist.onclick = async () => { 
     switchView('history');
+    // Устанавливаем визуальную активность кнопки периода
+    ['hist-period-week', 'hist-period-month', 'hist-period-3month'].forEach(id => {
+        const btn = $(id);
+        if (btn) btn.classList.remove('active');
+    });
+    const activeBtnId = historyPeriodDays === 7 ? 'hist-period-week' : (historyPeriodDays === 30 ? 'hist-period-month' : 'hist-period-3month');
+    const activeBtn = $(activeBtnId);
+    if (activeBtn) activeBtn.classList.add('active');
     // Сначала грузим шаблоны
     try {
         let res = await fetchWithAuth('/api/workout-templates');
@@ -1601,7 +1588,7 @@ $('finish-confirm').onclick = async () => {
 };
 
 // ===== History =====
-let historyPeriodDays = 0; // 0 = все
+let historyPeriodDays = 30; // Default to month view
 let historyTemplateId = null;
 
 async function loadHistory() {
@@ -1744,23 +1731,6 @@ function setHistoryPeriod(days) {
     loadHistory();
 }
 
-// Инициализируем историю при переходе
-tabHist.onclick = async () => { 
-    switchView('history'); 
-    setHistoryPeriod(30);
-    // После установки периода обновим список шаблонов
-    if (histTemplateFilter) {
-        try {
-            let res = await fetchWithAuth('/api/workout-templates');
-            templateList = res.ok ? await res.json() : [];
-            let html = '<option value="">Все тренировки</option>';
-            for (const t of templateList) {
-                html += `<option value="${t.id}">${escapeHtml(t.name)}</option>`;
-            }
-            histTemplateFilter.innerHTML = html;
-        } catch(e) {}
-    }
-};
 
 if (histPeriodWeek) histPeriodWeek.onclick = () => setHistoryPeriod(7);
 if (histPeriodMonth) histPeriodMonth.onclick = () => setHistoryPeriod(30);
