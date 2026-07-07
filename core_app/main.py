@@ -54,11 +54,6 @@ async def redirect_to_root():
     return RedirectResponse(url="/")
 
 
-@app.get("/dashboard")
-async def read_dashboard_page(request: Request):
-    return templates.TemplateResponse(request, "index.html")
-
-
 @app.get("/profile")
 async def read_profile_page(request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     meals_today = crud.count_meals_today(db, user_id=current_user.id)
@@ -1407,10 +1402,12 @@ def create_workout(
 
 @app.get("/api/workouts", response_model=List[schemas.WorkoutSession])
 def read_user_workouts(
+    template_id: Optional[int] = None,
+    period_days: int = 30,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_active_user),
 ):
-    return crud.get_user_workouts(db, user_id=current_user.id)
+    return crud.get_user_workouts(db, user_id=current_user.id, template_id=template_id, period_days=period_days)
 
 
 @app.get("/api/workouts/{workout_id}", response_model=schemas.WorkoutSessionDetail)
@@ -1562,7 +1559,7 @@ def read_muscle_balance(
     period: str = "week",
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_active_user),
-):
+) -> List[schemas.MuscleBalance]:
     return crud.get_muscle_balance(db, user_id=current_user.id, period=period)
 
 
@@ -1622,7 +1619,7 @@ async def get_ai_analysis(
     ]) if muscle_readiness else "Нет данных"
     
     balance_text = "\n".join([
-        f"- {b['muscle_group']}: {b['volume']:.0f}кг"
+        f"- {b['muscle_group']}: {b['working_sets']} раб.подх. (статус: {b['status']})"
         for b in muscle_balance
     ]) if muscle_balance else "Нет данных"
     
