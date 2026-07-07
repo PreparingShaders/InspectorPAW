@@ -519,4 +519,6 @@ class AIWorkoutPlanRequest(BaseModel):
 
 class GeneratedWorkoutTemplate(BaseModel):
     name: str
+    program_type: str  # "full_body" or "split_ppl"
+    rationale: Optional[str] = None  # Why this program was chosen
     exercises: List[WorkoutExerciseCreate]

@@ -1904,7 +1904,7 @@ async def generate_workout_template(
     # Build prompt
     ex_per_day = 6  # 6 exercises per workout (3-4 compound + 2-3 isolation)
     total_exercises = request.days_per_week * ex_per_day
-    prompt = f"""Ты опытный сертифицированный фитнес тренер с 10-летним опытом. Создай программу тренировок на {request.days_per_week} дня в неделю.
+    prompt = f"""Ты опытный тренер по силовым видам спорта, эксперт в биомеханике. Составь для меня сбалансированную тренировочную программу, выбрав ОДИН из двух форматов: Full Body или Split Push/Pull/Legs (Жми/Тяни/Ноги).
 
 Данные пользователя:
 - Возраст: {user_info.get('age', 'не указан')}
@@ -1919,22 +1919,18 @@ async def generate_workout_template(
 {ex_text}
 
 ВАЖНО:
-1. Выбери программу: Full Body (для новичков) или Сплит (для intermediate/advanced)
-2. Если новичок (<6 месяцев) - Full Body: 3-4 базовых упражненияя каждый день (присед, жим, подтяг), покрывающие все группы
-3. Если intermediate/advanced - Сплит: отдельные группы по дням:
-   - День 1: Грудь + Трицепс
-   - День 2: Спина + Бицепс
-   - День 3: Ноги + Ягодички
-   - День 4: Плечи + Трицепс
-   - День 5: Комплекс или индивидуальная проработка
-4. Каждая группа мышц: БАЗОВОЕ упражнение (присед, жим, подтяг) + 2-3 ИЗОЛЯЦИОННЫХ
-5. Для ограниченных зон подбирай упражнения без боли или легкие варианты
-6. ВСЕГО должно быть ровно {total_exercises} упражнений (по {ex_per_day} на день)
-7. Новички: 2-3 подхода, reps 10-12; Intermediate: 3-4 подхода, reps 8-12; Advanced: 4 подхода, reps 6-8
+1. Сначала коротко аргументуй, ПОЧЕМУ выбран именно тот формат (Full Body или PPL) для этих метрик
+2. Программа должна состоять преимущественно из многосуставных (базовых) упражнений с добавлением изоляции для баланса
+3. Баланс антагонистов: сбалансировать нагрузку толкающих и тянущих групп, квадрицепс/бицепс бедра
+4. Для ограниченных зон подбирай упражнения без боли или легкие варианты
+5. ВСЕГО должно быть ровно {total_exercises} упражнений (по {ex_per_day} на день)
+6. Новички: 2-3 подхода, reps 10-12; Intermediate: 3-4 подхода, reps 8-12; Advanced: 4 подхода, reps 6-8
 
 Ответ JSON строго в формате:
 {{
   "name": "Название программы",
+  "program_type": "full_body" или "split_ppl",
+  "rationale": "Краткое объяснение выбора программы",
   "exercises": [
     {{"exercise_id": 1, "sets": [{{"set_number": 1, "weight_kg": null, "reps": 10, "is_warmup": false}}]}}
   ]
@@ -2017,8 +2013,14 @@ async def generate_workout_template(
                     })
                     day_exercises += 1
         
+        # Determine program type based on level
+        program_type = "full_body" if request.level == "beginner" else "split_ppl"
+        rationale = f"Выбран {program_type}: {request.level} уровень, {request.days_per_week} дней в неделю"
+        
         return schemas.GeneratedWorkoutTemplate(
             name=f"Программа от ИИ ({request.days_per_week} дня)",
+            program_type=program_type,
+            rationale=rationale,
             exercises=fallback_exercises
         )
     
