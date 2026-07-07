@@ -508,3 +508,17 @@ class WorkoutStatsSummary(BaseModel):
     personal_records: List[PersonalRecord] = []
     muscle_groups: List[MuscleGroupStat] = []
     weekly_volume: List[WeeklyVolumePoint] = []
+
+
+class AIWorkoutPlanRequest(BaseModel):
+    location: str  # gym or street
+    days_per_week: int = Field(..., ge=2, le=5)
+    level: str  # beginner, intermediate, advanced
+    restrictions: List[str] = []  # body parts to avoid
+
+
+class GeneratedWorkoutTemplate(BaseModel):
+    name: str
+    program_type: str  # "full_body" or "split_ppl"
+    rationale: Optional[str] = None  # Why this program was chosen
+    exercises: List[WorkoutExerciseCreate]
