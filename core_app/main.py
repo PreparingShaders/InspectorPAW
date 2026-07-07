@@ -1859,3 +1859,127 @@ async def reset_password_submit(
         {"message": "Пароль успешно изменен. Теперь вы можете войти в систему."},
         status_code=status.HTTP_200_OK
     )
+
+
+@app.post("/api/workout-templates/generate", response_model=schemas.GeneratedWorkoutTemplate)
+async def generate_workout_template(
+    request: schemas.AIWorkoutPlanRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    """Generate a workout template using AI based on user profile and preferences."""
+    # Get user info
+    user_info = {
+        "height": current_user.height_cm,
+        "gender": current_user.gender,
+        "age": None,
+    }
+    if current_user.date_of_birth:
+        from datetime import date
+        today = date.today()
+        user_info["age"] = today.year - current_user.date_of_birth.year - (
+            (today.month, today.day) < (current_user.date_of_birth.month, current_user.date_of_birth.day)
+        )
+    
+    # Get latest metrics
+    latest_metrics = (
+        db.query(models.UserMetrics)
+        .filter(models.UserMetrics.user_id == current_user.id)
+        .order_by(models.UserMetrics.timestamp.desc())
+        .first()
+    )
+    if latest_metrics:
+        user_info["weight"] = latest_metrics.weight_kg
+        user_info["body_fat"] = latest_metrics.body_fat_percentage
+    
+    # Get exercise library
+    exercises = crud.get_exercise_library(db)
+    
+    # Build exercise list text for prompt
+    ex_text = "\n".join([f"- {ex.name} ({ex.muscle_group}, equipment: {ex.equipment or 'bodyweight'})" for ex in exercises])
+    
+    # Build restrictions text
+    restrictions_text = "нет" if not request.restrictions else ", ".join(request.restrictions)
+    
+    # Build prompt
+    prompt = f"""Создай программу тренировок на {request.days_per_week} дня в неделю.
+
+Данные пользователя:
+- Возраст: {user_info.get('age', 'не указан')}
+- Рост: {user_info.get('height', 'не указан')} см
+- Вес: {user_info.get('weight', 'не указан')} кг
+- Цель: {current_user.goal or 'не указана'}
+- Уровень: {request.level}
+- Локация: {request.location}
+- Ограничения (избегать нагрузки): {restrictions_text}
+
+Доступные упражнения:
+{ex_text}
+
+ВАЖНО: 
+1. Для ограниченных зон подбирай упражнения без боли (разминка, изометрика, легкие варианты)
+2. Распредели мышечные группы равномерно по дням
+3. Каждое упражнение: 3-4 подхода, reps 8-12 для среднего уровня
+4. У новичков: 2-3 подхода, reps 10-15
+
+Ответ JSON строго в формате:
+{{
+  "name": "Название программы",
+  "exercises": [
+    {{
+      "exercise_id": ID,
+      "sets": [{{"set_number": 1, "weight_kg": null, "reps": 10, "is_warmup": false}}]
+    }}
+  ]
+}}"""
+
+    # Call AI
+    if not settings.NUTRITION_MODELS:
+        raise HTTPException(status_code=400, detail="Нет доступных моделей ИИ")
+    
+    import httpx
+    httpx_client = httpx.AsyncClient()
+    
+    result = None
+    for model_name in settings.NUTRITION_MODELS[:2]:
+        try:
+            import json
+            if model_name in settings.NATIVE_GEMINI_MODELS:
+                url_path = f"/v1beta/models/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
+                resp = await httpx_client.post(
+                    url_path,
+                    headers={"Content-Type": "application/json"},
+                    json={"contents": [{"role": "user", "parts": [{"text": prompt}]}]},
+                    timeout=90
+                )
+                data = resp.json()
+                result = data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            else:
+                url_path = "/v1/chat/completions"
+                resp = await httpx_client.post(
+                    url_path,
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {settings.OPEN_ROUTER_API_KEY}"},
+                    json={"model": model_name, "messages": [{"role": "user", "content": prompt}]},
+                    timeout=90
+                )
+                data = resp.json()
+                result = data.get('choices', [{}])[0].get('message', {}).get('content', '')
+            
+            if result:
+                break
+        except Exception:
+            continue
+    
+    await httpx_client.aclose()
+    
+    if not result:
+        raise HTTPException(status_code=500, detail="Не удалось получить ответ от ИИ")
+    
+    # Parse JSON from response
+    import re
+    json_match = re.search(r'\{[\s\S]*\}', result)
+    if json_match:
+        parsed = json.loads(json_match.group(0))
+        return schemas.GeneratedWorkoutTemplate(**parsed)
+    
+    raise HTTPException(status_code=500, detail="Не удалось распарсить ответ ИИ")
