@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey, Enum as SAEnum, JSON, Index, Text
-from datetime import datetime
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, String, Boolean, Date, Float, DateTime, ForeignKey, Enum as SAEnum, JSON, Index, Text, func
+from datetime import datetime, timezone
+from sqlalchemy.orm import relationship, declared_attr
 from .database import Base
 import enum
 
@@ -40,16 +39,19 @@ class User(Base):
     password_reset_token = Column(String, nullable=True, unique=True)
     password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Refresh token для долгих сессий
+    refresh_token = Column(String, nullable=True, unique=True)
+    refresh_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+
     # Профиль пользователя
     date_of_birth = Column(Date, nullable=True)
-    gender = Column(String, nullable=True)  # 'male', 'female', 'other'
+    gender = Column(String, nullable=True)
     height_cm = Column(Integer, nullable=True)
-    activity_level = Column(String, nullable=True,
-                            default='sedentary')  # sedentary, light, moderate, active, very_active
+    activity_level = Column(String, nullable=True, default='sedentary')
 
     # Новые поля для цели пользователя
-    goal = Column(String, nullable=True)  # 'fat_loss', 'maintenance', 'mass_gain'
-    goal_intensity = Column(Float, nullable=True, default=0.0)  # от -1.0 до 1.0
+    goal = Column(String, nullable=True)
+    goal_intensity = Column(Float, nullable=True, default=0.0)
 
     # Связь с метриками пользователя
     metrics = relationship("UserMetrics", back_populates="user")
@@ -83,49 +85,37 @@ class Meal(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    meal_type = Column(String, nullable=True)  # 'breakfast', 'lunch', 'dinner', 'snack'
+    meal_type = Column(String, nullable=True)
     food_name = Column(String, nullable=True)
 
-    # Итоговые КБЖУ для приема пищи
     total_calories = Column(Float, default=0.0)
     total_protein = Column(Float, default=0.0)
     total_fat = Column(Float, default=0.0)
     total_carbohydrates = Column(Float, default=0.0)
-    total_fiber = Column(Float, default=0.0)  # ПРАВКА: Клетчатка
+    total_fiber = Column(Float, default=0.0)
 
-    # Оценка качества пищи от AI
     ai_comment = Column(String, nullable=True)
     ai_score = Column(Integer, nullable=True)
 
-    # Шкалы 0-10
     oil_absorption_score = Column(Integer, nullable=True)
     ultra_processing_score = Column(Integer, nullable=True)
     hidden_ingredients_risk = Column(Integer, nullable=True)
 
-    # Детализация по ингредиентам
     ai_analysis_details = Column(JSON, nullable=True, default=list)
 
-    # --- Метрики качества нутриентов ---
-
-    # Белки
     amino_acid_score = Column(Float, nullable=True)
     animal_protein_ratio = Column(Float, nullable=True)
     protein_density = Column(Float, nullable=True)
-
-    # Жиры
     omega6_omega3_ratio = Column(Float, nullable=True)
     trans_fat_ratio = Column(Float, nullable=True)
     saturated_fat_ratio = Column(Float, nullable=True)
     monounsaturated_fat_ratio = Column(Float, nullable=True)
     polyunsaturated_fat_ratio = Column(Float, nullable=True)
-
-    # Углеводы
     glycemic_load = Column(Float, nullable=True)
     fiber_to_carb_ratio = Column(Float, nullable=True)
     added_sugar_ratio = Column(Float, nullable=True)
     nova_processing_level = Column(Integer, nullable=True)
 
-    # --- AI советы по метрикам ---
     protein_ai_tip = Column(String, nullable=True)
     fat_ai_tip = Column(String, nullable=True)
     carb_ai_tip = Column(String, nullable=True)
@@ -172,6 +162,8 @@ class WorkoutSession(Base):
     template_id = Column(Integer, ForeignKey("workout_sessions.id"), nullable=True)
     is_completed = Column(Boolean, default=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user = relationship("User")
     exercises = relationship("WorkoutExercise", back_populates="session",
